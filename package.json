@@ -1,0 +1,48 @@
+{
+  "name": "comfy-agent",
+  "description": "Comfy Agent is a tool to use ComfyUI from the CLI. It is suitable for both direct CLI usage and AI-agent-driven automation.",
+  "version": "0.0.1",
+  "keywords": [
+    "comfyui",
+    "cli",
+    "workflow",
+    "image-generation",
+    "stable-diffusion",
+    "generative-ai",
+    "ai-agent",
+    "automation"
+  ],
+  "author": "shinshin86 <shinshin86npm@gmail.com> (https://github.com/shinshin86)",
+  "license": "MIT",
+  "files": [
+    "dist",
+    "README.md",
+    "README.ja.md"
+  ],
+  "type": "module",
+  "bin": {
+    "comfy-agent": "dist/cli/index.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx src/cli/index.ts",
+    "lint": "eslint .",
+    "fmt": "prettier -w .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "commander": "^12.1.0",
+    "yaml": "^2.6.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@typescript-eslint/eslint-plugin": "^7.16.0",
+    "@typescript-eslint/parser": "^7.16.0",
+    "eslint": "^8.57.0",
+    "prettier": "^3.3.3",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.3"
+  }
+}
