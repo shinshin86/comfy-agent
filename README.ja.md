@@ -1,6 +1,6 @@
 # Comfy Agent
 
-![Logo](./assets/comfy-agent-logo.png)
+![Logo](https://github.com/shinshin86/comfy-agent/raw/main/assets/comfy-agent-logo.png)
 
 Comfy Agent は ComfyUI を CLI から使うためのツールです。  
 ユーザーがCLIからComfyUIを使えるほか、AIエージェント経由で自動実行する用途にもオススメです。
@@ -20,7 +20,7 @@ comfy-agent --help
 
 2. ブラウザ上の ComfyUI で `default` を一度保存
 
-![Quick Start - 1](./assets/quick-start_1.png)
+![Quick Start - 1](https://github.com/shinshin86/comfy-agent/raw/main/assets/quick-start_1.png)
 
 - ブラウザで ComfyUI（例: `http://127.0.0.1:8188`）にアクセス
 - 組み込みの `default` workflow を開き、**Save** を1回実行
