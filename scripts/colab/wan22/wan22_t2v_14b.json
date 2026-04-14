@@ -1,0 +1,121 @@
+{
+  "6": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "a robot is running through a futuristic cyberpunk city with neon signs and darkness with bright HDR lights",
+      "clip": ["38", 0]
+    }
+  },
+  "7": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "overexposed, static, blurry details, subtitles, watermark, worst quality, low quality, jpeg artifacts, ugly, deformed, extra fingers, bad anatomy, bad hands, bad face, disfigured, missing limbs, three legs, cluttered background",
+      "clip": ["38", 0]
+    }
+  },
+  "8": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": ["58", 0],
+      "vae": ["39", 0]
+    }
+  },
+  "28": {
+    "class_type": "SaveAnimatedWEBP",
+    "inputs": {
+      "filename_prefix": "Wan22_T2V14B",
+      "fps": 16.0,
+      "lossless": false,
+      "quality": 80,
+      "method": "default",
+      "images": ["8", 0]
+    }
+  },
+  "37": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "wan2.2_t2v_high_noise_14B_fp8_scaled.safetensors",
+      "weight_dtype": "default"
+    }
+  },
+  "38": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+      "clip_name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+      "type": "wan",
+      "device": "default"
+    }
+  },
+  "39": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "wan_2.1_vae.safetensors"
+    }
+  },
+  "54": {
+    "class_type": "ModelSamplingSD3",
+    "inputs": {
+      "shift": 8.0,
+      "model": ["37", 0]
+    }
+  },
+  "55": {
+    "class_type": "ModelSamplingSD3",
+    "inputs": {
+      "shift": 8.0,
+      "model": ["56", 0]
+    }
+  },
+  "56": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "wan2.2_t2v_low_noise_14B_fp8_scaled.safetensors",
+      "weight_dtype": "default"
+    }
+  },
+  "57": {
+    "class_type": "KSamplerAdvanced",
+    "inputs": {
+      "add_noise": "enable",
+      "noise_seed": 42,
+      "steps": 20,
+      "cfg": 3.5,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "start_at_step": 0,
+      "end_at_step": 10,
+      "return_with_leftover_noise": "enable",
+      "model": ["54", 0],
+      "positive": ["6", 0],
+      "negative": ["7", 0],
+      "latent_image": ["61", 0]
+    }
+  },
+  "58": {
+    "class_type": "KSamplerAdvanced",
+    "inputs": {
+      "add_noise": "disable",
+      "noise_seed": 0,
+      "steps": 20,
+      "cfg": 3.5,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "start_at_step": 10,
+      "end_at_step": 10000,
+      "return_with_leftover_noise": "disable",
+      "model": ["55", 0],
+      "positive": ["6", 0],
+      "negative": ["7", 0],
+      "latent_image": ["57", 0]
+    }
+  },
+  "61": {
+    "class_type": "EmptyHunyuanLatentVideo",
+    "inputs": {
+      "width": 1280,
+      "height": 704,
+      "length": 57,
+      "batch_size": 1
+    }
+  }
+}

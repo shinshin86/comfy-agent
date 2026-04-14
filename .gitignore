@@ -29,3 +29,6 @@ TASKS_*.md
 
 # Local temp files
 tmp/
+
+# Local E2E smoke test (not part of CI)
+scripts/e2e-smoke.sh
