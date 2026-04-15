@@ -61,6 +61,12 @@ launcher `02_start_comfyui.py` at this level is **shared by all kits**.
 
 ## Credits
 
+- The Colab setup pattern in each kit's `01_setup.py` was inspired by the
+  Colab notebooks shipped with [ComfyUI](https://github.com/comfyanonymous/ComfyUI)
+  and [ComfyUI-Manager](https://github.com/ltdrdata/ComfyUI-Manager).
+  The scripts here are independently rewritten for this project (MIT)
+  around the publicly documented install procedure; thanks to the
+  upstream maintainers for establishing the workflow.
 - Workflow JSONs in each kit are derived from the official ComfyUI
   examples: https://comfyanonymous.github.io/ComfyUI_examples/
 - Model weights are downloaded from their respective upstream
