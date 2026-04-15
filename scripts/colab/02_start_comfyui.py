@@ -11,7 +11,18 @@ import threading
 import time
 from pathlib import Path
 
-WORKSPACE = os.environ.get("COMFY_WORKSPACE") or f"{os.getcwd()}/ComfyUI"
+# Resolve the ComfyUI workspace. In order of precedence:
+#   1. COMFY_WORKSPACE env var (explicit override)
+#   2. The current cwd if it already looks like a ComfyUI checkout
+#      (cell 1 ends with `%cd $WORKSPACE`, so the kernel's cwd usually is ComfyUI)
+#   3. `<cwd>/ComfyUI` as a last resort
+_cwd = os.getcwd()
+if os.environ.get("COMFY_WORKSPACE"):
+    WORKSPACE = os.environ["COMFY_WORKSPACE"]
+elif os.path.isfile(os.path.join(_cwd, "main.py")):
+    WORKSPACE = _cwd
+else:
+    WORKSPACE = f"{_cwd}/ComfyUI"
 PORT = int(os.environ.get("COMFY_PORT", "8188"))
 URL_FILE = Path("/content/comfy_url.txt")
 LOG_FILE = Path("/content/comfy.log")
