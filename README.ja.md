@@ -41,6 +41,45 @@ comfy-agent run default --source remote --base-url http://127.0.0.1:8188 --promp
 
 また、Google Colabで動くComfyUIなどを利用する場合は `--base-url` でURLを指定することで実行可能です。
 
+## Google Colab で動かす
+
+手元に GPU がなくても、Colab の GPU ランタイムで ComfyUI を動かし、
+ローカルの `comfy-agent` から cloudflared トンネル越しに呼び出せます。
+
+貼り付けるだけで動くスターターキットを [`scripts/colab/`](./scripts/colab/) に用意しています。
+
+| Kit | GPU | 出力 |
+|---|---|---|
+| [`z_image/`](./scripts/colab/z_image/) | T4+ | 画像（Z-Image turbo、最速） |
+| [`flux2/`](./scripts/colab/flux2/) | A100 | 画像（Flux 2 dev） |
+| [`wan22/`](./scripts/colab/wan22/) | A100 | 動画（Wan 2.2 TI2V 5B / T2V 14B） |
+
+手順はどのキットでも同じです。
+
+1. Colab ノートブックを開き、推奨の GPU ランタイムを選択。
+2. キット内の `01_setup.py` をセルに貼り付けて実行
+   （ComfyUI・モデル weights・cloudflared をインストール）。
+3. [`scripts/colab/02_start_comfyui.py`](./scripts/colab/02_start_comfyui.py)
+   を次のセルに貼り付けて実行。ComfyUI とトンネルがバックグラウンドで起動します。
+4. 公開 URL を取得:
+
+   ```python
+   !cat /content/comfy_url.txt
+   ```
+
+5. 手元のマシンに戻り、同梱の workflow を import して実行:
+
+   ```bash
+   comfy-agent import ./scripts/colab/z_image/z_image_turbo.json --name z_image_turbo
+   export COMFY_AGENT_BASE_URL=https://<id>.trycloudflare.com
+   comfy-agent run z_image_turbo --prompt "a cat riding a bicycle"
+   ```
+
+補足:
+- `trycloudflare` の URL はセッション毎に変わるので、Colab ランタイムを再起動したら
+  `COMFY_AGENT_BASE_URL` を再設定してください。
+- モデル別のパラメータフラグや VRAM/所要時間の目安は、各キットの `README.md` を参照してください。
+
 ## 前提
 
 - Node.js 20+

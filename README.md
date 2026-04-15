@@ -41,6 +41,46 @@ If you want to use your own workflow JSON instead, see the `import` section belo
 
 If you use ComfyUI running on Google Colab, you can run it by specifying the URL with `--base-url`.
 
+## Run on Google Colab
+
+No local GPU? Run ComfyUI on a Colab GPU runtime and drive it from
+`comfy-agent` on your laptop over a cloudflared tunnel.
+
+Ready-to-paste starter kits live under [`scripts/colab/`](./scripts/colab/):
+
+| Kit | GPU | Output |
+|---|---|---|
+| [`z_image/`](./scripts/colab/z_image/) | T4+ | Image (Z-Image turbo, fastest) |
+| [`flux2/`](./scripts/colab/flux2/) | A100 | Image (Flux 2 dev) |
+| [`wan22/`](./scripts/colab/wan22/) | A100 | Video (Wan 2.2 TI2V 5B / T2V 14B) |
+
+Flow (same for every kit):
+
+1. Open a Colab notebook, pick the recommended GPU runtime.
+2. Paste the kit's `01_setup.py` into a cell and run — installs ComfyUI,
+   downloads model weights and cloudflared.
+3. Paste [`scripts/colab/02_start_comfyui.py`](./scripts/colab/02_start_comfyui.py)
+   into the next cell and run — ComfyUI and the tunnel start in background.
+4. Read the public URL:
+
+   ```python
+   !cat /content/comfy_url.txt
+   ```
+
+5. Back on your machine, import the bundled workflow and run it:
+
+   ```bash
+   comfy-agent import ./scripts/colab/z_image/z_image_turbo.json --name z_image_turbo
+   export COMFY_AGENT_BASE_URL=https://<id>.trycloudflare.com
+   comfy-agent run z_image_turbo --prompt "a cat riding a bicycle"
+   ```
+
+Notes:
+- `trycloudflare` URLs change every session — re-export
+  `COMFY_AGENT_BASE_URL` after restarting the Colab runtime.
+- See each kit's `README.md` for model-specific parameter flags and
+  VRAM/runtime expectations.
+
 ## Prerequisites
 
 - Node.js 20+
