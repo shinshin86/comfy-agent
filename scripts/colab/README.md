@@ -58,3 +58,12 @@ launcher `02_start_comfyui.py` at this level is **shared by all kits**.
 - To persist model weights across sessions, set `USE_GOOGLE_DRIVE = True`
   in the kit's `01_setup.py` (where supported).
 - Logs: ComfyUI `/content/comfy.log`, cloudflared `/content/cloudflared.log`.
+
+## Credits
+
+- Workflow JSONs in each kit are derived from the official ComfyUI
+  examples: https://comfyanonymous.github.io/ComfyUI_examples/
+- Model weights are downloaded from their respective upstream
+  repositories at runtime and are **not** redistributed by this project.
+  Check each model's license before use — in particular, **Flux 2 [dev]
+  is released under a non-commercial license**.
