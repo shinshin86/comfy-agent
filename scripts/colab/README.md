@@ -9,6 +9,7 @@ in `.mcp.json` at the repo root.
 | Kit | Status | GPU | Notes |
 |---|---|---|---|
 | [`./z_image/`](./z_image/) | Verified E2E | T4+ | Z-Image turbo, fastest |
+| [`./anima/`](./anima/) | Starter | T4+ | Anima Preview 3, anime-style Qwen-Image finetune |
 | [`./flux2/`](./flux2/) | Verified E2E | A100 | Flux 2 dev, fp8mixed repack |
 | [`./wan22/`](./wan22/) | TI2V 5B verified E2E; T2V 14B starter | A100 | Wan 2.2 video |
 
@@ -68,7 +69,9 @@ launcher `02_start_comfyui.py` at this level is **shared by all kits**.
   around the publicly documented install procedure; thanks to the
   upstream maintainers for establishing the workflow.
 - Workflow JSONs in each kit are derived from the official ComfyUI
-  examples: https://comfyanonymous.github.io/ComfyUI_examples/
+  examples (https://comfyanonymous.github.io/ComfyUI_examples/) or from
+  the corresponding model repository's reference workflow (Anima's kit
+  mirrors the example embedded in `example.png` on circlestone-labs/Anima).
 - Model weights are downloaded from their respective upstream
   repositories at runtime and are **not** redistributed by this project.
   Check each model's license before use — in particular, **Flux 2 [dev]
