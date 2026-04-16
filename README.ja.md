@@ -51,6 +51,7 @@ comfy-agent run default --source remote --base-url http://127.0.0.1:8188 --promp
 | Kit | GPU | 出力 |
 |---|---|---|
 | [`z_image/`](./scripts/colab/z_image/) | T4+ | 画像（Z-Image turbo、最速） |
+| [`anima/`](./scripts/colab/anima/) | T4+ | 画像（Anima Preview 3、アニメ系） |
 | [`flux2/`](./scripts/colab/flux2/) | A100 | 画像（Flux 2 dev） |
 | [`wan22/`](./scripts/colab/wan22/) | A100 | 動画（Wan 2.2 TI2V 5B / T2V 14B） |
 
