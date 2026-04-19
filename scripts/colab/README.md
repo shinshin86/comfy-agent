@@ -12,6 +12,7 @@ in `.mcp.json` at the repo root.
 | [`./anima/`](./anima/) | Starter | T4+ | Anima Preview 3, anime-style Qwen-Image finetune |
 | [`./flux2/`](./flux2/) | Verified E2E | A100 | Flux 2 dev, fp8mixed repack |
 | [`./wan22/`](./wan22/) | TI2V 5B verified E2E; T2V 14B starter | A100 | Wan 2.2 video |
+| [`./ltx23/`](./ltx23/) | Starter | A100 | LTX-2.3 22B i2v video |
 
 Each subdir has its own `01_setup.py` + workflow JSON(s) + README. The
 launcher `02_start_comfyui.py` at this level is **shared by all kits**.
