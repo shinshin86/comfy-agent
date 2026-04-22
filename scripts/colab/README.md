@@ -10,6 +10,8 @@ in `.mcp.json` at the repo root.
 |---|---|---|---|
 | [`./z_image/`](./z_image/) | Verified E2E | T4+ | Z-Image turbo, fastest |
 | [`./anima/`](./anima/) | Starter | T4+ | Anima Preview 3, anime-style Qwen-Image finetune |
+| [`./qwen_image/`](./qwen_image/) | Starter | L4+ | Qwen-Image 2512, text-to-image |
+| [`./qwen_image_edit/`](./qwen_image_edit/) | Starter | A100 (L4 for fp8) | Qwen-Image-Edit 2511, image editing |
 | [`./flux2/`](./flux2/) | Verified E2E | A100 | Flux 2 dev, fp8mixed repack |
 | [`./wan22/`](./wan22/) | TI2V 5B verified E2E; T2V 14B starter | A100 | Wan 2.2 video |
 | [`./ltx23/`](./ltx23/) | Starter | A100 | LTX-2.3 22B i2v video |
