@@ -42,6 +42,9 @@ if UPDATE_COMFYUI:
 !pip3 install -q torchsde 'kornia>=0.7.1' spandrel soundfile sentencepiece av
 # blake3 / comfy_aimdo / comfy_kitchen / simpleeval: required by recent ComfyUI main.py.
 !pip3 install -q blake3 comfy_aimdo comfy_kitchen simpleeval
+# ComfyUI 0.20+ requires comfyui-workflow-templates / comfyui-embedded-docs from
+# its requirements.txt — without this the server fails to start.
+!pip3 install -q -r {WORKSPACE}/requirements.txt
 
 # --- ComfyUI-Manager (optional) --------------------------------------------
 if INSTALL_MANAGER:

@@ -39,6 +39,9 @@ if UPDATE_COMFYUI:
 # blake3 / comfy_aimdo / comfy_kitchen / simpleeval: see z_image kit for rationale.
 # Flux 2 specifically requires comfy_kitchen (fp8mixed quantization).
 !pip3 install -q blake3 comfy_aimdo comfy_kitchen simpleeval
+# ComfyUI 0.20+ requires comfyui-workflow-templates / comfyui-embedded-docs from
+# its requirements.txt — without this the server fails to start.
+!pip3 install -q -r {WORKSPACE}/requirements.txt
 
 # --- ComfyUI-Manager (optional) --------------------------------------------
 if INSTALL_MANAGER:
