@@ -39,6 +39,9 @@ if UPDATE_COMFYUI:
 #      comfy_aimdo / comfy_kitchen → fp8 quantization backend
 #      simpleeval → nodes_math.py
 !pip3 install -q blake3 comfy_aimdo comfy_kitchen simpleeval
+# ComfyUI 0.20+ requires comfyui-workflow-templates / comfyui-embedded-docs from
+# its requirements.txt — without this the server fails to start.
+!pip3 install -q -r {WORKSPACE}/requirements.txt
 
 # --- ComfyUI-Manager (optional) --------------------------------------------
 if INSTALL_MANAGER:

@@ -53,6 +53,9 @@ if UPDATE_COMFYUI:
 # blake3 / comfy_aimdo / comfy_kitchen / simpleeval: required by recent ComfyUI main.py.
 # comfy_kitchen >=0.2.0 matches the version pinned by the qwen_image_edit kit.
 !pip3 install -q blake3 comfy_aimdo 'comfy_kitchen>=0.2.0' simpleeval
+# ComfyUI 0.20+ requires comfyui-workflow-templates / comfyui-embedded-docs from
+# its requirements.txt — without this the server fails to start.
+!pip3 install -q -r {WORKSPACE}/requirements.txt
 
 # --- ComfyUI-Manager (optional) --------------------------------------------
 if INSTALL_MANAGER:
