@@ -5,6 +5,9 @@ architecture as the upstream `z_image` kit, so the workflow only swaps
 the UNet and adjusts the recommended sampler. Apache 2.0 (commercial
 use permitted).
 
+Base variant verified end-to-end on Colab L4 (28 steps, 832×1216,
+~1–2 min/image). The distill-8step variant ships untested as a starter.
+
 Upstream references:
 - https://huggingface.co/SeeSee21/Z-Anime
 - Reference workflow: `workflows/Z-Anime-Workflow-v1.json` in the repo
