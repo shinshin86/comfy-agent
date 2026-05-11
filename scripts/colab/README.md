@@ -22,6 +22,7 @@ in `.mcp.json` at the repo root.
 | [`./wan22/`](./wan22/) | TI2V 5B verified E2E; T2V 14B starter | A100 | Wan 2.2 video |
 | [`./hunyuan_video/`](./hunyuan_video/) | Verified E2E (A100) | L4 24GB / A100 | Tencent Hunyuan Video T2V 720p (bf16 → fp8 at load) |
 | [`./ltx23/`](./ltx23/) | Starter | A100 | LTX-2.3 22B i2v video |
+| [`./sulphur2/`](./sulphur2/) | Starter | A100 | Sulphur-2, uncensored LTX-2.3 fine-tune (fp8mixed) — review Colab AUP |
 
 Each subdir has its own `01_setup.py` + workflow JSON(s) + README. The
 launcher `02_start_comfyui.py` at this level is **shared by all kits**.
