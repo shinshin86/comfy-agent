@@ -6,6 +6,11 @@ Comfy-Org repack so **no Hugging Face access token is required** —
 including the gated Llama 3.1 8B text encoder, which Comfy-Org ships as
 an fp8-scaled `.safetensors` directly downloadable.
 
+Fast fp8 variant verified end-to-end on Colab L4 (~145 s cold / ~45 s
+warm at 1024×1024, 16 steps) via `comfy-agent import` + `comfy-agent
+run` against the local ComfyUI. Dev / Full variants ship untested as
+starters.
+
 Upstream references:
 - https://github.com/HiDream-ai/HiDream-I1
 - https://comfyanonymous.github.io/ComfyUI_examples/hidream/
@@ -13,11 +18,11 @@ Upstream references:
 
 ## Variants included
 
-| File | Diffusion model | Size | GPU | Notes |
-|---|---|---|---|---|
-| `hidream_i1_fast.json` | Fast fp8 | ~17 GB | L4+ | Default. 16 steps, cfg 1.0, `lcm` / `normal`, shift 3.0. |
-| `hidream_i1_dev.json` | Dev fp8 | ~17 GB | L4+ | 28 steps, cfg 1.0, `lcm` / `normal`, shift 6.0. Set `DOWNLOAD_DEV_FP8=True` in setup. |
-| `hidream_i1_full.json` | Full fp8 | ~17 GB | A100 | 50 steps, cfg 5.0, `uni_pc` / `simple`, shift 3.0. Set `DOWNLOAD_FULL_FP8=True` in setup. |
+| File | Diffusion model | Size | GPU | Status | Notes |
+|---|---|---|---|---|---|
+| `hidream_i1_fast.json` | Fast fp8 | ~17 GB | L4+ | Verified E2E | Default. 16 steps, cfg 1.0, `lcm` / `normal`, shift 3.0. |
+| `hidream_i1_dev.json` | Dev fp8 | ~17 GB | L4+ | Starter | 28 steps, cfg 1.0, `lcm` / `normal`, shift 6.0. Set `DOWNLOAD_DEV_FP8=True` in setup. |
+| `hidream_i1_full.json` | Full fp8 | ~17 GB | A100 | Starter | 50 steps, cfg 5.0, `uni_pc` / `simple`, shift 3.0. Set `DOWNLOAD_FULL_FP8=True` in setup. |
 
 All variants share four text encoders (CLIP-L, CLIP-G, T5-XXL fp8,
 Llama 3.1 8B Instruct fp8 ≈ 16 GB total) plus the Flux VAE (`ae.safetensors`,
