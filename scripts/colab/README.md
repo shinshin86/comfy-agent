@@ -17,6 +17,7 @@ in `.mcp.json` at the repo root.
 | [`./qwen_image_edit/`](./qwen_image_edit/) | Starter | A100 (L4 for fp8) | Qwen-Image-Edit 2511, image editing |
 | [`./flux1/`](./flux1/) | Verified E2E | L4+ / A100 | Flux 1 dev fp8 (Comfy-Org repack, no HF token) |
 | [`./flux2/`](./flux2/) | Verified E2E | A100 | Flux 2 dev, fp8mixed repack |
+| [`./hidream_i1/`](./hidream_i1/) | Starter | L4+ / A100 | HiDream-I1 17B (Fast/Dev/Full fp8, MIT, no HF token) |
 | [`./wan21/`](./wan21/) | 1.3B verified E2E; 14B starter | T4 (1.3B) / L4+ (14B) | Wan 2.1 T2V (1.3B fp16, 14B fp8_scaled) |
 | [`./wan22/`](./wan22/) | TI2V 5B verified E2E; T2V 14B starter | A100 | Wan 2.2 video |
 | [`./hunyuan_video/`](./hunyuan_video/) | Verified E2E (A100) | L4 24GB / A100 | Tencent Hunyuan Video T2V 720p (bf16 → fp8 at load) |
