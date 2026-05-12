@@ -38,6 +38,17 @@ Starter kit for running [SulphurAI/Sulphur-2-base][hf] — an
 | `video_sulphur2_i2v_distilled.json` | image→video, distilled (API format) | Patched from upstream `workflows/ltx23_i2v distilled.json`: `ckpt_name` fields point at `sulphur_dev_fp8mixed.safetensors`, and the redundant `sulphur_final.safetensors` LoRA loader nodes (46, 60) have been rewired out since the merged dev checkpoint already contains the fine-tune. Consumable directly by `comfy-agent import`. |
 | `video_sulphur2_t2v_distilled.json` | text→video, distilled (UI format) | Upstream `workflows/ltx23_t2v distilled.json`, **unmodified** — ComfyUI browser-UI layout, not API format. Load it in the ComfyUI UI on your Colab tunnel; not consumable by `comfy-agent import` as-is. |
 
+`01_setup.py` also drops all four upstream Sulphur workflows
+(`i2v base / i2v distilled / t2v base / t2v distilled`) into
+`ComfyUI/user/default/workflows/` on the Colab side when
+`INSTALL_UPSTREAM_WORKFLOWS_IN_UI = True` (the default), so they appear
+in the ComfyUI browser UI's workflow picker. **Those upstream JSONs are
+not patched** — they reference `ltx-2.3-22b-dev-fp8.safetensors` and
+`sulphur_final.safetensors`, neither of which is downloaded; edit the
+checkpoint / LoRA widget values inside the UI before queueing, or use
+the kit's patched `video_sulphur2_i2v_distilled.json` through
+`comfy-agent` instead.
+
 ## Variant choice (fp8mixed vs bf16)
 
 The setup script defaults `CHECKPOINT_VARIANT = "fp8mixed"` (~29 GB on

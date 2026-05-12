@@ -19,14 +19,20 @@
 # bundled in the SulphurAI/Sulphur-2-base repo. Review before use,
 # especially regarding redistribution and acceptable use.
 
-USE_GOOGLE_DRIVE   = False
-UPDATE_COMFYUI     = True
-INSTALL_MANAGER    = True
-RESTORE_NODE_DEPS  = True
-DOWNLOAD_SULPHUR_2 = True
+USE_GOOGLE_DRIVE      = False
+UPDATE_COMFYUI        = True
+INSTALL_MANAGER       = True
+RESTORE_NODE_DEPS     = True
+DOWNLOAD_SULPHUR_2    = True
 # "fp8mixed" (~29 GB) fits A100 40 GB with low_vram streaming.
 # "bf16" (~46 GB) only makes sense on A100 80 GB or with aggressive offload.
-CHECKPOINT_VARIANT = "fp8mixed"  # "fp8mixed" | "bf16"
+CHECKPOINT_VARIANT    = "fp8mixed"  # "fp8mixed" | "bf16"
+# Drop the 4 upstream Sulphur workflows (i2v/t2v × base/distilled) into
+# ComfyUI/user/default/workflows/ so they're selectable in the ComfyUI
+# browser UI on this Colab session. Independent of the comfy-agent CLI
+# path — those workflows are NOT patched, so loading them in the UI is
+# the easiest way to try the t2v / base variants.
+INSTALL_UPSTREAM_WORKFLOWS_IN_UI = True
 
 import os
 
@@ -128,6 +134,27 @@ if DOWNLOAD_SULPHUR_2:
     # Spatial upscaler x2 (used inside the two-stage workflow).
     !wget -nc -O {WORKSPACE}/models/latent_upscale_models/ltx-2.3-spatial-upscaler-x2-1.0.safetensors \
         {LTX_BASE}/ltx-2.3-spatial-upscaler-x2-1.0.safetensors
+
+# --- Upstream workflows into ComfyUI UI workflow dir ------------------------
+# These are the original Sulphur HF workflows, unmodified. They reference
+# `ltx-2.3-22b-dev-fp8.safetensors` and `sulphur_final.safetensors` which
+# do not match any file the setup downloads — you'll need to either edit
+# the node widget values inside ComfyUI before queueing, or use the
+# kit's patched `video_sulphur2_i2v_distilled.json` through comfy-agent.
+if INSTALL_UPSTREAM_WORKFLOWS_IN_UI:
+    ui_workflows = f"{WORKSPACE}/user/default/workflows"
+    os.makedirs(ui_workflows, exist_ok=True)
+    # Filenames on HF contain spaces; URL-encode them and rename locally
+    # so they're shell-friendly.
+    upstream_workflows = [
+        ("ltx23_i2v%20base.json",      "sulphur2_i2v_base.json"),
+        ("ltx23_i2v%20distilled.json", "sulphur2_i2v_distilled.json"),
+        ("ltx23_t2v%20base.json",      "sulphur2_t2v_base.json"),
+        ("ltx23_t2v%20distilled.json", "sulphur2_t2v_distilled.json"),
+    ]
+    for remote, local in upstream_workflows:
+        url = f"https://huggingface.co/SulphurAI/Sulphur-2-base/resolve/main/workflows/{remote}"
+        !wget -nc -O {ui_workflows}/{local} "{url}"
 
 # --- cloudflared ------------------------------------------------------------
 !wget -nc -P /root https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
