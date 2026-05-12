@@ -5,11 +5,10 @@ Starter kit for running [SulphurAI/Sulphur-2-base][hf] — an
 
 [hf]: https://huggingface.co/SulphurAI/Sulphur-2-base
 
-> **Status: Starter — not Verified E2E.**
-> The kit has not yet been exercised end-to-end on a real Colab A100
-> session against the local `comfy-agent` CLI through a cloudflared
-> tunnel. Treat the workflow / setup script as best-effort. See
-> `CLAUDE.md` at the repo root for what "Verified E2E" requires.
+> **Status: Verified E2E (Colab A100, fp8mixed).**
+> Both the i2v and t2v API workflows have been exercised end-to-end:
+> Colab A100 → cloudflared → `comfy-agent run` from a local Mac →
+> `.mp4` lands under `.comfy-agent/outputs/sulphur2_{i2v,t2v}/...`.
 
 > **Acceptable use warning.** Sulphur-2 is described by its author as
 > uncensored. Generating, hosting, or distributing NSFW / sexually
@@ -26,8 +25,10 @@ Starter kit for running [SulphurAI/Sulphur-2-base][hf] — an
 - Text encoder repack: https://huggingface.co/Comfy-Org/ltx-2
 - ComfyUI custom nodes:
   - https://github.com/Lightricks/ComfyUI-LTXVideo
-  - https://github.com/kijai/ComfyUI-KJNodes
-  - https://github.com/evanspearman/ComfyMath
+  - https://github.com/kijai/ComfyUI-KJNodes (`PatchSageAttentionKJ`)
+  - https://github.com/evanspearman/ComfyMath (`ComfyMathExpression`)
+  - https://github.com/aria1th/ComfyUI-LogicUtils (`ResizeImageResolution`)
+  - https://github.com/sipherxyz/comfyui-art-venture (`ImageScaleDownBy`)
 - License: LTX-2 Community License Agreement (see `LICENSE.txt` in the
   upstream model repo). Review before redistribution or commercial use.
 
@@ -36,7 +37,8 @@ Starter kit for running [SulphurAI/Sulphur-2-base][hf] — an
 | File | Use | Notes |
 |---|---|---|
 | `video_sulphur2_i2v_distilled.json` | image→video, distilled (API format) | Patched from upstream `workflows/ltx23_i2v distilled.json`: `ckpt_name` fields point at `sulphur_dev_fp8mixed.safetensors`, and the redundant `sulphur_final.safetensors` LoRA loader nodes (46, 60) have been rewired out since the merged dev checkpoint already contains the fine-tune. Consumable directly by `comfy-agent import`. |
-| `video_sulphur2_t2v_distilled.json` | text→video, distilled (UI format) | Upstream `workflows/ltx23_t2v distilled.json`, **unmodified** — ComfyUI browser-UI layout, not API format. Load it in the ComfyUI UI on your Colab tunnel; not consumable by `comfy-agent import` as-is. |
+| `video_sulphur2_t2v_distilled_api.json` | text→video, distilled (API format) | Converted from upstream `workflows/ltx23_t2v distilled.json` (UI format) by walking `/object_info` widget order, dropping the 8 muted nodes with passthrough rewiring, and resolving autogrow inputs (`values.a`, `values.b`). Patched the same way as i2v: Sulphur ckpt name + `sulphur_final` LoRA loaders rewired out. Consumable directly by `comfy-agent import`. |
+| `video_sulphur2_t2v_distilled.json` | text→video, distilled (UI format) | Upstream `workflows/ltx23_t2v distilled.json`, **unmodified** — ComfyUI browser-UI layout, kept around for users who prefer to load it in the ComfyUI browser UI. Use the `_api.json` companion through `comfy-agent`. |
 
 `01_setup.py` also drops all four upstream Sulphur workflows
 (`i2v base / i2v distilled / t2v base / t2v distilled`) into
@@ -75,13 +77,17 @@ override each if you swap variants.)
    weights across sessions.
 3. Run `../02_start_comfyui.py` in the next cell.
 4. Poll `/content/comfy_url.txt` for the tunnel URL.
-5. Locally:
+5. Locally — pick **one** workflow:
 
    ```bash
+   # image-to-video
    comfy-agent import ./scripts/colab/sulphur2/video_sulphur2_i2v_distilled.json --name sulphur2_i2v
+
+   # text-to-video
+   comfy-agent import ./scripts/colab/sulphur2/video_sulphur2_t2v_distilled_api.json --name sulphur2_t2v
    ```
 
-   Then open `.comfy-agent/presets/sulphur2_i2v.yaml` and append:
+   For **i2v**: open `.comfy-agent/presets/sulphur2_i2v.yaml` and append:
 
    ```yaml
    uploads:
@@ -94,30 +100,49 @@ override each if you swap variants.)
    ```
 
    (`comfy-agent import` does not yet auto-generate `uploads` entries
-   from `LoadImage` nodes — one-time manual step per preset.)
+   from `LoadImage` nodes — one-time manual step per preset.) The t2v
+   preset has no input image, so this step is i2v-only.
 
 6. Run:
 
    ```bash
    export COMFY_AGENT_BASE_URL=https://<id>.trycloudflare.com
+
+   # i2v
    comfy-agent run sulphur2_i2v \
        --image ./path/to/your.png \
        --29_value "prompt describing the motion you want" \
+       --27_value 41 \
+       --68_resolution 512 \
+       --timeout-seconds 1800
+
+   # t2v
+   comfy-agent run sulphur2_t2v \
+       --29_value "your scene description" \
+       --27_value 41 \
+       --40_value 512 \
+       --25_value 320 \
        --timeout-seconds 1800
    ```
 
-   Other useful flags (see `comfy-agent preset-show sulphur2_i2v`):
+   Common flags (see `comfy-agent preset <name>`):
+   - `--29_value` — positive prompt
    - `--41_text` — negative prompt (default: cartoonish-looking text)
    - `--1_noise_seed` / `--2_noise_seed` — seeds for the two sampling passes
-   - `--27_value` — frame count (default 241; LTX expects `8n + 1`)
+   - `--27_value` — frame count (default 241; LTX expects `8n + 1`; e.g. 41 → ~1.7 s @ 24 fps)
    - `--26_value` — frame rate (default 24 fps)
+   - `--47_steps` — sampler steps for the refine pass (default 8)
+   - `--49_strength_model` / `--59_strength_model` — distill LoRA strengths
+
+   i2v-only:
    - `--68_resolution` — input image target resolution before encoding (default 1024)
-   - `--59_strength_model` — distill LoRA strength on the first pass (default 0.7)
-   - `--49_strength_model` — distill LoRA strength on the second pass (default 0.5)
-   - `--47_steps` — sampler steps for the upscale/refine pass (default 8)
+
+   t2v-only:
+   - `--40_value` — width (default 1366; multiples of 32)
+   - `--25_value` — height (default 768; multiples of 32)
 
    Output lands under
-   `.comfy-agent/outputs/sulphur2_i2v/<timestamp>/`.
+   `.comfy-agent/outputs/sulphur2_{i2v,t2v}/<timestamp>/`.
 
 ## Caveats
 
@@ -127,9 +152,11 @@ override each if you swap variants.)
 - **Disk**: ~37 GB for the fp8mixed path; ~54 GB for bf16. The 80 GB
   Colab A100 disk should handle both, but `USE_GOOGLE_DRIVE = True` is
   recommended if you switch sessions often.
-- **Custom nodes**: the workflow uses `PatchSageAttentionKJ` (KJNodes)
-  and `ComfyMathExpression` (ComfyMath) in addition to the standard
-  LTX-2 nodes. `01_setup.py` installs all three custom node packs.
+- **Custom nodes**: the workflows pull in `PatchSageAttentionKJ`
+  (KJNodes), `ComfyMathExpression` (ComfyMath),
+  `ResizeImageResolution` (LogicUtils), and `ImageScaleDownBy`
+  (art-venture) in addition to the standard LTX-2 nodes. `01_setup.py`
+  installs all five custom node packs.
 - **sageattention wheel**: install can fail on certain Colab Python /
   CUDA combos; the workflow's `sage_attention="auto"` setting should
   fall back to default attention if the kernel is unavailable.
@@ -137,11 +164,12 @@ override each if you swap variants.)
   `ltx-2.3-22b-dev-fp8.safetensors` (does not exist on HF) and
   `sulphur_final.safetensors` (does not exist on HF). Per the author's
   README, the intent is "use the LoRA OR use the full model, not both".
-  This kit chooses the **full model** path: the i2v workflow has been
-  patched to point at `sulphur_dev_fp8mixed.safetensors` and bypass
-  the missing-LoRA nodes. The t2v JSON is shipped untouched and will
-  need the same edits (or a different download plan) if you want to
-  run it from `comfy-agent`.
+  This kit chooses the **full model** path: both the i2v and t2v API
+  workflows have been patched to point at `sulphur_dev_fp8mixed.safetensors`
+  and the redundant `sulphur_final.safetensors` LoRA loaders have been
+  rewired out. The original UI-format `video_sulphur2_t2v_distilled.json`
+  remains in the kit unmodified for users who want to load it in the
+  ComfyUI browser UI.
 - **Prompt enhancer not included**: `prompt_enhancer/` in the upstream
   repo is a Qwen-3.5 GGUF designed for LM Studio, not ComfyUI. Skipped.
 - **Workflow drift**: the upstream Sulphur-2 repo is young and may

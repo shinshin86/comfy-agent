@@ -14,6 +14,8 @@
 #   https://github.com/Lightricks/ComfyUI-LTXVideo
 #   https://github.com/kijai/ComfyUI-KJNodes        (PatchSageAttentionKJ)
 #   https://github.com/evanspearman/ComfyMath       (ComfyMathExpression)
+#   https://github.com/aria1th/ComfyUI-LogicUtils   (ResizeImageResolution)
+#   https://github.com/sipherxyz/comfyui-art-venture (ImageScaleDownBy)
 #
 # License: weights are governed by the LTX-2 Community License Agreement
 # bundled in the SulphurAI/Sulphur-2-base repo. Review before use,
@@ -37,13 +39,19 @@ INSTALL_UPSTREAM_WORKFLOWS_IN_UI = True
 import os
 
 # --- Workspace location -----------------------------------------------------
+# Re-runs in the same Colab session land in `cwd/ComfyUI` from the previous
+# `%cd $WORKSPACE`. Without the main.py check, a re-run would nest a fresh
+# ComfyUI checkout inside the existing one and re-download every weight.
+_cwd = os.getcwd()
 if USE_GOOGLE_DRIVE:
     from google.colab import drive
     drive.mount('/content/drive')
     WORKSPACE = "/content/drive/MyDrive/ComfyUI"
     os.chdir('/content/drive/MyDrive')
+elif os.path.isfile(os.path.join(_cwd, "main.py")):
+    WORKSPACE = _cwd
 else:
-    WORKSPACE = f"{os.getcwd()}/ComfyUI"
+    WORKSPACE = f"{_cwd}/ComfyUI"
 
 # --- ComfyUI checkout -------------------------------------------------------
 if not os.path.isdir(WORKSPACE):
@@ -102,6 +110,24 @@ else:
     !git -C {math_node_dir} pull
 if os.path.isfile(f"{math_node_dir}/requirements.txt"):
     !pip3 install -q -r {math_node_dir}/requirements.txt
+
+# --- ComfyUI-LogicUtils (ResizeImageResolution) ----------------------------
+logicutils_dir = f"{WORKSPACE}/custom_nodes/ComfyUI-LogicUtils"
+if not os.path.isdir(logicutils_dir):
+    !git clone https://github.com/aria1th/ComfyUI-LogicUtils {logicutils_dir}
+else:
+    !git -C {logicutils_dir} pull
+if os.path.isfile(f"{logicutils_dir}/requirements.txt"):
+    !pip3 install -q -r {logicutils_dir}/requirements.txt
+
+# --- comfyui-art-venture (ImageScaleDownBy) --------------------------------
+artventure_dir = f"{WORKSPACE}/custom_nodes/comfyui-art-venture"
+if not os.path.isdir(artventure_dir):
+    !git clone https://github.com/sipherxyz/comfyui-art-venture {artventure_dir}
+else:
+    !git -C {artventure_dir} pull
+if os.path.isfile(f"{artventure_dir}/requirements.txt"):
+    !pip3 install -q -r {artventure_dir}/requirements.txt
 
 # --- Model weights ----------------------------------------------------------
 for sub in ('checkpoints', 'text_encoders', 'latent_upscale_models', 'loras'):
