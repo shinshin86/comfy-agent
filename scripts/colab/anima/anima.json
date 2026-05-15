@@ -59,7 +59,7 @@
   "44": {
     "class_type": "UNETLoader",
     "inputs": {
-      "unet_name": "anima-preview3-base.safetensors",
+      "unet_name": "anima-base-v1.0.safetensors",
       "weight_dtype": "default"
     }
   },

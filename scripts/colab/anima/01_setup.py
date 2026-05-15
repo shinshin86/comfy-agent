@@ -1,8 +1,8 @@
-# Colab cell: set up ComfyUI and download Anima Preview 3 weights.
+# Colab cell: set up ComfyUI and download Anima Base v1.0 weights.
 # Paste this into a single Colab cell and run once per session.
 # Re-running is safe: `git pull` updates and `wget -nc` skips existing files.
 #
-# Anima Preview 3 is an anime-style Qwen-Image finetune by circlestone-labs:
+# Anima Base v1.0 is an anime-style Qwen-Image finetune by circlestone-labs:
 #   https://huggingface.co/circlestone-labs/Anima
 # The reference workflow (example.png) uses Qwen 3 0.6B as the text encoder
 # and the Qwen-Image VAE. Fits on a T4 runtime (~5.6 GB total weights).
@@ -60,8 +60,8 @@ for sub in ('diffusion_models', 'vae', 'text_encoders'):
     os.makedirs(f"{WORKSPACE}/models/{sub}", exist_ok=True)
 
 ANIMA_BASE = "https://huggingface.co/circlestone-labs/Anima/resolve/main/split_files"
-!wget -nc -O {WORKSPACE}/models/diffusion_models/anima-preview3-base.safetensors \
-    {ANIMA_BASE}/diffusion_models/anima-preview3-base.safetensors
+!wget -nc -O {WORKSPACE}/models/diffusion_models/anima-base-v1.0.safetensors \
+    {ANIMA_BASE}/diffusion_models/anima-base-v1.0.safetensors
 !wget -nc -O {WORKSPACE}/models/text_encoders/qwen_3_06b_base.safetensors \
     {ANIMA_BASE}/text_encoders/qwen_3_06b_base.safetensors
 !wget -nc -O {WORKSPACE}/models/vae/qwen_image_vae.safetensors \
