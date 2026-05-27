@@ -31,6 +31,8 @@ const TaskSchema = z.enum([
 ]);
 
 const OutputSchema = z.enum(["image", "video"]);
+export type ColabTask = z.infer<typeof TaskSchema>;
+export type ColabOutput = z.infer<typeof OutputSchema>;
 
 export const ColabWorkflowSchema = z
   .object({
@@ -116,3 +118,157 @@ export const buildColabCatalogPayload = (catalog: ColabCatalog) => ({
   ok: true,
   catalog: sortCatalog(catalog),
 });
+
+export type ColabSuggestOptions = {
+  goal?: string;
+  task?: ColabTask;
+  output?: ColabOutput;
+  gpu?: string;
+  limit?: number;
+};
+
+export type ColabSuggestion = {
+  kit: string;
+  workflow: string;
+  path: string;
+  workflow_file: string;
+  task: ColabTask;
+  outputs: ColabOutput[];
+  gpu: { minimum?: string; recommended?: string };
+  status: ColabKit["status"];
+  score: number;
+  reasons: string[];
+};
+
+const tokenize = (value: string | undefined) =>
+  (value ?? "")
+    .toLowerCase()
+    .split(/[^a-z0-9_]+/)
+    .filter(Boolean);
+
+const inferGoalHints = (goal: string | undefined) => {
+  const lower = (goal ?? "").toLowerCase();
+  return {
+    wantsFast: /\b(fast|quick|speed|t4)\b/.test(lower),
+    wantsAnime: /\b(anime|manga)\b/.test(lower),
+    wantsVideo: /\b(video|movie|motion)\b/.test(lower),
+    wantsEdit: /\b(edit|editing|modify|retouch)\b/.test(lower),
+  };
+};
+
+const textForKit = (kit: ColabKit, workflowName: string) =>
+  [
+    kit.name,
+    kit.summary,
+    kit.status,
+    kit.gpu.minimum,
+    kit.gpu.recommended,
+    ...(kit.tags ?? []),
+    workflowName,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+export const buildColabSuggestPayload = (
+  catalog: ColabCatalog,
+  options: ColabSuggestOptions = {},
+) => {
+  const sorted = sortCatalog(catalog);
+  const goalTokens = tokenize(options.goal);
+  const hints = inferGoalHints(options.goal);
+  const gpu = options.gpu?.toLowerCase();
+  const limit = Math.max(1, Math.floor(options.limit ?? 5));
+
+  const suggestions: ColabSuggestion[] = [];
+  for (const kit of sorted.kits) {
+    if (options.output && !kit.outputs.includes(options.output)) continue;
+    if (
+      gpu &&
+      kit.gpu.minimum?.toLowerCase() !== gpu &&
+      kit.gpu.recommended?.toLowerCase() !== gpu
+    ) {
+      continue;
+    }
+
+    for (const workflow of kit.workflows) {
+      if (options.task && workflow.task !== options.task) continue;
+
+      let score = 0;
+      const reasons: string[] = [];
+      const haystack = textForKit(kit, workflow.name);
+
+      if (options.task && workflow.task === options.task) {
+        score += 100;
+        reasons.push(`task:${workflow.task}`);
+      }
+      if (options.output && kit.outputs.includes(options.output)) {
+        score += 40;
+        reasons.push(`output:${options.output}`);
+      }
+      if (gpu) {
+        score += 30;
+        reasons.push(`gpu:${options.gpu}`);
+      }
+
+      for (const token of goalTokens) {
+        if (haystack.includes(token)) score += 3;
+      }
+
+      if (hints.wantsFast && workflow.speed === "fast") {
+        score += 30;
+        reasons.push("speed:fast");
+      }
+      if (hints.wantsAnime && kit.tags?.includes("anime")) {
+        score += 25;
+        reasons.push("tag:anime");
+      }
+      if (hints.wantsVideo && kit.outputs.includes("video")) {
+        score += 25;
+        reasons.push("output:video");
+      }
+      if (hints.wantsEdit && workflow.task === "image_edit") {
+        score += 25;
+        reasons.push("task:image_edit");
+      }
+      if (kit.status === "verified") score += 8;
+      if (workflow.quality === "high") score += 4;
+      if (workflow.quality === "draft") score -= 6;
+      if (kit.license_notes?.some((note) => note.toLowerCase().includes("non-commercial"))) {
+        score -= 3;
+      }
+
+      suggestions.push({
+        kit: kit.name,
+        workflow: workflow.name,
+        path: kit.path,
+        workflow_file: workflow.file,
+        task: workflow.task,
+        outputs: kit.outputs,
+        gpu: kit.gpu,
+        status: kit.status,
+        score,
+        reasons,
+      });
+    }
+  }
+
+  suggestions.sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    const byKit = a.kit.localeCompare(b.kit);
+    if (byKit !== 0) return byKit;
+    return a.workflow.localeCompare(b.workflow);
+  });
+
+  return {
+    ok: true,
+    query: {
+      goal: options.goal,
+      task: options.task,
+      output: options.output,
+      gpu: options.gpu,
+      limit,
+    },
+    suggestions: suggestions.slice(0, limit),
+  };
+};

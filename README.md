@@ -87,6 +87,7 @@ Agent-readable kit metadata is available via:
 
 ```bash
 comfy-agent colab catalog --json
+comfy-agent colab suggest "fast image generation on a T4" --json
 ```
 
 The catalog is intentionally portable: paths are relative to `scripts/colab/`

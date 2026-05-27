@@ -1,8 +1,10 @@
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { runColabSuggest } from "../src/cli/colab.js";
 import {
   ColabCatalogSchema,
   buildColabCatalogPayload,
+  buildColabSuggestPayload,
   loadColabCatalogFile,
 } from "../src/colab/catalog.js";
 
@@ -57,6 +59,60 @@ describe("ColabCatalogSchema", () => {
     });
 
     expect(result.success).toBe(false);
+  });
+});
+
+describe("buildColabSuggestPayload", () => {
+  it("suggests fast image kits from a natural-language goal", async () => {
+    const catalog = await loadColabCatalogFile(catalogPath);
+    const payload = buildColabSuggestPayload(catalog, {
+      goal: "fast image generation on a T4",
+      limit: 3,
+    });
+
+    expect(payload.ok).toBe(true);
+    expect(payload.suggestions[0]).toMatchObject({
+      kit: "z_image",
+      workflow: "z_image_turbo",
+      task: "text_to_image",
+    });
+  });
+
+  it("honors explicit task/output/gpu filters", async () => {
+    const catalog = await loadColabCatalogFile(catalogPath);
+    const payload = buildColabSuggestPayload(catalog, {
+      task: "text_to_video",
+      output: "video",
+      gpu: "A100",
+    });
+
+    expect(payload.suggestions.length).toBeGreaterThan(0);
+    expect(payload.suggestions.every((item) => item.task === "text_to_video")).toBe(true);
+    expect(payload.suggestions.every((item) => item.outputs.includes("video"))).toBe(true);
+    expect(payload.suggestions.map((item) => item.kit)).toContain("wan22");
+  });
+
+  it("keeps suggestions free of local paths", async () => {
+    const catalog = await loadColabCatalogFile(catalogPath);
+    const payload = buildColabSuggestPayload(catalog, { goal: "anime image" });
+    const serialized = JSON.stringify(payload);
+
+    expect(serialized).not.toContain(repoRoot);
+    expect(serialized).not.toContain("/absolute/");
+  });
+});
+
+describe("runColabSuggest", () => {
+  it("rejects invalid CLI filters", async () => {
+    await expect(runColabSuggest("image", { task: "typo" as never, json: true })).rejects.toThrow(
+      "task must be",
+    );
+    await expect(
+      runColabSuggest("image", { output: "movie" as never, json: true }),
+    ).rejects.toThrow("output must be");
+    await expect(runColabSuggest("image", { limit: "0", json: true })).rejects.toThrow(
+      "limit must be",
+    );
   });
 });
 

@@ -86,6 +86,7 @@ AIエージェント向けのキット情報は次のコマンドで取得でき
 
 ```bash
 comfy-agent colab catalog --json
+comfy-agent colab suggest "fast image generation on a T4" --json
 ```
 
 catalog は持ち運びやすい公開情報だけを返します。パスは `scripts/colab/`

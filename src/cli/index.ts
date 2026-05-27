@@ -8,7 +8,7 @@ import { runDoctor } from "./doctor.js";
 import { runAnalyze } from "./analyze.js";
 import { runStatus } from "./status.js";
 import { runPresetShow } from "./preset-show.js";
-import { runColabCatalog } from "./colab.js";
+import { runColabCatalog, runColabSuggest } from "./colab.js";
 import { errorPayloadFrom, exitCodeFrom, isCliError } from "../io/errors.js";
 import { log } from "../io/output.js";
 import { resolveLanguage, setLanguage, t } from "../i18n/index.js";
@@ -178,6 +178,24 @@ colab
   .action(async (options) => {
     try {
       await runColabCatalog(options);
+    } catch (err) {
+      handleError(err, options?.json);
+    }
+  });
+
+colab
+  .command("suggest")
+  .description(t("cli.colab.suggest.description"))
+  .argument("[goal]", t("cli.colab.suggest.arg.goal"))
+  .option("--task <task>", t("cli.colab.suggest.option.task"))
+  .option("--output <output>", t("cli.colab.suggest.option.output"))
+  .option("--gpu <gpu>", t("cli.colab.suggest.option.gpu"))
+  .option("--limit <n>", t("cli.colab.suggest.option.limit"))
+  .option("--json", t("cli.option.json"))
+  .option("--lang <lang>", t("cli.option.lang"))
+  .action(async (goal, options) => {
+    try {
+      await runColabSuggest(goal, options);
     } catch (err) {
       handleError(err, options?.json);
     }
