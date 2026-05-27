@@ -8,6 +8,7 @@ import { runDoctor } from "./doctor.js";
 import { runAnalyze } from "./analyze.js";
 import { runStatus } from "./status.js";
 import { runPresetShow } from "./preset-show.js";
+import { runColabCatalog } from "./colab.js";
 import { errorPayloadFrom, exitCodeFrom, isCliError } from "../io/errors.js";
 import { log } from "../io/output.js";
 import { resolveLanguage, setLanguage, t } from "../i18n/index.js";
@@ -162,6 +163,21 @@ program
   .action(async (imagePath, options) => {
     try {
       await runAnalyze(imagePath, options);
+    } catch (err) {
+      handleError(err, options?.json);
+    }
+  });
+
+const colab = program.command("colab").description(t("cli.colab.description"));
+
+colab
+  .command("catalog")
+  .description(t("cli.colab.catalog.description"))
+  .option("--json", t("cli.option.json"))
+  .option("--lang <lang>", t("cli.option.lang"))
+  .action(async (options) => {
+    try {
+      await runColabCatalog(options);
     } catch (err) {
       handleError(err, options?.json);
     }

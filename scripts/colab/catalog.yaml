@@ -1,0 +1,319 @@
+version: 1
+kits:
+  - name: anima
+    path: anima/
+    status: verified
+    tasks: [text_to_image]
+    outputs: [image]
+    gpu:
+      minimum: T4
+      recommended: T4
+    summary: Anime-style image generation with Anima Base v1.0.
+    setup_file: 01_setup.py
+    tags: [anime, image]
+    workflows:
+      - name: anima
+        file: anima.json
+        task: text_to_image
+        speed: medium
+        quality: high
+  - name: flux1
+    path: flux1/
+    status: verified
+    tasks: [text_to_image]
+    outputs: [image]
+    gpu:
+      minimum: L4
+      recommended: A100
+    summary: Flux 1 dev fp8 image generation.
+    setup_file: 01_setup.py
+    license_notes: [Check upstream Flux dev license before use.]
+    tags: [image, photoreal]
+    workflows:
+      - name: flux1_dev
+        file: flux1_dev.json
+        task: text_to_image
+        speed: slow
+        quality: high
+  - name: flux2
+    path: flux2/
+    status: verified
+    tasks: [text_to_image]
+    outputs: [image]
+    gpu:
+      minimum: A100
+      recommended: A100
+    summary: Flux 2 dev image generation using fp8mixed repack.
+    setup_file: 01_setup.py
+    license_notes: [Check upstream Flux 2 dev license before use.]
+    tags: [image, photoreal]
+    workflows:
+      - name: flux2_dev
+        file: flux2_dev.json
+        task: text_to_image
+        speed: slow
+        quality: high
+  - name: hidream_i1
+    path: hidream_i1/
+    status: verified
+    tasks: [text_to_image]
+    outputs: [image]
+    gpu:
+      minimum: L4
+      recommended: A100
+    summary: HiDream-I1 image generation variants.
+    setup_file: 01_setup.py
+    tags: [image]
+    workflows:
+      - name: hidream_i1_dev
+        file: hidream_i1_dev.json
+        task: text_to_image
+        speed: medium
+        quality: high
+      - name: hidream_i1_fast
+        file: hidream_i1_fast.json
+        task: text_to_image
+        speed: fast
+        quality: standard
+      - name: hidream_i1_full
+        file: hidream_i1_full.json
+        task: text_to_image
+        speed: slow
+        quality: high
+  - name: hunyuan_video
+    path: hunyuan_video/
+    status: verified
+    tasks: [text_to_video]
+    outputs: [video]
+    gpu:
+      minimum: L4
+      recommended: A100
+    summary: Tencent Hunyuan Video text-to-video starter.
+    setup_file: 01_setup.py
+    tags: [video]
+    workflows:
+      - name: hunyuan_video_t2v
+        file: hunyuan_video_t2v.json
+        task: text_to_video
+        speed: slow
+        quality: high
+  - name: ltx23
+    path: ltx23/
+    status: starter
+    tasks: [image_to_video]
+    outputs: [video]
+    gpu:
+      minimum: A100
+      recommended: A100
+    summary: LTX-2.3 image-to-video starter.
+    setup_file: 01_setup.py
+    tags: [video, image_to_video]
+    workflows:
+      - name: video_ltx2_3_i2v
+        file: video_ltx2_3_i2v.json
+        task: image_to_video
+        speed: slow
+        quality: high
+      - name: video_ltx2_3_i2v_flat
+        file: video_ltx2_3_i2v_flat.json
+        task: image_to_video
+        speed: slow
+        quality: high
+  - name: ooo_anima
+    path: ooo_anima/
+    status: verified
+    tasks: [text_to_image]
+    outputs: [image]
+    gpu:
+      minimum: T4
+      recommended: T4
+    summary: OOO_Anima v10 anime-style image generation.
+    setup_file: 01_setup.py
+    license_notes: [Non-commercial model license; check upstream terms.]
+    tags: [anime, image]
+    workflows:
+      - name: ooo_anima
+        file: ooo_anima.json
+        task: text_to_image
+        speed: medium
+        quality: high
+  - name: qwen_image
+    path: qwen_image/
+    status: starter
+    tasks: [text_to_image]
+    outputs: [image]
+    gpu:
+      minimum: L4
+      recommended: A100
+    summary: Qwen-Image text-to-image starter.
+    setup_file: 01_setup.py
+    tags: [image]
+    workflows:
+      - name: qwen_image
+        file: qwen_image.json
+        task: text_to_image
+        speed: medium
+        quality: high
+  - name: qwen_image_edit
+    path: qwen_image_edit/
+    status: starter
+    tasks: [image_edit]
+    outputs: [image]
+    gpu:
+      minimum: L4
+      recommended: A100
+    summary: Qwen-Image-Edit starter for instruction-based image editing.
+    setup_file: 01_setup.py
+    tags: [image_edit, image]
+    workflows:
+      - name: qwen_image_edit
+        file: qwen_image_edit.json
+        task: image_edit
+        speed: medium
+        quality: high
+  - name: sdxl
+    path: sdxl/
+    status: verified
+    tasks: [text_to_image]
+    outputs: [image]
+    gpu:
+      minimum: T4
+      recommended: T4
+    summary: Stable Diffusion XL base image generation.
+    setup_file: 01_setup.py
+    tags: [image, starter]
+    workflows:
+      - name: sdxl_base
+        file: sdxl_base.json
+        task: text_to_image
+        speed: medium
+        quality: standard
+  - name: sdxl_turbo
+    path: sdxl_turbo/
+    status: verified
+    tasks: [text_to_image]
+    outputs: [image]
+    gpu:
+      minimum: T4
+      recommended: T4
+    summary: SDXL Turbo fast one-step image generation.
+    setup_file: 01_setup.py
+    license_notes: [Non-commercial model license; check upstream terms.]
+    tags: [image, fast]
+    workflows:
+      - name: sdxl_turbo
+        file: sdxl_turbo.json
+        task: text_to_image
+        speed: fast
+        quality: draft
+  - name: sulphur2
+    path: sulphur2/
+    status: verified
+    tasks: [text_to_video, image_to_video]
+    outputs: [video]
+    gpu:
+      minimum: A100
+      recommended: A100
+    summary: Sulphur-2 video generation workflows.
+    setup_file: 01_setup.py
+    license_notes: [Review Colab acceptable-use policy and upstream model terms.]
+    tags: [video]
+    workflows:
+      - name: video_sulphur2_i2v_distilled
+        file: video_sulphur2_i2v_distilled.json
+        task: image_to_video
+        speed: slow
+        quality: high
+      - name: video_sulphur2_t2v_distilled
+        file: video_sulphur2_t2v_distilled.json
+        task: text_to_video
+        speed: slow
+        quality: high
+      - name: video_sulphur2_t2v_distilled_api
+        file: video_sulphur2_t2v_distilled_api.json
+        task: text_to_video
+        speed: slow
+        quality: high
+  - name: wan21
+    path: wan21/
+    status: partial
+    tasks: [text_to_video]
+    outputs: [video]
+    gpu:
+      minimum: T4
+      recommended: A100
+    summary: Wan 2.1 text-to-video starter workflows.
+    setup_file: 01_setup.py
+    tags: [video]
+    workflows:
+      - name: wan21_t2v_1_3b
+        file: wan21_t2v_1_3b.json
+        task: text_to_video
+        speed: medium
+        quality: standard
+      - name: wan21_t2v_14b
+        file: wan21_t2v_14b.json
+        task: text_to_video
+        speed: slow
+        quality: high
+  - name: wan22
+    path: wan22/
+    status: partial
+    tasks: [text_to_video, image_to_video]
+    outputs: [video]
+    gpu:
+      minimum: A100
+      recommended: A100
+    summary: Wan 2.2 text-to-video and text/image-to-video workflows.
+    setup_file: 01_setup.py
+    tags: [video]
+    workflows:
+      - name: wan22_t2v_14b
+        file: wan22_t2v_14b.json
+        task: text_to_video
+        speed: slow
+        quality: high
+      - name: wan22_ti2v_5b
+        file: wan22_ti2v_5b.json
+        task: image_to_video
+        speed: medium
+        quality: high
+  - name: z_anime
+    path: z_anime/
+    status: partial
+    tasks: [text_to_image]
+    outputs: [image]
+    gpu:
+      minimum: T4
+      recommended: T4
+    summary: Z-Anime anime-style Z-Image finetune workflows.
+    setup_file: 01_setup.py
+    tags: [anime, image]
+    workflows:
+      - name: z_anime_base
+        file: z_anime_base.json
+        task: text_to_image
+        speed: medium
+        quality: high
+      - name: z_anime_distill_8step
+        file: z_anime_distill_8step.json
+        task: text_to_image
+        speed: fast
+        quality: standard
+  - name: z_image
+    path: z_image/
+    status: verified
+    tasks: [text_to_image]
+    outputs: [image]
+    gpu:
+      minimum: T4
+      recommended: T4
+    summary: Z-Image turbo fast image generation starter.
+    setup_file: 01_setup.py
+    tags: [image, fast]
+    workflows:
+      - name: z_image_turbo
+        file: z_image_turbo.json
+        task: text_to_image
+        speed: fast
+        quality: standard

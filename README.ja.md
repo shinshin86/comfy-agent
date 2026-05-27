@@ -48,12 +48,12 @@ comfy-agent run default --source remote --base-url http://127.0.0.1:8188 --promp
 
 貼り付けるだけで動くスターターキットを [`scripts/colab/`](./scripts/colab/) に用意しています。
 
-| Kit | GPU | 出力 |
-|---|---|---|
-| [`z_image/`](./scripts/colab/z_image/) | T4+ | 画像（Z-Image turbo、最速） |
-| [`anima/`](./scripts/colab/anima/) | T4+ | 画像（Anima Base v1.0、アニメ系） |
-| [`flux2/`](./scripts/colab/flux2/) | A100 | 画像（Flux 2 dev） |
-| [`wan22/`](./scripts/colab/wan22/) | A100 | 動画（Wan 2.2 TI2V 5B / T2V 14B） |
+| Kit                                    | GPU  | 出力                              |
+| -------------------------------------- | ---- | --------------------------------- |
+| [`z_image/`](./scripts/colab/z_image/) | T4+  | 画像（Z-Image turbo、最速）       |
+| [`anima/`](./scripts/colab/anima/)     | T4+  | 画像（Anima Base v1.0、アニメ系） |
+| [`flux2/`](./scripts/colab/flux2/)     | A100 | 画像（Flux 2 dev）                |
+| [`wan22/`](./scripts/colab/wan22/)     | A100 | 動画（Wan 2.2 TI2V 5B / T2V 14B） |
 
 手順はどのキットでも同じです。
 
@@ -77,9 +77,19 @@ comfy-agent run default --source remote --base-url http://127.0.0.1:8188 --promp
    ```
 
 補足:
+
 - `trycloudflare` の URL はセッション毎に変わるので、Colab ランタイムを再起動したら
   `COMFY_AGENT_BASE_URL` を再設定してください。
 - モデル別のパラメータフラグや VRAM/所要時間の目安は、各キットの `README.md` を参照してください。
+
+AIエージェント向けのキット情報は次のコマンドで取得できます。
+
+```bash
+comfy-agent colab catalog --json
+```
+
+catalog は持ち運びやすい公開情報だけを返します。パスは `scripts/colab/`
+からの相対パスで、ローカルの絶対パスや環境変数の値は出力しません。
 
 ## 前提
 

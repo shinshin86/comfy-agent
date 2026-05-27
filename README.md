@@ -48,12 +48,12 @@ No local GPU? Run ComfyUI on a Colab GPU runtime and drive it from
 
 Ready-to-paste starter kits live under [`scripts/colab/`](./scripts/colab/):
 
-| Kit | GPU | Output |
-|---|---|---|
-| [`z_image/`](./scripts/colab/z_image/) | T4+ | Image (Z-Image turbo, fastest) |
-| [`anima/`](./scripts/colab/anima/) | T4+ | Image (Anima Base v1.0, anime-style) |
-| [`flux2/`](./scripts/colab/flux2/) | A100 | Image (Flux 2 dev) |
-| [`wan22/`](./scripts/colab/wan22/) | A100 | Video (Wan 2.2 TI2V 5B / T2V 14B) |
+| Kit                                    | GPU  | Output                               |
+| -------------------------------------- | ---- | ------------------------------------ |
+| [`z_image/`](./scripts/colab/z_image/) | T4+  | Image (Z-Image turbo, fastest)       |
+| [`anima/`](./scripts/colab/anima/)     | T4+  | Image (Anima Base v1.0, anime-style) |
+| [`flux2/`](./scripts/colab/flux2/)     | A100 | Image (Flux 2 dev)                   |
+| [`wan22/`](./scripts/colab/wan22/)     | A100 | Video (Wan 2.2 TI2V 5B / T2V 14B)    |
 
 Flow (same for every kit):
 
@@ -77,10 +77,21 @@ Flow (same for every kit):
    ```
 
 Notes:
+
 - `trycloudflare` URLs change every session — re-export
   `COMFY_AGENT_BASE_URL` after restarting the Colab runtime.
 - See each kit's `README.md` for model-specific parameter flags and
   VRAM/runtime expectations.
+
+Agent-readable kit metadata is available via:
+
+```bash
+comfy-agent colab catalog --json
+```
+
+The catalog is intentionally portable: paths are relative to `scripts/colab/`
+and the JSON output does not include local filesystem paths or environment
+values.
 
 ## Prerequisites
 

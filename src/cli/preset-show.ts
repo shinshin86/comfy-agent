@@ -70,6 +70,15 @@ const normalizeRemoteParameters = (template: RemoteTemplate) => {
       type: typeof def.type === "string" ? def.type : "json",
       required: def.required === true,
       default: def.default,
+      description: typeof def.description === "string" ? def.description : undefined,
+      role: typeof def.role === "string" ? def.role : undefined,
+      aliases: Array.isArray(def.aliases)
+        ? def.aliases.filter((item) => typeof item === "string")
+        : undefined,
+      min: typeof def.min === "number" ? def.min : undefined,
+      max: typeof def.max === "number" ? def.max : undefined,
+      choices: Array.isArray(def.choices) ? def.choices : undefined,
+      recommended: def.recommended,
       target:
         def.target && typeof def.target === "object"
           ? ((def.target as { node_id?: string | number; input?: string }) ?? undefined)
@@ -90,6 +99,12 @@ const normalizeRemoteUploads = (template: RemoteTemplate) => {
       name,
       kind: typeof def.kind === "string" ? def.kind : "image",
       cli_flag: typeof def.cli_flag === "string" ? def.cli_flag : "--input",
+      description: typeof def.description === "string" ? def.description : undefined,
+      role: typeof def.role === "string" ? def.role : undefined,
+      aliases: Array.isArray(def.aliases)
+        ? def.aliases.filter((item) => typeof item === "string")
+        : undefined,
+      required: def.required === true,
       target:
         def.target && typeof def.target === "object"
           ? ((def.target as { node_id?: string | number; input?: string }) ?? undefined)
@@ -137,6 +152,13 @@ export const runPresetShow = async (presetName: string, options: PresetShowOptio
       required: param.required ?? false,
       default: param.default,
       target: param.target,
+      description: param.description,
+      role: param.role,
+      aliases: param.aliases,
+      min: param.min,
+      max: param.max,
+      choices: param.choices,
+      recommended: param.recommended,
     }));
 
     const uploads = Object.entries(preset.uploads ?? {}).map(([name, def]) => ({
@@ -144,6 +166,10 @@ export const runPresetShow = async (presetName: string, options: PresetShowOptio
       kind: def.kind,
       cli_flag: def.cli_flag,
       target: def.target,
+      description: def.description,
+      role: def.role,
+      aliases: def.aliases,
+      required: def.required ?? false,
     }));
 
     const payload = {
@@ -153,6 +179,9 @@ export const runPresetShow = async (presetName: string, options: PresetShowOptio
       preset: {
         name: preset.name,
         version: preset.version,
+        description: preset.description,
+        task: preset.task,
+        tags: preset.tags,
         preset_path: presetPath,
         workflow_file: preset.workflow,
         workflow_path: workflowPath,
@@ -205,6 +234,9 @@ export const runPresetShow = async (presetName: string, options: PresetShowOptio
   const uploads = normalizeRemoteUploads(remote);
   const remoteRaw = remote.raw as Record<string, unknown> | undefined;
   const workflowFile = typeof remoteRaw?.workflow === "string" ? remoteRaw.workflow : "(remote)";
+  const tags = Array.isArray(remoteRaw?.tags)
+    ? remoteRaw.tags.filter((item) => typeof item === "string")
+    : undefined;
   const payload = {
     ok: true,
     scope,
@@ -212,6 +244,9 @@ export const runPresetShow = async (presetName: string, options: PresetShowOptio
     preset: {
       name: remote.name,
       version: 1,
+      description: typeof remoteRaw?.description === "string" ? remoteRaw.description : undefined,
+      task: typeof remoteRaw?.task === "string" ? remoteRaw.task : undefined,
+      tags,
       preset_path: null,
       workflow_file: workflowFile,
       workflow_path: null,

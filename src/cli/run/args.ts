@@ -103,10 +103,19 @@ export const resolveDynamicArgs = (
   const uploadsDef = preset.uploads ?? {};
 
   const paramNames = new Set(Object.keys(parameters));
+  const paramAliases = new Map<string, string>();
+  for (const [name, def] of Object.entries(parameters)) {
+    for (const alias of def.aliases ?? []) {
+      paramAliases.set(alias, name);
+    }
+  }
   const uploadFlags = new Map<string, string>();
   for (const [name, def] of Object.entries(uploadsDef)) {
     const flag = def.cli_flag.replace(/^--/, "");
     uploadFlags.set(flag, name);
+    for (const alias of def.aliases ?? []) {
+      uploadFlags.set(alias.replace(/^--/, ""), name);
+    }
   }
 
   for (const [key, value] of Object.entries(parsed)) {
@@ -120,16 +129,17 @@ export const resolveDynamicArgs = (
       uploads[uploadFlags.get(key)!] = value;
       continue;
     }
-    if (!paramNames.has(key)) {
+    const paramName = paramNames.has(key) ? key : paramAliases.get(key);
+    if (!paramName) {
       throw new CliError("UNKNOWN_PARAM", t("run.unknown_param", { key }), 2, {
         param: key,
       });
     }
-    const def = parameters[key]!;
+    const def = parameters[paramName]!;
     if (typeof value === "boolean" && def.type !== "bool") {
       throw new CliError("INVALID_PARAM", t("run.value_required", { key }), 2, { param: key });
     }
-    params[key] = coerceParamValue(def.type, value);
+    params[paramName] = coerceParamValue(def.type, value);
   }
 
   for (const [name, def] of Object.entries(parameters)) {
