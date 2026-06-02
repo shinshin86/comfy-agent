@@ -170,6 +170,15 @@ const textForKit = (kit: ColabKit, workflowName: string) =>
     .join(" ")
     .toLowerCase();
 
+// Reliability is the primary ranking signal: a verified kit should outrank a
+// less-tested one that merely matches the goal's vibe. The goal/hint heuristics
+// below only differentiate kits *within* the same reliability tier.
+const STATUS_WEIGHT: Record<ColabKit["status"], number> = {
+  verified: 50,
+  partial: 20,
+  starter: 0,
+};
+
 export const buildColabSuggestPayload = (
   catalog: ColabCatalog,
   options: ColabSuggestOptions = {},
@@ -194,46 +203,40 @@ export const buildColabSuggestPayload = (
     for (const workflow of kit.workflows) {
       if (options.task && workflow.task !== options.task) continue;
 
-      let score = 0;
-      const reasons: string[] = [];
+      // Start from the reliability tier so verified kits lead by default.
+      let score = STATUS_WEIGHT[kit.status];
+      const reasons: string[] = [`status:${kit.status}`];
       const haystack = textForKit(kit, workflow.name);
 
-      if (options.task && workflow.task === options.task) {
-        score += 100;
-        reasons.push(`task:${workflow.task}`);
-      }
-      if (options.output && kit.outputs.includes(options.output)) {
-        score += 40;
-        reasons.push(`output:${options.output}`);
-      }
-      if (gpu) {
-        score += 30;
-        reasons.push(`gpu:${options.gpu}`);
-      }
+      // The hard filters above already removed non-matching candidates, so the
+      // task/output/gpu matches are recorded as reasons for transparency but do
+      // not inflate the score (every survivor would get the same constant).
+      if (options.task) reasons.push(`task:${workflow.task}`);
+      if (options.output) reasons.push(`output:${options.output}`);
+      if (gpu) reasons.push(`gpu:${options.gpu}`);
 
       for (const token of goalTokens) {
-        if (haystack.includes(token)) score += 3;
+        if (haystack.includes(token)) score += 2;
       }
 
       if (hints.wantsFast && workflow.speed === "fast") {
-        score += 30;
+        score += 10;
         reasons.push("speed:fast");
       }
       if (hints.wantsAnime && kit.tags?.includes("anime")) {
-        score += 25;
+        score += 10;
         reasons.push("tag:anime");
       }
       if (hints.wantsVideo && kit.outputs.includes("video")) {
-        score += 25;
+        score += 10;
         reasons.push("output:video");
       }
       if (hints.wantsEdit && workflow.task === "image_edit") {
-        score += 25;
+        score += 10;
         reasons.push("task:image_edit");
       }
-      if (kit.status === "verified") score += 8;
-      if (workflow.quality === "high") score += 4;
-      if (workflow.quality === "draft") score -= 6;
+      if (workflow.quality === "high") score += 5;
+      if (workflow.quality === "draft") score -= 5;
       if (kit.license_notes?.some((note) => note.toLowerCase().includes("non-commercial"))) {
         score -= 3;
       }

@@ -16,7 +16,6 @@
   "license": "MIT",
   "files": [
     "dist",
-    "scripts/colab/catalog.yaml",
     "README.md",
     "README.ja.md"
   ],
