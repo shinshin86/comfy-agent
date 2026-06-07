@@ -97,6 +97,24 @@ kits:
         task: text_to_video
         speed: slow
         quality: high
+  - name: ideogram4
+    path: ideogram4/
+    status: verified
+    tasks: [text_to_image]
+    outputs: [image]
+    gpu:
+      minimum: L4
+      recommended: A100
+    summary: Ideogram 4.0 fp8 text-to-image with strong in-image text rendering.
+    setup_file: 01_setup.py
+    license_notes: [Ideogram 4.0 weights are non-commercial - review the upstream license before use.]
+    tags: [image, text_rendering]
+    workflows:
+      - name: ideogram4_t2i
+        file: ideogram4_t2i.json
+        task: text_to_image
+        speed: slow
+        quality: high
   - name: ltx23
     path: ltx23/
     status: starter

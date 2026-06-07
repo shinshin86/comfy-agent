@@ -1,3 +1,4 @@
+import { promises as fs } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { runColabSuggest } from "../src/cli/colab.js";
@@ -117,28 +118,51 @@ describe("runColabSuggest", () => {
 });
 
 describe("loadColabCatalogFile", () => {
-  it("loads the repository Colab catalog and covers all starter kit directories", async () => {
+  it("covers every starter kit directory in the repository", async () => {
     const catalog = await loadColabCatalogFile(catalogPath);
-
     expect(catalog.version).toBe(1);
-    expect(catalog.kits.map((kit) => kit.name)).toEqual([
-      "anima",
-      "flux1",
-      "flux2",
-      "hidream_i1",
-      "hunyuan_video",
-      "ltx23",
-      "ooo_anima",
-      "qwen_image",
-      "qwen_image_edit",
-      "sdxl",
-      "sdxl_turbo",
-      "sulphur2",
-      "wan21",
-      "wan22",
-      "z_anime",
-      "z_image",
-    ]);
+
+    // Derive the expected kit set from the filesystem so a newly added kit
+    // directory that is forgotten in catalog.yaml fails the test instead of
+    // silently going missing from `colab catalog` / `colab suggest`.
+    // A kit directory is any subdirectory of scripts/colab/ holding 01_setup.py.
+    const colabDir = path.join(repoRoot, "scripts", "colab");
+    const entries = await fs.readdir(colabDir, { withFileTypes: true });
+    const kitDirs = (
+      await Promise.all(
+        entries
+          .filter((entry) => entry.isDirectory())
+          .map(async (entry) => {
+            const hasSetup = await fs
+              .access(path.join(colabDir, entry.name, "01_setup.py"))
+              .then(() => true)
+              .catch(() => false);
+            return hasSetup ? entry.name : null;
+          }),
+      )
+    )
+      .filter((name): name is string => name !== null)
+      .sort();
+
+    expect(kitDirs.length).toBeGreaterThan(0);
+    // loadColabCatalogFile returns kits sorted by name, matching the sorted dirs.
+    expect(catalog.kits.map((kit) => kit.name)).toEqual(kitDirs);
+  });
+
+  it("references workflow files that exist on disk", async () => {
+    const catalog = await loadColabCatalogFile(catalogPath);
+    const colabDir = path.join(repoRoot, "scripts", "colab");
+
+    for (const kit of catalog.kits) {
+      for (const workflow of kit.workflows) {
+        const workflowPath = path.join(colabDir, kit.path, workflow.file);
+        const exists = await fs
+          .access(workflowPath)
+          .then(() => true)
+          .catch(() => false);
+        expect(exists, `${kit.name}/${workflow.file} should exist`).toBe(true);
+      }
+    }
   });
 
   it("builds a public payload without absolute filesystem or environment details", async () => {
