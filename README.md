@@ -83,16 +83,22 @@ Notes:
 - See each kit's `README.md` for model-specific parameter flags and
   VRAM/runtime expectations.
 
-Agent-readable kit metadata is available via:
+Agent-readable kit metadata is available via the `colab` helper command:
 
 ```bash
 comfy-agent colab catalog --json
 comfy-agent colab suggest "fast image generation on a T4" --json
 ```
 
-The catalog is intentionally portable: paths are relative to `scripts/colab/`
-and the JSON output does not include local filesystem paths or environment
-values.
+`colab suggest` ranks kits by reliability first (`verified` > `partial` >
+`starter`); the natural-language goal and `--task` / `--output` / `--gpu`
+filters only break ties within the same reliability tier.
+
+Note: `colab` is a repository-side helper. It reads
+`scripts/colab/catalog.yaml`, which is **not** bundled in the npm package, so
+run it from a checkout of this repository. The catalog is intentionally
+portable — paths are relative to `scripts/colab/` and the JSON output never
+includes local filesystem paths or environment values.
 
 ## Prerequisites
 
@@ -176,6 +182,14 @@ Note: For this flow, export workflow API JSON from ComfyUI first. Direct import 
 
 If `/object_info` is available, inference is enhanced and cached at `.comfy-agent/cache/object_info.json`.
 
+Generated presets are annotated automatically to make them easier for humans and AI agents to read:
+
+- A `description` is added to every parameter.
+- A `role` (for example `prompt`, `seed`, `steps`, `guidance`, `width`, `height`, `sampler`, `scheduler`, `denoise`, `strength`) is inferred from the node class and input name when recognizable. Inputs that are not recognized are left without a `role`.
+- Numeric hints are added for known roles: `min: 1` for `steps`/`width`/`height`, `min: 0` for `guidance`, and `min: 0` / `max: 1` for `denoise`/`strength`.
+
+These fields are advisory metadata only — they do not change how the workflow runs. See [Preset Definition](#preset-definition) for the full list of supported fields.
+
 ### `list`
 
 ```bash
@@ -208,6 +222,8 @@ With uploads:
 ```bash
 comfy-agent run inpaint_v1 --prompt "fix" --init-image ./in.png --mask ./mask.png
 ```
+
+If a preset parameter or upload defines `aliases`, any alias can be used in place of its canonical flag. For example, with `aliases: [positive]` on the `prompt` parameter, `--positive "A cat"` is equivalent to `--prompt "A cat"`. Aliases are opt-in: `import` does not generate them, so add them by hand in the preset when you want friendlier flags.
 
 Remote source notes:
 
@@ -347,6 +363,44 @@ uploads:
       node_id: 22
       input: mask
 ```
+
+### Metadata fields
+
+A preset can carry optional metadata that describes itself to humans and AI agents. **Every field below is optional** — existing presets without them remain valid, and (apart from `aliases`) the metadata never changes how a workflow runs.
+
+Preset-level fields:
+
+| Field | Type | Meaning |
+|---|---|---|
+| `description` | string | What the preset does. |
+| `task` | enum | One of `text_to_image`, `image_to_image`, `image_edit`, `inpaint`, `upscale`, `text_to_video`, `image_to_video`, `video_to_video`, `custom`. |
+| `tags` | string[] | Free-form labels for discovery. |
+
+Parameter fields (in addition to `type`, `target`, `required`, `default`):
+
+| Field | Type | Meaning |
+|---|---|---|
+| `description` | string | Human/agent-readable explanation. |
+| `role` | enum | One of `prompt`, `negative_prompt`, `seed`, `steps`, `guidance`, `width`, `height`, `sampler`, `scheduler`, `model`, `strength`, `denoise`, `advanced`, `custom`. |
+| `aliases` | string[] | Alternate CLI flag names accepted by `run`. |
+| `min` / `max` | number | Advisory numeric bounds. |
+| `choices` | array | Advisory list of allowed values. |
+| `recommended` | any | Advisory suggested value. |
+
+Upload fields (in addition to `kind`, `cli_flag`, `target`):
+
+| Field | Type | Meaning |
+|---|---|---|
+| `description` | string | Human/agent-readable explanation. |
+| `role` | enum | One of `init_image`, `mask`, `reference_image`, `control_image`, `input_image`, `custom`. |
+| `aliases` | string[] | Alternate CLI flag names accepted by `run`. |
+| `required` | boolean | Whether the upload must be provided. |
+
+Notes:
+
+- `import` fills in `description`, and—where it can recognize the input—`role` and numeric hints. `aliases` are never generated; add them by hand.
+- `list --json` and `preset --json` include these fields in their output, so AI agents can read a preset's intent without opening the YAML.
+- Apart from `aliases` (which `run` honors as extra flags), these fields are advisory: they document intent and do not constrain or validate values at run time.
 
 ## JSON Output
 
