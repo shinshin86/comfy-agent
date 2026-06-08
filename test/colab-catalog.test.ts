@@ -118,6 +118,13 @@ describe("runColabSuggest", () => {
 });
 
 describe("loadColabCatalogFile", () => {
+  it("reports a repository-only catalog clearly when the catalog file is missing", async () => {
+    await expect(loadColabCatalogFile(path.join(repoRoot, "missing", "catalog.yaml"))).rejects
+      .toMatchObject({
+        code: "COLAB_CATALOG_UNAVAILABLE",
+      });
+  });
+
   it("covers every starter kit directory in the repository", async () => {
     const catalog = await loadColabCatalogFile(catalogPath);
     expect(catalog.version).toBe(1);

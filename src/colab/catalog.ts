@@ -99,6 +99,11 @@ export const loadColabCatalogFile = async (filePath = defaultColabCatalogPath())
     const raw = await fs.readFile(filePath, "utf-8");
     parsed = YAML.parse(raw);
   } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+      throw new CliError("COLAB_CATALOG_UNAVAILABLE", t("colab.catalog_unavailable"), 2, {
+        path: filePath,
+      });
+    }
     throw new CliError("COLAB_CATALOG_READ_FAILED", t("colab.catalog_read_failed"), 2, {
       cause: String(err),
     });

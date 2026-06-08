@@ -98,6 +98,8 @@ export const messages = {
   "analyze.summary": "summary: {summary}",
   "colab.catalog_header": "Colab kits:",
   "colab.suggest_header": "Suggested Colab kits:",
+  "colab.catalog_unavailable":
+    "Colab catalog is available only from a repository checkout because scripts/colab/catalog.yaml is not included in the npm package.",
   "colab.catalog_read_failed": "Failed to read Colab catalog.",
   "colab.catalog_invalid": "Invalid Colab catalog format.",
   "colab.invalid_task": "task must be a supported Colab catalog task.",

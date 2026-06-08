@@ -101,6 +101,8 @@ export const messages = {
   "analyze.summary": "summary: {summary}",
   "colab.catalog_header": "Colab kits:",
   "colab.suggest_header": "Suggested Colab kits:",
+  "colab.catalog_unavailable":
+    "Colab catalog はリポジトリのチェックアウト上でのみ利用できます。scripts/colab/catalog.yaml は npm パッケージに同梱されません。",
   "colab.catalog_read_failed": "Colab catalog の読み込みに失敗しました。",
   "colab.catalog_invalid": "Colab catalog の形式が不正です。",
   "colab.invalid_task": "task は対応している Colab catalog task を指定してください。",
