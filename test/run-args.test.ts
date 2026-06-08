@@ -12,6 +12,7 @@ const presetBase: Preset = {
       type: "string",
       target: { node_id: "1", input: "text" },
       required: true,
+      aliases: ["positive"],
     },
     steps: {
       type: "int",
@@ -36,6 +37,7 @@ const presetBase: Preset = {
       kind: "image",
       cli_flag: "--init-image",
       target: { node_id: "6", input: "image" },
+      aliases: ["source-image"],
     },
   },
 };
@@ -76,6 +78,15 @@ describe("resolveDynamicArgs", () => {
   it("parses uploads and keeps them separated from params", () => {
     const { params, uploads } = resolveDynamicArgs(
       ["--prompt", "cat", "--init-image", "./in.png"],
+      presetBase,
+    );
+    expect(params.prompt).toBe("cat");
+    expect(uploads).toEqual({ init: "./in.png" });
+  });
+
+  it("accepts parameter and upload aliases", () => {
+    const { params, uploads } = resolveDynamicArgs(
+      ["--positive", "cat", "--source-image", "./in.png"],
       presetBase,
     );
     expect(params.prompt).toBe("cat");

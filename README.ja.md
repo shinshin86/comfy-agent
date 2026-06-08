@@ -48,12 +48,12 @@ comfy-agent run default --source remote --base-url http://127.0.0.1:8188 --promp
 
 貼り付けるだけで動くスターターキットを [`scripts/colab/`](./scripts/colab/) に用意しています。
 
-| Kit | GPU | 出力 |
-|---|---|---|
-| [`z_image/`](./scripts/colab/z_image/) | T4+ | 画像（Z-Image turbo、最速） |
-| [`anima/`](./scripts/colab/anima/) | T4+ | 画像（Anima Base v1.0、アニメ系） |
-| [`flux2/`](./scripts/colab/flux2/) | A100 | 画像（Flux 2 dev） |
-| [`wan22/`](./scripts/colab/wan22/) | A100 | 動画（Wan 2.2 TI2V 5B / T2V 14B） |
+| Kit                                    | GPU  | 出力                              |
+| -------------------------------------- | ---- | --------------------------------- |
+| [`z_image/`](./scripts/colab/z_image/) | T4+  | 画像（Z-Image turbo、最速）       |
+| [`anima/`](./scripts/colab/anima/)     | T4+  | 画像（Anima Base v1.0、アニメ系） |
+| [`flux2/`](./scripts/colab/flux2/)     | A100 | 画像（Flux 2 dev）                |
+| [`wan22/`](./scripts/colab/wan22/)     | A100 | 動画（Wan 2.2 TI2V 5B / T2V 14B） |
 
 手順はどのキットでも同じです。
 
@@ -77,9 +77,26 @@ comfy-agent run default --source remote --base-url http://127.0.0.1:8188 --promp
    ```
 
 補足:
+
 - `trycloudflare` の URL はセッション毎に変わるので、Colab ランタイムを再起動したら
   `COMFY_AGENT_BASE_URL` を再設定してください。
 - モデル別のパラメータフラグや VRAM/所要時間の目安は、各キットの `README.md` を参照してください。
+
+AIエージェント向けのキット情報は `colab` 補助コマンドで取得できます。
+
+```bash
+comfy-agent colab catalog --json
+comfy-agent colab suggest "fast image generation on a T4" --json
+```
+
+`colab suggest` はまず信頼度（`verified` > `partial` > `starter`）で並べ替え、
+自然言語の目的や `--task` / `--output` / `--gpu` フィルタは同じ信頼度内の
+タイブレークとしてのみ作用します。
+
+注意: `colab` はリポジトリ側の補助コマンドです。`scripts/colab/catalog.yaml`
+を読み込みますが、このファイルは **npm パッケージには同梱されません**。本リポジトリの
+チェックアウト上で実行してください。catalog は持ち運びやすい公開情報だけを返します。
+パスは `scripts/colab/` からの相対パスで、ローカルの絶対パスや環境変数の値は出力しません。
 
 ## 前提
 
@@ -168,6 +185,14 @@ comfy-agent import ./workflow_api.json --name text2img_v1 --global
 
 `/object_info` が取得できる場合は型推定を補強します（`.comfy-agent/cache/object_info.json` にキャッシュ）。失敗してもフォールバックします。
 
+生成されるプリセットには、人間や AI エージェントが読みやすいように自動で注釈が付きます。
+
+- すべてのパラメータに `description` を付与します。
+- ノードのクラスと入力名から判別できる場合は `role`（例: `prompt`、`seed`、`steps`、`guidance`、`width`、`height`、`sampler`、`scheduler`、`denoise`、`strength`）を推論します。判別できない入力には `role` は付きません。
+- 既知の role には数値ヒントを付与します（`steps`/`width`/`height` に `min: 1`、`guidance` に `min: 0`、`denoise`/`strength` に `min: 0` / `max: 1`）。
+
+これらは説明用のメタデータで、ワークフローの実行内容は変えません。対応フィールドの一覧は [プリセット定義](#プリセット定義) を参照してください。
+
 ### list
 
 ```bash
@@ -200,6 +225,8 @@ uploads がある場合の例:
 ```bash
 comfy-agent run inpaint_v1 --prompt "fix" --init-image ./in.png --mask ./mask.png
 ```
+
+プリセットのパラメータや upload に `aliases` を定義すると、正式なフラグの代わりにエイリアスでも指定できます。例えば `prompt` パラメータに `aliases: [positive]` を付けると、`--positive "A cat"` は `--prompt "A cat"` と同じ意味になります。エイリアスはオプトインで、`import` では自動生成しません。フラグを使いやすくしたい場合はプリセットに手で追記してください。
 
 remote ソースについて:
 
@@ -340,6 +367,44 @@ uploads:
       node_id: 22
       input: mask
 ```
+
+### メタデータ項目
+
+プリセットには、自身を人間や AI エージェントに説明するための任意メタデータを持たせられます。**以下の項目はすべて任意**で、付いていない既存プリセットもそのまま有効です。`aliases` を除き、これらはワークフローの実行内容を変えません。
+
+プリセット直下の項目:
+
+| 項目 | 型 | 意味 |
+|---|---|---|
+| `description` | string | プリセットの説明。 |
+| `task` | enum | `text_to_image` / `image_to_image` / `image_edit` / `inpaint` / `upscale` / `text_to_video` / `image_to_video` / `video_to_video` / `custom` のいずれか。 |
+| `tags` | string[] | 検索・分類用の自由ラベル。 |
+
+パラメータの項目（`type` / `target` / `required` / `default` に加えて）:
+
+| 項目 | 型 | 意味 |
+|---|---|---|
+| `description` | string | 人間/エージェント向けの説明。 |
+| `role` | enum | `prompt` / `negative_prompt` / `seed` / `steps` / `guidance` / `width` / `height` / `sampler` / `scheduler` / `model` / `strength` / `denoise` / `advanced` / `custom` のいずれか。 |
+| `aliases` | string[] | `run` で受け付ける別名フラグ。 |
+| `min` / `max` | number | 参考用の数値範囲。 |
+| `choices` | array | 参考用の許容値リスト。 |
+| `recommended` | any | 参考用の推奨値。 |
+
+upload の項目（`kind` / `cli_flag` / `target` に加えて）:
+
+| 項目 | 型 | 意味 |
+|---|---|---|
+| `description` | string | 人間/エージェント向けの説明。 |
+| `role` | enum | `init_image` / `mask` / `reference_image` / `control_image` / `input_image` / `custom` のいずれか。 |
+| `aliases` | string[] | `run` で受け付ける別名フラグ。 |
+| `required` | boolean | 必須の upload かどうか。 |
+
+補足:
+
+- `import` は `description` を付与し、判別できる入力には `role` と数値ヒントも付けます。`aliases` は自動生成されないため、必要なら手で追記します。
+- `list --json` と `preset --json` はこれらの項目を出力に含めるため、AI エージェントは YAML を開かずにプリセットの意図を読み取れます。
+- `aliases`（`run` が追加フラグとして解釈）を除き、これらは説明用で、実行時に値を検証・制約することはありません。
 
 ## JSON 出力
 

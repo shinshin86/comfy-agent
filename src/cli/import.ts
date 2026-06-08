@@ -99,6 +99,46 @@ const mapObjectInfoType = (value: unknown): "string" | "int" | "float" | "bool" 
   return "json";
 };
 
+const inferParameterRole = (classType: string | undefined, inputName: string) => {
+  const lowerInput = inputName.toLowerCase();
+  const lowerClass = (classType ?? "").toLowerCase();
+  if (lowerInput === "seed" || lowerInput.endsWith("_seed")) return "seed";
+  if (lowerInput === "steps" || lowerInput.endsWith("_steps")) return "steps";
+  if (lowerInput === "cfg" || lowerInput.includes("guidance")) return "guidance";
+  if (lowerInput === "width") return "width";
+  if (lowerInput === "height") return "height";
+  if (lowerInput.includes("sampler")) return "sampler";
+  if (lowerInput.includes("scheduler")) return "scheduler";
+  if (lowerInput.includes("denoise")) return "denoise";
+  if (lowerInput.includes("strength")) return "strength";
+  if (lowerInput.includes("model")) return "model";
+  if (lowerInput === "text" && lowerClass.includes("cliptextencode")) return "prompt";
+  return undefined;
+};
+
+const describeParameter = (role: string | undefined, inputName: string) => {
+  if (role === "prompt") return "Text prompt passed to the workflow.";
+  if (role === "seed") return "Random seed for reproducible generation.";
+  if (role === "steps") return "Number of sampling steps.";
+  if (role === "guidance") return "Guidance scale controlling prompt adherence.";
+  if (role === "width") return "Output width in pixels.";
+  if (role === "height") return "Output height in pixels.";
+  if (role === "sampler") return "Sampler selection.";
+  if (role === "scheduler") return "Scheduler selection.";
+  if (role === "denoise") return "Denoise amount.";
+  if (role === "strength") return "Conditioning strength.";
+  if (role === "model") return "Model or checkpoint selection.";
+  return `Workflow input: ${inputName}.`;
+};
+
+const numericHints = (role: string | undefined) => {
+  if (role === "steps") return { min: 1 };
+  if (role === "width" || role === "height") return { min: 1 };
+  if (role === "guidance") return { min: 0 };
+  if (role === "denoise" || role === "strength") return { min: 0, max: 1 };
+  return {};
+};
+
 const loadObjectInfoCache = async (
   cachePath: string,
 ): Promise<Partial<Record<string, ObjectInfo>>> => {
@@ -150,12 +190,16 @@ const buildPresetTemplate = (
       if (parameters[paramName]) continue;
       const objectType = getObjectInfoType(objectInfo, classType, inputName);
       const inferredType = objectType ? mapObjectInfoType(objectType) : detectParamType(inputValue);
+      const role = inferParameterRole(classType, inputName);
       parameters[paramName] = {
         type: inferredType,
         target: {
           node_id: nodeId,
           input: inputName,
         },
+        description: describeParameter(role, inputName),
+        role,
+        ...numericHints(role),
         default: inputValue,
         required: false,
       };

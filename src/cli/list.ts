@@ -23,11 +23,21 @@ type ListedParameter = {
   type: string;
   required: boolean;
   default?: unknown;
+  description?: string;
+  role?: string;
+  aliases?: string[];
+  min?: number;
+  max?: number;
+  choices?: unknown[];
+  recommended?: unknown;
 };
 
 type ListedPreset = {
   name: string;
   workflow?: string;
+  description?: string;
+  task?: string;
+  tags?: string[];
   file?: string;
   source: "local" | "remote" | "remote-catalog";
   parameters: ListedParameter[];
@@ -87,10 +97,20 @@ export const runList = async (options: ListOptions) => {
           type: param.type,
           required: param.required ?? false,
           default: param.default,
+          description: param.description,
+          role: param.role,
+          aliases: param.aliases,
+          min: param.min,
+          max: param.max,
+          choices: param.choices,
+          recommended: param.recommended,
         }));
         presets.push({
           name: preset.name,
           workflow: preset.workflow,
+          description: preset.description,
+          task: preset.task,
+          tags: preset.tags,
           file,
           source: "local",
           parameters,

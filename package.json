@@ -1,7 +1,7 @@
 {
   "name": "comfy-agent",
   "description": "Comfy Agent is a tool to use ComfyUI from the CLI. It is suitable for both direct CLI usage and AI-agent-driven automation.",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "keywords": [
     "comfyui",
     "cli",
@@ -17,7 +17,8 @@
   "files": [
     "dist",
     "README.md",
-    "README.ja.md"
+    "README.ja.md",
+    "CHANGELOG.md"
   ],
   "type": "module",
   "bin": {
