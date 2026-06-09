@@ -9,6 +9,7 @@ in `.mcp.json` at the repo root.
 | Kit | Status | GPU | Notes |
 |---|---|---|---|
 | [`./z_image/`](./z_image/) | Verified E2E | T4+ | Z-Image turbo, fastest |
+| [`./sd35/`](./sd35/) | Verified E2E | L4+ / A100 | Stable Diffusion 3.5 Large fp8 scaled (Comfy-Org repack, no HF token; Stability Community License) |
 | [`./sdxl/`](./sdxl/) | Verified E2E | T4+ | Stable Diffusion XL base 1.0, OpenRAIL++ |
 | [`./sdxl_turbo/`](./sdxl_turbo/) | Verified E2E | T4+ | SDXL Turbo, 1-step distilled (non-commercial) |
 | [`./anima/`](./anima/) | Verified E2E | T4+ | Anima Base v1.0, anime-style Qwen-Image finetune |

@@ -189,6 +189,24 @@ kits:
         task: image_edit
         speed: medium
         quality: high
+  - name: sd35
+    path: sd35/
+    status: verified
+    tasks: [text_to_image]
+    outputs: [image]
+    gpu:
+      minimum: L4
+      recommended: A100
+    summary: Stable Diffusion 3.5 Large fp8 scaled text-to-image (Comfy-Org repack, no HF token).
+    setup_file: 01_setup.py
+    license_notes: [Stability AI Community License - free for non-commercial and under $1M annual revenue (with registration); review upstream before commercial use.]
+    tags: [image]
+    workflows:
+      - name: sd35_large
+        file: sd35_large.json
+        task: text_to_image
+        speed: slow
+        quality: high
   - name: sdxl
     path: sdxl/
     status: verified
