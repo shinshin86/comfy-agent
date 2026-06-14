@@ -17,6 +17,24 @@ kits:
         task: text_to_image
         speed: medium
         quality: high
+  - name: anima_pencil
+    path: anima_pencil/
+    status: verified
+    tasks: [text_to_image]
+    outputs: [image]
+    gpu:
+      minimum: T4
+      recommended: T4
+    summary: anima_pencil v2.0.0 anime-style Anima merge image generation.
+    setup_file: 01_setup.py
+    license_notes: [Non-commercial model license; check upstream terms.]
+    tags: [anime, image]
+    workflows:
+      - name: anima_pencil
+        file: anima_pencil.json
+        task: text_to_image
+        speed: medium
+        quality: high
   - name: flux1
     path: flux1/
     status: verified
