@@ -14,6 +14,7 @@ in `.mcp.json` at the repo root.
 | [`./sdxl_turbo/`](./sdxl_turbo/) | Verified E2E | T4+ | SDXL Turbo, 1-step distilled (non-commercial) |
 | [`./anima/`](./anima/) | Verified E2E | T4+ | Anima Base v1.0, anime-style Qwen-Image finetune |
 | [`./ooo_anima/`](./ooo_anima/) | Verified E2E | T4+ | OOO_Anima v10, Anima Base finetune (non-commercial) |
+| [`./anima_pencil/`](./anima_pencil/) | Verified E2E | T4+ | anima_pencil v2.0.0, Anima-based anime merge (non-commercial; HF mirror, no CivitAI token) |
 | [`./z_anime/`](./z_anime/) | base verified E2E; distill-8step starter | T4+ | Z-Anime, anime-style Z-Image finetune (base + distill-8step, fp8) |
 | [`./qwen_image/`](./qwen_image/) | Starter | L4+ | Qwen-Image 2512, text-to-image |
 | [`./qwen_image_edit/`](./qwen_image_edit/) | Starter | A100 (L4 for fp8) | Qwen-Image-Edit 2511, image editing |
