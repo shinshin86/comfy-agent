@@ -123,6 +123,11 @@ const resolveUploadPath = (response: { name?: string; filename?: string; subfold
   return name;
 };
 
+const uploadEndpointForKind = (kind: NonNullable<Preset["uploads"]>[string]["kind"]) => {
+  if (kind === "mask") return "/upload/mask";
+  return "/upload/image";
+};
+
 const getOutputDir = async (
   presetName: string,
   outDir: string | undefined,
@@ -382,7 +387,7 @@ export const runRun = async (presetName: string, options: RunOptions, rawArgs: s
     await ensureFileExists(filePath);
     const def = preset.uploads?.[name];
     if (!def) continue;
-    const endpoint = def.kind === "mask" ? "/upload/mask" : "/upload/image";
+    const endpoint = uploadEndpointForKind(def.kind);
     log(t("run.upload", { name, endpoint }));
     const response = await client.uploadFile(endpoint, filePath);
     resolvedUploads[name] = resolveUploadPath(response);

@@ -40,7 +40,7 @@ if UPDATE_COMFYUI:
 !pip3 install -q torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 !pip3 install -q accelerate einops 'transformers>=4.45' 'safetensors>=0.4.2' \
     aiohttp pyyaml Pillow scipy tqdm psutil 'tokenizers>=0.13.3'
-!pip3 install -q torchsde 'kornia>=0.7.1' spandrel soundfile sentencepiece av
+!pip3 install -q torchsde 'kornia==0.7.1' spandrel soundfile sentencepiece av
 # blake3 / comfy_aimdo / comfy_kitchen / simpleeval: required by recent ComfyUI main.py.
 # comfy_kitchen must be >=0.2.0 for LTX-2.x nodes.
 !pip3 install -q blake3 comfy_aimdo 'comfy_kitchen>=0.2.0' simpleeval

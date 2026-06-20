@@ -151,6 +151,8 @@ comfy-agent run text2img_v1 --global --prompt "A cat"
 - Poll GET `/history/{prompt_id}` until done
 - Read output `filename/subfolder/type` from history, then download via GET `/view`
 - Upload input files to POST `/upload/image` or `/upload/mask` when needed
+  (audio/file uploads also use ComfyUI's input upload path and can target
+  nodes such as `LoadAudio`)
 - During `import`, GET `/object_info` (if available) to improve type inference
 
 ## `base_url` Precedence
@@ -221,6 +223,7 @@ With uploads:
 
 ```bash
 comfy-agent run inpaint_v1 --prompt "fix" --init-image ./in.png --mask ./mask.png
+comfy-agent run talking_v1 --image ./portrait.png --audio ./voice.mp3
 ```
 
 If a preset parameter or upload defines `aliases`, any alias can be used in place of its canonical flag. For example, with `aliases: [positive]` on the `prompt` parameter, `--positive "A cat"` is equivalent to `--prompt "A cat"`. Aliases are opt-in: `import` does not generate them, so add them by hand in the preset when you want friendlier flags.
@@ -362,6 +365,12 @@ uploads:
     target:
       node_id: 22
       input: mask
+  audio:
+    kind: audio
+    cli_flag: --audio
+    target:
+      node_id: 23
+      input: audio
 ```
 
 ### Metadata fields
@@ -387,12 +396,15 @@ Parameter fields (in addition to `type`, `target`, `required`, `default`):
 | `choices` | array | Advisory list of allowed values. |
 | `recommended` | any | Advisory suggested value. |
 
-Upload fields (in addition to `kind`, `cli_flag`, `target`):
+Upload fields:
 
 | Field | Type | Meaning |
 |---|---|---|
+| `kind` | enum | One of `image`, `mask`, `audio`, `file`. |
+| `cli_flag` | string | CLI flag accepted by `run`, such as `--image` or `--audio`. |
+| `target` | object | Workflow node input to receive the uploaded filename. |
 | `description` | string | Human/agent-readable explanation. |
-| `role` | enum | One of `init_image`, `mask`, `reference_image`, `control_image`, `input_image`, `custom`. |
+| `role` | enum | One of `init_image`, `mask`, `reference_image`, `control_image`, `input_image`, `input_audio`, `reference_audio`, `input_file`, `custom`. |
 | `aliases` | string[] | Alternate CLI flag names accepted by `run`. |
 | `required` | boolean | Whether the upload must be provided. |
 

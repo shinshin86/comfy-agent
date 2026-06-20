@@ -15,6 +15,8 @@ Upstream references:
 |---|---|---|
 | `video_ltx2_3_i2v_flat.json` | LTX-2.3, image→video | Minimal i2v pipeline (checkpoint + distilled LoRA + Gemma 3 12B text encoder). Verified E2E via `comfy-agent run`. |
 | `video_ltx2_3_i2v.json` | LTX-2.3, image→video | Upstream Comfy-Org template. Richer (two-stage + audio), intended to be loaded in the ComfyUI browser UI. |
+| `video_ltx2_3_ia2v_flat.json` | LTX-2.3, image+audio→video | CLI-oriented starter derived from the upstream IA2V template. Uses `LoadImage` + `LoadAudio` and saves an MP4. Smoke-tested on Colab A100. |
+| `video_ltx2_3_ia2v.json` | LTX-2.3, image+audio→video | Upstream Comfy-Org IA2V template with a subgraph. Intended to be loaded in the ComfyUI browser UI. |
 
 ## Flow
 
@@ -62,6 +64,71 @@ Upstream references:
    Output lands under
    `.comfy-agent/outputs/ltx23_i2v/<timestamp>/ltx23_i2v_*.mp4`.
 
+## Image + audio to video / lip-sync starter
+
+The IA2V flat workflow accepts a first-frame image and an audio file. It is
+intended for talking-head / lip-sync experiments where the prompt describes
+the character, scene, and speaking motion while the uploaded audio drives the
+clip duration and generated audio track.
+
+Import it:
+
+```bash
+comfy-agent import ./scripts/colab/ltx23/video_ltx2_3_ia2v_flat.json --name ltx23_ia2v
+```
+
+Then open `.comfy-agent/presets/ltx23_ia2v.yaml` and append:
+
+```yaml
+uploads:
+  image:
+    kind: image
+    cli_flag: --image
+    target:
+      node_id: "269"
+      input: image
+  audio:
+    kind: audio
+    cli_flag: --audio
+    target:
+      node_id: "276"
+      input: audio
+```
+
+Run:
+
+```bash
+export COMFY_AGENT_BASE_URL=https://<id>.trycloudflare.com
+comfy-agent run ltx23_ia2v \
+    --image ./portrait.png \
+    --audio ./voice.mp3 \
+    --319_value "A friendly presenter speaks naturally to camera, subtle head motion, clean studio background" \
+    --331_value 9 \
+    --323_value 24 \
+    --286_noise_seed 42 \
+    --timeout-seconds 1800
+```
+
+Useful IA2V flags after import:
+
+- `--319_value`: motion/dialogue prompt.
+- `--330_value` / `--324_value`: output width / height.
+- `--332_start_index`: audio start offset in seconds.
+- `--331_value`: duration in seconds.
+- `--323_value`: fps.
+- `--286_noise_seed`: main generation seed.
+
+Notes:
+
+- The flat workflow disables the upstream prompt-enhancer branch and feeds the
+  prompt directly into LTX conditioning. This keeps the CLI starter closer to
+  the existing Colab model set.
+- ComfyUI's upload endpoint stores audio files in the same input area used by
+  `LoadAudio`; `kind: audio` in comfy-agent uploads the file and writes the
+  returned filename into the `LoadAudio.audio` input.
+- This is a starter template. Validate it against the live `/object_info` on
+  your ComfyUI runtime before treating it as verified.
+
 ## Caveats
 
 - **VRAM**: official requirement is 32 GB+. A100 40 GB is the minimum.
@@ -85,3 +152,8 @@ Upstream references:
   refresh the files from upstream or regenerate
   `video_ltx2_3_i2v_flat.json` against the live `/object_info` on your
   runtime.
+- **kornia pin**: ComfyUI-LTXVideo currently imports `pad` from
+  `kornia.geometry.transform.pyramid`; `kornia==0.7.1` is pinned because newer
+  releases removed that import surface.
+- **IA2V status**: `video_ltx2_3_ia2v_flat.json` was E2E smoke-tested on a
+  Colab A100 runtime with a 4 second 768x432 clip.
