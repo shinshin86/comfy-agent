@@ -141,9 +141,9 @@ kits:
     gpu:
       minimum: A100
       recommended: A100
-    summary: LTX-2.3 image-to-video starter.
+    summary: LTX-2.3 image-to-video and image+audio-to-video starters.
     setup_file: 01_setup.py
-    tags: [video, image_to_video]
+    tags: [video, image_to_video, audio_to_video, lip_sync]
     workflows:
       - name: video_ltx2_3_i2v
         file: video_ltx2_3_i2v.json
@@ -152,6 +152,16 @@ kits:
         quality: high
       - name: video_ltx2_3_i2v_flat
         file: video_ltx2_3_i2v_flat.json
+        task: image_to_video
+        speed: slow
+        quality: high
+      - name: video_ltx2_3_ia2v
+        file: video_ltx2_3_ia2v.json
+        task: image_to_video
+        speed: slow
+        quality: high
+      - name: video_ltx2_3_ia2v_flat
+        file: video_ltx2_3_ia2v_flat.json
         task: image_to_video
         speed: slow
         quality: high

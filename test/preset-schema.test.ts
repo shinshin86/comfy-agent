@@ -38,6 +38,14 @@ describe("PresetSchema", () => {
           role: "init_image",
           aliases: ["source-image"],
         },
+        voice: {
+          kind: "audio",
+          cli_flag: "--audio",
+          target: { node_id: 10, input: "audio" },
+          description: "Optional driving audio.",
+          role: "input_audio",
+          aliases: ["voice"],
+        },
       },
     });
 

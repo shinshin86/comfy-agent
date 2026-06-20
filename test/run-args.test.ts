@@ -39,6 +39,12 @@ const presetBase: Preset = {
       target: { node_id: "6", input: "image" },
       aliases: ["source-image"],
     },
+    audio: {
+      kind: "audio",
+      cli_flag: "--audio",
+      target: { node_id: "7", input: "audio" },
+      aliases: ["voice-audio"],
+    },
   },
 };
 
@@ -77,20 +83,20 @@ describe("resolveDynamicArgs", () => {
 
   it("parses uploads and keeps them separated from params", () => {
     const { params, uploads } = resolveDynamicArgs(
-      ["--prompt", "cat", "--init-image", "./in.png"],
+      ["--prompt", "cat", "--init-image", "./in.png", "--audio", "./voice.mp3"],
       presetBase,
     );
     expect(params.prompt).toBe("cat");
-    expect(uploads).toEqual({ init: "./in.png" });
+    expect(uploads).toEqual({ init: "./in.png", audio: "./voice.mp3" });
   });
 
   it("accepts parameter and upload aliases", () => {
     const { params, uploads } = resolveDynamicArgs(
-      ["--positive", "cat", "--source-image", "./in.png"],
+      ["--positive", "cat", "--source-image", "./in.png", "--voice-audio", "./voice.mp3"],
       presetBase,
     );
     expect(params.prompt).toBe("cat");
-    expect(uploads).toEqual({ init: "./in.png" });
+    expect(uploads).toEqual({ init: "./in.png", audio: "./voice.mp3" });
   });
 
   it("throws on unknown param", () => {

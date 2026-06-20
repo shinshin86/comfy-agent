@@ -154,6 +154,8 @@ comfy-agent run text2img_v1 --global --prompt "A cat"
 - GET `/history/{prompt_id}` をポーリングして完了待ち
 - `/history` から `filename/subfolder/type` を抽出し、画像/動画を GET `/view` で保存
 - 画像入力が必要な場合は POST `/upload/image` または `/upload/mask`
+  （音声/汎用ファイル upload も ComfyUI の input upload 経路を使い、
+  `LoadAudio` などへ差し込めます）
 - `import` 実行時に GET `/object_info` を参照できる場合は型推定を補強
 
 ## base_url の優先順位
@@ -224,6 +226,7 @@ uploads がある場合の例:
 
 ```bash
 comfy-agent run inpaint_v1 --prompt "fix" --init-image ./in.png --mask ./mask.png
+comfy-agent run talking_v1 --image ./portrait.png --audio ./voice.mp3
 ```
 
 プリセットのパラメータや upload に `aliases` を定義すると、正式なフラグの代わりにエイリアスでも指定できます。例えば `prompt` パラメータに `aliases: [positive]` を付けると、`--positive "A cat"` は `--prompt "A cat"` と同じ意味になります。エイリアスはオプトインで、`import` では自動生成しません。フラグを使いやすくしたい場合はプリセットに手で追記してください。
@@ -366,6 +369,12 @@ uploads:
     target:
       node_id: 22
       input: mask
+  audio:
+    kind: audio
+    cli_flag: --audio
+    target:
+      node_id: 23
+      input: audio
 ```
 
 ### メタデータ項目
@@ -391,12 +400,15 @@ uploads:
 | `choices` | array | 参考用の許容値リスト。 |
 | `recommended` | any | 参考用の推奨値。 |
 
-upload の項目（`kind` / `cli_flag` / `target` に加えて）:
+upload の項目:
 
 | 項目 | 型 | 意味 |
 |---|---|---|
+| `kind` | enum | `image` / `mask` / `audio` / `file` のいずれか。 |
+| `cli_flag` | string | `run` で受け付けるCLIフラグ（例: `--image` / `--audio`）。 |
+| `target` | object | アップロード後のファイル名を差し込む workflow ノード入力。 |
 | `description` | string | 人間/エージェント向けの説明。 |
-| `role` | enum | `init_image` / `mask` / `reference_image` / `control_image` / `input_image` / `custom` のいずれか。 |
+| `role` | enum | `init_image` / `mask` / `reference_image` / `control_image` / `input_image` / `input_audio` / `reference_audio` / `input_file` / `custom` のいずれか。 |
 | `aliases` | string[] | `run` で受け付ける別名フラグ。 |
 | `required` | boolean | 必須の upload かどうか。 |
 

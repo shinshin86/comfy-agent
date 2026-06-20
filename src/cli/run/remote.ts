@@ -72,7 +72,12 @@ const normalizeRemoteUploads = (value: unknown): Record<string, UploadDef> => {
     const target = asRecord(def.target);
     const targetInput = target ? asString(target.input) : undefined;
     const nodeId = target?.node_id;
-    if ((kind !== "image" && kind !== "mask") || !cliFlag || !targetInput) continue;
+    if (
+      (kind !== "image" && kind !== "mask" && kind !== "audio" && kind !== "file") ||
+      !cliFlag ||
+      !targetInput
+    )
+      continue;
     if (typeof nodeId !== "string" && typeof nodeId !== "number") continue;
     uploads[name] = {
       kind,

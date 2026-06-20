@@ -40,6 +40,9 @@ const UploadRoleSchema = z.enum([
   "reference_image",
   "control_image",
   "input_image",
+  "input_audio",
+  "reference_audio",
+  "input_file",
   "custom",
 ]);
 
@@ -60,7 +63,7 @@ const ParameterSchema = z.object({
 });
 
 const UploadSchema = z.object({
-  kind: z.enum(["image", "mask"]),
+  kind: z.enum(["image", "mask", "audio", "file"]),
   cli_flag: z.string(),
   target: NodeTargetSchema,
   description: z.string().optional(),
