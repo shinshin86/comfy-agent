@@ -85,6 +85,10 @@ describe("buildColabSuggestPayload", () => {
       task: "text_to_video",
       output: "video",
       gpu: "A100",
+      // Raise above the default top-5 cap so every qualifying video/A100 kit
+      // is returned; more than 5 now match (e.g. hunyuan_video, sulphur2,
+      // 10eros, wan21, wan22), and this assertion checks filtering, not rank.
+      limit: 20,
     });
 
     expect(payload.suggestions.length).toBeGreaterThan(0);

@@ -1,0 +1,502 @@
+{
+  "3": {
+    "class_type": "LTXVConcatAVLatent",
+    "inputs": {
+      "video_latent": [
+        "13",
+        0
+      ],
+      "audio_latent": [
+        "35",
+        1
+      ]
+    }
+  },
+  "9": {
+    "class_type": "SamplerCustomAdvanced",
+    "inputs": {
+      "noise": [
+        "2",
+        0
+      ],
+      "guider": [
+        "42",
+        0
+      ],
+      "sampler": [
+        "17",
+        0
+      ],
+      "sigmas": [
+        "47",
+        0
+      ],
+      "latent_image": [
+        "32",
+        0
+      ]
+    }
+  },
+  "10": {
+    "class_type": "LTXVCropGuides",
+    "inputs": {
+      "positive": [
+        "31",
+        0
+      ],
+      "negative": [
+        "31",
+        1
+      ],
+      "latent": [
+        "35",
+        0
+      ]
+    }
+  },
+  "18": {
+    "class_type": "ComfyMathExpression",
+    "inputs": {
+      "expression": "a/2",
+      "values.a": [
+        "40",
+        0
+      ]
+    }
+  },
+  "20": {
+    "class_type": "ComfyMathExpression",
+    "inputs": {
+      "expression": "a/2",
+      "values.a": [
+        "25",
+        0
+      ]
+    }
+  },
+  "21": {
+    "class_type": "EmptyLTXVLatentVideo",
+    "inputs": {
+      "width": [
+        "18",
+        1
+      ],
+      "height": [
+        "20",
+        1
+      ],
+      "length": [
+        "27",
+        0
+      ],
+      "batch_size": 1
+    }
+  },
+  "23": {
+    "class_type": "LTXVAudioVAEDecode",
+    "inputs": {
+      "samples": [
+        "37",
+        1
+      ],
+      "audio_vae": [
+        "4",
+        0
+      ]
+    }
+  },
+  "24": {
+    "class_type": "ComfyMathExpression",
+    "inputs": {
+      "expression": "a",
+      "values.a": [
+        "26",
+        0
+      ]
+    }
+  },
+  "26": {
+    "class_type": "PrimitiveInt",
+    "inputs": {
+      "value": 24
+    },
+    "_meta": {
+      "title": "Frame Rate"
+    }
+  },
+  "33": {
+    "class_type": "LTXVEmptyLatentAudio",
+    "inputs": {
+      "frames_number": [
+        "27",
+        0
+      ],
+      "frame_rate": [
+        "24",
+        1
+      ],
+      "batch_size": 1,
+      "audio_vae": [
+        "4",
+        0
+      ]
+    }
+  },
+  "39": {
+    "class_type": "LatentUpscaleModelLoader",
+    "inputs": {
+      "model_name": "ltx-2.3-spatial-upscaler-x2-1.0.safetensors"
+    }
+  },
+  "41": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "pc game, console game, video game, cartoon, childish, ugly",
+      "clip": [
+        "5",
+        0
+      ]
+    }
+  },
+  "38": {
+    "class_type": "CreateVideo",
+    "inputs": {
+      "images": [
+        "68",
+        0
+      ],
+      "fps": [
+        "24",
+        0
+      ],
+      "audio": [
+        "23",
+        0
+      ]
+    }
+  },
+  "28": {
+    "class_type": "PrimitiveBoolean",
+    "inputs": {
+      "value": true
+    },
+    "_meta": {
+      "title": "Switch to Text to Video?"
+    }
+  },
+  "32": {
+    "class_type": "LTXVConcatAVLatent",
+    "inputs": {
+      "video_latent": [
+        "21",
+        0
+      ],
+      "audio_latent": [
+        "33",
+        0
+      ]
+    }
+  },
+  "8": {
+    "class_type": "CFGGuider",
+    "inputs": {
+      "model": [
+        "49",
+        0
+      ],
+      "positive": [
+        "10",
+        0
+      ],
+      "negative": [
+        "10",
+        1
+      ],
+      "cfg": 1
+    }
+  },
+  "1": {
+    "class_type": "RandomNoise",
+    "inputs": {
+      "noise_seed": 42
+    }
+  },
+  "58": {
+    "class_type": "ManualSigmas",
+    "inputs": {
+      "sigmas": "0.85, 0.7933, 0.68, 0.51, 0.2833, 0.0"
+    }
+  },
+  "36": {
+    "class_type": "SamplerCustomAdvanced",
+    "inputs": {
+      "noise": [
+        "1",
+        0
+      ],
+      "guider": [
+        "8",
+        0
+      ],
+      "sampler": [
+        "6",
+        0
+      ],
+      "sigmas": [
+        "7",
+        0
+      ],
+      "latent_image": [
+        "3",
+        0
+      ]
+    }
+  },
+  "25": {
+    "class_type": "PrimitiveInt",
+    "inputs": {
+      "value": 768
+    },
+    "_meta": {
+      "title": "Height"
+    }
+  },
+  "40": {
+    "class_type": "PrimitiveInt",
+    "inputs": {
+      "value": 1366
+    },
+    "_meta": {
+      "title": "Width"
+    }
+  },
+  "27": {
+    "class_type": "PrimitiveInt",
+    "inputs": {
+      "value": 241
+    },
+    "_meta": {
+      "title": "Length"
+    }
+  },
+  "2": {
+    "class_type": "RandomNoise",
+    "inputs": {
+      "noise_seed": 10445762883998
+    }
+  },
+  "42": {
+    "class_type": "CFGGuider",
+    "inputs": {
+      "model": [
+        "59",
+        0
+      ],
+      "positive": [
+        "31",
+        0
+      ],
+      "negative": [
+        "31",
+        1
+      ],
+      "cfg": 1
+    }
+  },
+  "65": {
+    "class_type": "ManualSigmas",
+    "inputs": {
+      "sigmas": "0.8, 0.55, 0.25, 0.0"
+    }
+  },
+  "68": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "37",
+        0
+      ],
+      "vae": [
+        "44",
+        2
+      ]
+    }
+  },
+  "43": {
+    "class_type": "VAEDecodeTiled",
+    "inputs": {
+      "tile_size": 768,
+      "overlap": 64,
+      "temporal_size": 4096,
+      "temporal_overlap": 4
+    }
+  },
+  "45": {
+    "class_type": "SaveVideo",
+    "inputs": {
+      "video": [
+        "38",
+        0
+      ],
+      "filename_prefix": "video/10eros_t2v",
+      "format": "auto",
+      "codec": "auto"
+    }
+  },
+  "31": {
+    "class_type": "LTXVConditioning",
+    "inputs": {
+      "positive": [
+        "30",
+        0
+      ],
+      "negative": [
+        "41",
+        0
+      ],
+      "frame_rate": 24
+    }
+  },
+  "44": {
+    "class_type": "CheckpointLoaderSimple",
+    "inputs": {
+      "ckpt_name": "10Eros_v1.2_fp8mixed_learned.safetensors"
+    }
+  },
+  "4": {
+    "class_type": "LTXVAudioVAELoader",
+    "inputs": {
+      "ckpt_name": "10Eros_v1.2_fp8mixed_learned.safetensors"
+    }
+  },
+  "5": {
+    "class_type": "LTXAVTextEncoderLoader",
+    "inputs": {
+      "text_encoder": "gemma-3-12b-it-ablit-norms-biproj-fp8mixed.safetensors",
+      "ckpt_name": "10Eros_v1.2_fp8mixed_learned.safetensors",
+      "device": "default"
+    }
+  },
+  "7": {
+    "class_type": "ManualSigmas",
+    "inputs": {
+      "sigmas": "0.85, 0.7250, 0.4219, 0.0"
+    }
+  },
+  "6": {
+    "class_type": "KSamplerSelect",
+    "inputs": {
+      "sampler_name": "lcm"
+    }
+  },
+  "47": {
+    "class_type": "LTXVScheduler",
+    "inputs": {
+      "steps": 8,
+      "max_shift": 4,
+      "base_shift": 1.5,
+      "stretch": true,
+      "terminal": 0.1,
+      "latent": [
+        "32",
+        0
+      ]
+    }
+  },
+  "17": {
+    "class_type": "KSamplerSelect",
+    "inputs": {
+      "sampler_name": "euler_ancestral_cfg_pp"
+    }
+  },
+  "30": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": [
+        "29",
+        0
+      ],
+      "clip": [
+        "5",
+        0
+      ]
+    }
+  },
+  "13": {
+    "class_type": "LTXVLatentUpsampler",
+    "inputs": {
+      "samples": [
+        "35",
+        0
+      ],
+      "upscale_model": [
+        "39",
+        0
+      ],
+      "vae": [
+        "44",
+        2
+      ]
+    }
+  },
+  "35": {
+    "class_type": "LTXVSeparateAVLatent",
+    "inputs": {
+      "av_latent": [
+        "9",
+        0
+      ]
+    }
+  },
+  "37": {
+    "class_type": "LTXVSeparateAVLatent",
+    "inputs": {
+      "av_latent": [
+        "36",
+        0
+      ]
+    }
+  },
+  "67": {
+    "class_type": "PathchSageAttentionKJ",
+    "inputs": {
+      "model": [
+        "44",
+        0
+      ],
+      "sage_attention": "auto",
+      "allow_compile": false
+    }
+  },
+  "29": {
+    "class_type": "PrimitiveStringMultiline",
+    "inputs": {
+      "value": "PROMPT GOES HERE, YOU CAN USE THE PROMPT ENHANCER EXTERNALLY"
+    },
+    "_meta": {
+      "title": "Prompt"
+    }
+  },
+  "59": {
+    "class_type": "LoraLoaderModelOnly",
+    "inputs": {
+      "model": [
+        "67",
+        0
+      ],
+      "lora_name": "ltx-2.3-22b-distilled-lora-1.1_fro90_ceil72_condsafe.safetensors",
+      "strength_model": 0.7
+    }
+  },
+  "49": {
+    "class_type": "LoraLoaderModelOnly",
+    "inputs": {
+      "model": [
+        "67",
+        0
+      ],
+      "lora_name": "ltx-2.3-22b-distilled-lora-1.1_fro90_ceil72_condsafe.safetensors",
+      "strength_model": 0.5
+    }
+  }
+}

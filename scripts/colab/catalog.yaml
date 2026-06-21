@@ -298,6 +298,29 @@ kits:
         task: text_to_video
         speed: slow
         quality: high
+  - name: 10eros
+    path: 10eros/
+    status: partial
+    tasks: [text_to_video, image_to_video]
+    outputs: [video]
+    gpu:
+      minimum: A100
+      recommended: A100
+    summary: 10Eros uncensored LTX-2.3 fine-tune video generation workflows.
+    setup_file: 01_setup.py
+    license_notes: [Upstream model states no explicit license; parent LTX-2.3 is under the LTX-2 Community License. Review Colab acceptable-use policy and upstream terms.]
+    tags: [video]
+    workflows:
+      - name: video_10eros_i2v_distilled
+        file: video_10eros_i2v_distilled.json
+        task: image_to_video
+        speed: slow
+        quality: high
+      - name: video_10eros_t2v_distilled_api
+        file: video_10eros_t2v_distilled_api.json
+        task: text_to_video
+        speed: slow
+        quality: high
   - name: wan21
     path: wan21/
     status: partial
