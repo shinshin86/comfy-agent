@@ -58,7 +58,7 @@
   "44": {
     "class_type": "UNETLoader",
     "inputs": {
-      "unet_name": "krea2_turbo_fp8.safetensors",
+      "unet_name": "krea2_turbo_fp8_scaled.safetensors",
       "weight_dtype": "default"
     }
   },

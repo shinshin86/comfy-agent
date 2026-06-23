@@ -6,26 +6,29 @@ runs **natively in ComfyUI 0.25.0+** (no custom nodes) and is built on the
 Qwen-Image stack — a Qwen3-VL text encoder (`CLIPLoader` type `krea2`) plus
 the Qwen-Image VAE.
 
-This kit uses the community **fp8 Turbo** repack (8-step distilled): the
-diffusion model is ~12.9 GB, so the three weights fit an **L4 24 GB**
-runtime (RAW/bf16 would need an A100).
+This kit uses the official **Comfy-Org** repack (Turbo, fp8_scaled, 8-step
+distilled). All three weights come from a single repo and fit an **L4
+24 GB** runtime (RAW/bf16 would need an A100).
 
 **Verified E2E** on a Colab L4 (23 GB): the canonical local-Mac →
 cloudflared → `comfy-agent run` flow produced a 1280×720 image in 8 steps.
 
 Upstream references:
 - Krea 2 OSS bucket: https://huggingface.co/buckets/krea-community/krea-2
-- fp8 Turbo repack: https://huggingface.co/AlperKTS/Krea2_FP8
-- Qwen3-VL text encoder: https://huggingface.co/Comfy-Org/Qwen3-VL
-- Qwen-Image VAE: https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI
+- Comfy-Org repack (weights used here): https://huggingface.co/Comfy-Org/Krea-2
 
 ## Weights (downloaded by `01_setup.py`)
 
-| File | Dest | Source |
-|---|---|---|
-| `krea2_turbo_fp8.safetensors` (~12.9 GB) | `models/diffusion_models/` | `AlperKTS/Krea2_FP8` |
-| `qwen3vl_4b_fp8_scaled.safetensors` | `models/text_encoders/` | `Comfy-Org/Qwen3-VL` |
-| `qwen_image_vae.safetensors` (254 MB) | `models/vae/` | `Comfy-Org/Qwen-Image_ComfyUI` |
+All from [`Comfy-Org/Krea-2`](https://huggingface.co/Comfy-Org/Krea-2) (no HF token):
+
+| File | Dest |
+|---|---|
+| `krea2_turbo_fp8_scaled.safetensors` | `models/diffusion_models/` |
+| `qwen3vl_4b_fp8_scaled.safetensors` | `models/text_encoders/` |
+| `qwen_image_vae.safetensors` (254 MB) | `models/vae/` |
+
+The repo also ships RAW (bf16/fp8), other Turbo quants (bf16/mxfp8/nvfp4),
+and style LoRAs if you want to extend the kit.
 
 ## Flow
 

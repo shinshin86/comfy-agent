@@ -9,10 +9,10 @@
 # built on the Qwen-Image stack: it pairs a Qwen3-VL text encoder
 # (CLIPLoader type "krea2") with the Qwen-Image VAE.
 #
-# This kit uses the community fp8 Turbo repack (8-step distilled, ~12.9 GB)
-# so it fits an L4 24 GB runtime. Verify filenames before running
-# (upstream occasionally renames):
-#   https://huggingface.co/AlperKTS/Krea2_FP8/tree/main
+# This kit uses the official Comfy-Org repack (Turbo, fp8_scaled, 8-step
+# distilled) so it fits an L4 24 GB runtime. The text encoder and VAE come
+# from the same repo. Verify filenames before running (upstream may rename):
+#   https://huggingface.co/Comfy-Org/Krea-2/tree/main
 
 USE_GOOGLE_DRIVE  = False
 UPDATE_COMFYUI    = True
@@ -63,15 +63,17 @@ if INSTALL_MANAGER:
 for sub in ('diffusion_models', 'vae', 'text_encoders'):
     os.makedirs(f"{WORKSPACE}/models/{sub}", exist_ok=True)
 
-# Diffusion model: Krea 2 Turbo, fp8 community repack (~12.9 GB).
-!wget -nc -O {WORKSPACE}/models/diffusion_models/krea2_turbo_fp8.safetensors \
-    https://huggingface.co/AlperKTS/Krea2_FP8/resolve/main/krea2_turbo_fp8.safetensors
-# Text encoder: Qwen3-VL 4B, fp8 scaled (Comfy-Org repack, no HF token).
+# All weights from the official Comfy-Org/Krea-2 repack (no HF token).
+KREA2 = "https://huggingface.co/Comfy-Org/Krea-2/resolve/main"
+# Diffusion model: Krea 2 Turbo, fp8 scaled (8-step distilled).
+!wget -nc -O {WORKSPACE}/models/diffusion_models/krea2_turbo_fp8_scaled.safetensors \
+    {KREA2}/diffusion_models/krea2_turbo_fp8_scaled.safetensors
+# Text encoder: Qwen3-VL 4B, fp8 scaled.
 !wget -nc -O {WORKSPACE}/models/text_encoders/qwen3vl_4b_fp8_scaled.safetensors \
-    https://huggingface.co/Comfy-Org/Qwen3-VL/resolve/main/text_encoders/qwen3vl_4b_fp8_scaled.safetensors
-# VAE: Qwen-Image VAE (Comfy-Org repack, 254 MB, no HF token).
+    {KREA2}/text_encoders/qwen3vl_4b_fp8_scaled.safetensors
+# VAE: Qwen-Image VAE (254 MB).
 !wget -nc -O {WORKSPACE}/models/vae/qwen_image_vae.safetensors \
-    https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/vae/qwen_image_vae.safetensors
+    {KREA2}/vae/qwen_image_vae.safetensors
 
 # --- cloudflared ------------------------------------------------------------
 !wget -nc -P /root https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
