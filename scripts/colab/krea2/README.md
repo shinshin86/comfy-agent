@@ -10,6 +10,9 @@ This kit uses the community **fp8 Turbo** repack (8-step distilled): the
 diffusion model is ~12.9 GB, so the three weights fit an **L4 24 GB**
 runtime (RAW/bf16 would need an A100).
 
+**Verified E2E** on a Colab L4 (23 GB): the canonical local-Mac →
+cloudflared → `comfy-agent run` flow produced a 1280×720 image in 8 steps.
+
 Upstream references:
 - Krea 2 OSS bucket: https://huggingface.co/buckets/krea-community/krea-2
 - fp8 Turbo repack: https://huggingface.co/AlperKTS/Krea2_FP8

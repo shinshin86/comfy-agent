@@ -22,7 +22,7 @@ in `.mcp.json` at the repo root.
 | [`./flux2/`](./flux2/) | Verified E2E | A100 | Flux 2 dev, fp8mixed repack |
 | [`./hidream_i1/`](./hidream_i1/) | Verified E2E (Fast/Dev/Full fp8) | L4+ (Fast/Dev) / A100 (Full) | HiDream-I1 17B (Fast/Dev/Full fp8, MIT, no HF token) |
 | [`./ideogram4/`](./ideogram4/) | Verified E2E (A100, fp8) | A100 (L4+ w/ offload) | Ideogram 4.0 fp8 day-0 (asymmetric CFG, dual diffusion models, non-commercial) |
-| [`./krea2/`](./krea2/) | Starter | L4+ | Krea 2 Turbo fp8 (8-step distilled, native ComfyUI 0.25.0+, Qwen-Image stack; community license) |
+| [`./krea2/`](./krea2/) | Verified E2E | L4+ | Krea 2 Turbo fp8 (8-step distilled, native ComfyUI 0.25.0+, Qwen-Image stack; community license) |
 | [`./wan21/`](./wan21/) | 1.3B verified E2E; 14B starter | T4 (1.3B) / L4+ (14B) | Wan 2.1 T2V (1.3B fp16, 14B fp8_scaled) |
 | [`./wan22/`](./wan22/) | TI2V 5B verified E2E; T2V 14B starter | A100 | Wan 2.2 video |
 | [`./hunyuan_video/`](./hunyuan_video/) | Verified E2E (A100) | L4 24GB / A100 | Tencent Hunyuan Video T2V 720p (bf16 → fp8 at load) |

@@ -135,7 +135,7 @@ kits:
         quality: high
   - name: krea2
     path: krea2/
-    status: starter
+    status: verified
     tasks: [text_to_image]
     outputs: [image]
     gpu:
