@@ -133,6 +133,24 @@ kits:
         task: text_to_image
         speed: slow
         quality: high
+  - name: krea2
+    path: krea2/
+    status: starter
+    tasks: [text_to_image]
+    outputs: [image]
+    gpu:
+      minimum: L4
+      recommended: L4
+    summary: Krea 2 Turbo fp8 text-to-image (8-step distilled, native ComfyUI 0.25.0+, Qwen-Image stack).
+    setup_file: 01_setup.py
+    license_notes: [Krea 2 community license - permissive; commercial use via opensource@krea.ai. Review upstream terms.]
+    tags: [image, fast]
+    workflows:
+      - name: krea2
+        file: krea2_turbo.json
+        task: text_to_image
+        speed: fast
+        quality: high
   - name: ltx23
     path: ltx23/
     status: starter
