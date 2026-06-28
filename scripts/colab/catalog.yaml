@@ -35,6 +35,24 @@ kits:
         task: text_to_image
         speed: medium
         quality: high
+  - name: boogu
+    path: boogu/
+    status: verified
+    tasks: [text_to_image]
+    outputs: [image]
+    gpu:
+      minimum: L4
+      recommended: L4
+    summary: Boogu-Image Turbo fp8 text-to-image via native ComfyUI support.
+    setup_file: 01_setup.py
+    license_notes: [Apache-2.0 model license; review upstream terms before use.]
+    tags: [image, fast, boogu]
+    workflows:
+      - name: boogu_turbo_t2i
+        file: boogu_turbo_t2i.json
+        task: text_to_image
+        speed: fast
+        quality: high
   - name: flux1
     path: flux1/
     status: verified

@@ -224,6 +224,11 @@ export const buildColabSuggestPayload = (
         if (haystack.includes(token)) score += 2;
       }
 
+      if (goalTokens.includes(kit.name.toLowerCase()) || goalTokens.includes(workflow.name.toLowerCase())) {
+        score += 60;
+        reasons.push("exact:name");
+      }
+
       if (hints.wantsFast && workflow.speed === "fast") {
         score += 10;
         reasons.push("speed:fast");
