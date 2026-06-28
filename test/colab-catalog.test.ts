@@ -105,6 +105,16 @@ describe("buildColabSuggestPayload", () => {
     expect(serialized).not.toContain(repoRoot);
     expect(serialized).not.toContain("/absolute/");
   });
+
+  it("prioritizes an exact kit name over generic verified matches", async () => {
+    const catalog = await loadColabCatalogFile(catalogPath);
+    const payload = buildColabSuggestPayload(catalog, { goal: "boogu" });
+
+    expect(payload.suggestions[0]).toMatchObject({
+      kit: "boogu",
+      workflow: "boogu_turbo_t2i",
+    });
+  });
 });
 
 describe("runColabSuggest", () => {
