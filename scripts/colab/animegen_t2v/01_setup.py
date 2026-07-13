@@ -72,12 +72,21 @@ ANIMEGEN_BASE = "https://huggingface.co/aidealab/AnimeGen-T2V/resolve/main"
 WAN_REPACK    = "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files"
 LIGHTNING     = "https://huggingface.co/lightx2v/Wan2.2-Lightning/resolve/main/Wan2.2-T2V-A14B-4steps-lora-250928"
 
+# aria2c pulls the big AnimeGen experts with 16 parallel connections. The raw
+# HF xet CDN throttles a single wget stream to ~1 MB/s (hours for 27 GB); the
+# parallel download saturates Colab's link instead. `-c` resumes partial files.
+!apt-get -qq install -y aria2 >/dev/null
+
+def hf_get(url, dest_dir, out):
+    !aria2c -x16 -s16 -k1M -c --auto-file-renaming=false --allow-overwrite=false \
+        -d {dest_dir} -o {out} "{url}"
+
 # AnimeGen expert unets (full bf16, ~28.6 GB each). high_noise = early steps,
 # low_noise = late steps. These are the fine-tuned weights.
-!wget -nc -O {WORKSPACE}/models/diffusion_models/animegen_t2v_high_noise.safetensors \
-    {ANIMEGEN_BASE}/high_noise.safetensors
-!wget -nc -O {WORKSPACE}/models/diffusion_models/animegen_t2v_low_noise.safetensors \
-    {ANIMEGEN_BASE}/low_noise.safetensors
+hf_get(f"{ANIMEGEN_BASE}/high_noise.safetensors",
+       f"{WORKSPACE}/models/diffusion_models", "animegen_t2v_high_noise.safetensors")
+hf_get(f"{ANIMEGEN_BASE}/low_noise.safetensors",
+       f"{WORKSPACE}/models/diffusion_models", "animegen_t2v_low_noise.safetensors")
 
 # Shared Wan 2.2 text encoder (umt5-xxl) + Wan 2.1 VAE (Comfy-Org repack).
 !wget -nc -O {WORKSPACE}/models/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors \

@@ -31,7 +31,10 @@ notes 1280×720 works with more VRAM/time.
 1. Colab runtime = **A100** (57 GB of weights; expert unets load one at a
    time). fp8-at-load is used to fit the standard A100 40 GB — see caveats.
 2. Run `01_setup.py` in a cell. Toggle `DOWNLOAD_LIGHTNING_LORA` off if you
-   only want the plain workflow.
+   only want the plain workflow. The two experts total ~57 GB and are
+   fetched with `aria2c -x16` (parallel) — a single `wget` stream to the HF
+   xet CDN throttles to ~1 MB/s, so the parallel download is essential.
+   Expect several minutes for the model download on a good Colab link.
 3. Run `../02_start_comfyui.py` in the next cell.
 4. Poll `/content/comfy_url.txt` for the tunnel URL.
 5. Locally:
