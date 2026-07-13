@@ -35,6 +35,29 @@ kits:
         task: text_to_image
         speed: medium
         quality: high
+  - name: animegen_t2v
+    path: animegen_t2v/
+    status: starter
+    tasks: [text_to_video]
+    outputs: [video]
+    gpu:
+      minimum: A100
+      recommended: A100
+    summary: AnimeGen-T2V anime-style text-to-video, a Wan 2.2 T2V A14B fine-tune (Apache-2.0).
+    setup_file: 01_setup.py
+    license_notes: [Apache-2.0 model license; reuses Wan 2.2 umt5 encoder + Wan 2.1 VAE. Review upstream terms.]
+    tags: [anime, video, wan]
+    workflows:
+      - name: animegen_t2v
+        file: animegen_t2v.json
+        task: text_to_video
+        speed: slow
+        quality: high
+      - name: animegen_t2v_lightning
+        file: animegen_t2v_lightning.json
+        task: text_to_video
+        speed: medium
+        quality: high
   - name: boogu
     path: boogu/
     status: verified
