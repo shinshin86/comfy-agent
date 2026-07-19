@@ -160,6 +160,8 @@ const inferGoalHints = (goal: string | undefined) => {
   return {
     wantsFast: /\b(fast|quick|speed|t4)\b/.test(lower),
     wantsAnime: /\b(anime|manga)\b/.test(lower),
+    wantsImageGeneration:
+      /\b(image generation|generate (?:an )?image|text[-_ ]to[-_ ]image|t2i)\b/.test(lower),
     wantsVideo: /\b(video|movie|motion)\b/.test(lower),
     wantsAudio: /\b(audio|music|sound|sfx|song)\b/.test(lower),
     wantsEdit: /\b(edit|editing|modify|retouch)\b/.test(lower),
@@ -244,6 +246,10 @@ export const buildColabSuggestPayload = (
       if (hints.wantsAnime && kit.tags?.includes("anime")) {
         score += 10;
         reasons.push("tag:anime");
+      }
+      if (hints.wantsImageGeneration && workflow.task === "text_to_image") {
+        score += 10;
+        reasons.push("task:text_to_image");
       }
       if (hints.wantsVideo && kit.outputs.includes("video")) {
         score += 10;

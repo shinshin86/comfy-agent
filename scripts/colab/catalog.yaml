@@ -53,6 +53,24 @@ kits:
         task: text_to_image
         speed: fast
         quality: high
+  - name: birefnet
+    path: birefnet/
+    status: verified
+    tasks: [remove_background]
+    outputs: [image]
+    gpu:
+      minimum: T4
+      recommended: T4
+    summary: BiRefNet foreground extraction with transparent PNG output.
+    setup_file: 01_setup.py
+    license_notes: [MIT model license; review upstream terms before use.]
+    tags: [image, background_removal, segmentation, transparency]
+    workflows:
+      - name: birefnet_remove_background
+        file: birefnet_remove_background.json
+        task: remove_background
+        speed: fast
+        quality: high
   - name: flux1
     path: flux1/
     status: verified

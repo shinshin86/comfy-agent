@@ -129,6 +129,19 @@ describe("buildColabSuggestPayload", () => {
     expect(payload.suggestions.map((item) => item.kit)).toContain("wan22");
   });
 
+  it("suggests BiRefNet for explicit background removal goals", async () => {
+    const catalog = await loadColabCatalogFile(catalogPath);
+    const payload = buildColabSuggestPayload(catalog, {
+      goal: "remove background from an image on a T4",
+    });
+
+    expect(payload.suggestions[0]).toMatchObject({
+      kit: "birefnet",
+      workflow: "birefnet_remove_background",
+      task: "remove_background",
+    });
+  });
+
   it("keeps suggestions free of local paths", async () => {
     const catalog = await loadColabCatalogFile(catalogPath);
     const payload = buildColabSuggestPayload(catalog, { goal: "anime image" });
