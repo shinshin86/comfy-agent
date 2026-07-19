@@ -22,15 +22,19 @@ const TaskSchema = z.enum([
   "text_to_image",
   "image_to_image",
   "image_edit",
+  "remove_background",
   "inpaint",
   "upscale",
+  "text_to_audio",
+  "audio_to_audio",
+  "audio_inpaint",
   "text_to_video",
   "image_to_video",
   "video_to_video",
   "custom",
 ]);
 
-const OutputSchema = z.enum(["image", "video"]);
+const OutputSchema = z.enum(["image", "video", "audio"]);
 export type ColabTask = z.infer<typeof TaskSchema>;
 export type ColabOutput = z.infer<typeof OutputSchema>;
 
@@ -157,7 +161,11 @@ const inferGoalHints = (goal: string | undefined) => {
     wantsFast: /\b(fast|quick|speed|t4)\b/.test(lower),
     wantsAnime: /\b(anime|manga)\b/.test(lower),
     wantsVideo: /\b(video|movie|motion)\b/.test(lower),
+    wantsAudio: /\b(audio|music|sound|sfx|song)\b/.test(lower),
     wantsEdit: /\b(edit|editing|modify|retouch)\b/.test(lower),
+    wantsUpscale: /\b(upscale|upscaling|restore|restoration|enhance)\b/.test(lower),
+    wantsBackgroundRemoval:
+      /\b(background removal|remove background|cutout|segmentation)\b/.test(lower),
   };
 };
 
@@ -241,9 +249,21 @@ export const buildColabSuggestPayload = (
         score += 10;
         reasons.push("output:video");
       }
+      if (hints.wantsAudio && kit.outputs.includes("audio")) {
+        score += 10;
+        reasons.push("output:audio");
+      }
       if (hints.wantsEdit && workflow.task === "image_edit") {
         score += 10;
         reasons.push("task:image_edit");
+      }
+      if (hints.wantsUpscale && workflow.task === "upscale") {
+        score += 10;
+        reasons.push("task:upscale");
+      }
+      if (hints.wantsBackgroundRemoval && workflow.task === "remove_background") {
+        score += 10;
+        reasons.push("task:remove_background");
       }
       if (workflow.quality === "high") score += 5;
       if (workflow.quality === "draft") score -= 5;

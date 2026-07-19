@@ -42,6 +42,38 @@ describe("ColabCatalogSchema", () => {
     expect(result.success).toBe(true);
   });
 
+  it("accepts audio workflows and background-removal tasks", () => {
+    const result = ColabCatalogSchema.safeParse({
+      version: 1,
+      kits: [
+        {
+          name: "media_tools",
+          path: "media_tools/",
+          status: "starter",
+          tasks: ["text_to_audio", "remove_background"],
+          outputs: ["audio", "image"],
+          gpu: { minimum: "T4", recommended: "T4" },
+          summary: "Audio and image utility workflows.",
+          setup_file: "01_setup.py",
+          workflows: [
+            {
+              name: "music",
+              file: "music.json",
+              task: "text_to_audio",
+            },
+            {
+              name: "cutout",
+              file: "cutout.json",
+              task: "remove_background",
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(result.success).toBe(true);
+  });
+
   it("rejects absolute or parent-traversing paths so catalog output stays portable", () => {
     const result = ColabCatalogSchema.safeParse({
       version: 1,

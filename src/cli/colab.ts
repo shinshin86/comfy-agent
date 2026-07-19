@@ -25,15 +25,19 @@ const VALID_TASKS = new Set<ColabTask>([
   "text_to_image",
   "image_to_image",
   "image_edit",
+  "remove_background",
   "inpaint",
   "upscale",
+  "text_to_audio",
+  "audio_to_audio",
+  "audio_inpaint",
   "text_to_video",
   "image_to_video",
   "video_to_video",
   "custom",
 ]);
 
-const VALID_OUTPUTS = new Set<ColabOutput>(["image", "video"]);
+const VALID_OUTPUTS = new Set<ColabOutput>(["image", "video", "audio"]);
 
 const resolveTask = (value: string | undefined) => {
   if (!value) return undefined;

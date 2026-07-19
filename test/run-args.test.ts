@@ -118,6 +118,23 @@ describe("resolveDynamicArgs", () => {
       CliError,
     );
   });
+
+  it("throws when a required upload is missing", () => {
+    const presetWithRequiredUpload: Preset = {
+      ...presetBase,
+      uploads: {
+        ...presetBase.uploads,
+        init: {
+          ...presetBase.uploads!.init,
+          required: true,
+        },
+      },
+    };
+
+    expect(() => resolveDynamicArgs(["--prompt", "cat"], presetWithRequiredUpload)).toThrow(
+      CliError,
+    );
+  });
 });
 
 describe("resolveSeedValues", () => {

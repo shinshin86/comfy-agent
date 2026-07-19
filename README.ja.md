@@ -386,7 +386,7 @@ uploads:
 | 項目 | 型 | 意味 |
 |---|---|---|
 | `description` | string | プリセットの説明。 |
-| `task` | enum | `text_to_image` / `image_to_image` / `image_edit` / `inpaint` / `upscale` / `text_to_video` / `image_to_video` / `video_to_video` / `custom` のいずれか。 |
+| `task` | enum | `text_to_image` / `image_to_image` / `image_edit` / `remove_background` / `inpaint` / `upscale` / `text_to_audio` / `audio_to_audio` / `audio_inpaint` / `text_to_video` / `image_to_video` / `video_to_video` / `custom` のいずれか。 |
 | `tags` | string[] | 検索・分類用の自由ラベル。 |
 
 パラメータの項目（`type` / `target` / `required` / `default` に加えて）:
