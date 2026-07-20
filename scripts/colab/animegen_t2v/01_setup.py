@@ -1,6 +1,6 @@
 # Colab cell: set up ComfyUI and download AnimeGen-T2V weights (A100 required).
 # Paste this into a single Colab cell and run once per session.
-# Re-running is safe: `git pull` updates and `wget -nc` skips existing files.
+# Re-running is safe: `git pull` updates and completed model files are skipped.
 #
 # AnimeGen-T2V (aidealab/AnimeGen-T2V) is an anime-style fine-tune of
 # Wan 2.2 T2V A14B. It ships the two expert unets ONLY, as full bf16
@@ -20,11 +20,12 @@
 
 USE_GOOGLE_DRIVE       = False
 UPDATE_COMFYUI         = True
-INSTALL_MANAGER        = True
-RESTORE_NODE_DEPS      = True
+INSTALL_MANAGER        = False
+RESTORE_NODE_DEPS      = False
 DOWNLOAD_LIGHTNING_LORA = True
 
 import os
+from pathlib import Path
 
 # --- Workspace location -----------------------------------------------------
 if USE_GOOGLE_DRIVE:
@@ -68,39 +69,67 @@ if INSTALL_MANAGER:
 for sub in ('diffusion_models', 'vae', 'text_encoders', 'loras'):
     os.makedirs(f"{WORKSPACE}/models/{sub}", exist_ok=True)
 
-ANIMEGEN_BASE = "https://huggingface.co/aidealab/AnimeGen-T2V/resolve/main"
-WAN_REPACK    = "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files"
-LIGHTNING     = "https://huggingface.co/lightx2v/Wan2.2-Lightning/resolve/main/Wan2.2-T2V-A14B-4steps-lora-250928"
+!pip3 install -q "huggingface_hub>=0.32.0" "hf_xet>=1.1.5"
 
-# aria2c pulls the big AnimeGen experts with 16 parallel connections. The raw
-# HF xet CDN throttles a single wget stream to ~1 MB/s (hours for 27 GB); the
-# parallel download saturates Colab's link instead. `-c` resumes partial files.
-!apt-get -qq install -y aria2 >/dev/null
+from huggingface_hub import hf_hub_download
 
-def hf_get(url, dest_dir, out):
-    !aria2c -x16 -s16 -k1M -c --auto-file-renaming=false --allow-overwrite=false \
-        -d {dest_dir} -o {out} "{url}"
+ANIMEGEN_REPO = "aidealab/AnimeGen-T2V"
+ANIMEGEN_REVISION = "ea04305bca418d988e4924a92a1e8ff67cb29a68"
+WAN_REPACK_REPO = "Comfy-Org/Wan_2.2_ComfyUI_Repackaged"
+WAN_REPACK_REVISION = "fb1388adc906ab39ffc26ee40e96b22886b56bc4"
+LIGHTNING_REPO = "lightx2v/Wan2.2-Lightning"
+LIGHTNING_REVISION = "18bccf8884ec0a078eed79785eb4ef13ea16ce1e"
+HF_STAGING = Path(WORKSPACE) / ".cache" / "huggingface-downloads"
+
+
+def hf_get(repo_id, filename, revision, dest_dir, out):
+    """Download through the Hub's Xet-aware client, then atomically install."""
+    target = Path(dest_dir) / out
+    aria2_control = Path(f"{target}.aria2")
+    if target.is_file() and target.stat().st_size > 0 and not aria2_control.exists():
+        print(f"Already downloaded: {target}")
+        return target
+
+    staging_dir = HF_STAGING / repo_id.replace("/", "--")
+    staged = Path(
+        hf_hub_download(
+            repo_id=repo_id,
+            filename=filename,
+            revision=revision,
+            local_dir=staging_dir,
+        )
+    )
+    target.parent.mkdir(parents=True, exist_ok=True)
+    os.replace(staged, target)
+    aria2_control.unlink(missing_ok=True)
+    print(f"Downloaded: {target}")
+    return target
 
 # AnimeGen expert unets (full bf16, ~28.6 GB each). high_noise = early steps,
 # low_noise = late steps. These are the fine-tuned weights.
-hf_get(f"{ANIMEGEN_BASE}/high_noise.safetensors",
+hf_get(ANIMEGEN_REPO, "high_noise.safetensors", ANIMEGEN_REVISION,
        f"{WORKSPACE}/models/diffusion_models", "animegen_t2v_high_noise.safetensors")
-hf_get(f"{ANIMEGEN_BASE}/low_noise.safetensors",
+hf_get(ANIMEGEN_REPO, "low_noise.safetensors", ANIMEGEN_REVISION,
        f"{WORKSPACE}/models/diffusion_models", "animegen_t2v_low_noise.safetensors")
 
 # Shared Wan 2.2 text encoder (umt5-xxl) + Wan 2.1 VAE (Comfy-Org repack).
-!wget -nc -O {WORKSPACE}/models/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors \
-    {WAN_REPACK}/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors
-!wget -nc -O {WORKSPACE}/models/vae/wan_2.1_vae.safetensors \
-    {WAN_REPACK}/vae/wan_2.1_vae.safetensors
+hf_get(WAN_REPACK_REPO, "split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+       WAN_REPACK_REVISION, f"{WORKSPACE}/models/text_encoders",
+       "umt5_xxl_fp8_e4m3fn_scaled.safetensors")
+hf_get(WAN_REPACK_REPO, "split_files/vae/wan_2.1_vae.safetensors",
+       WAN_REPACK_REVISION, f"{WORKSPACE}/models/vae", "wan_2.1_vae.safetensors")
 
 if DOWNLOAD_LIGHTNING_LORA:
     # lightx2v 4-step Lightning LoRA for Wan 2.2 T2V A14B. Enables the
     # 8-step fast path (animegen_t2v_lightning.json). Small (~1-2.5 GB each).
-    !wget -nc -O {WORKSPACE}/models/loras/wan2.2_t2v_lightning_4steps_high_noise.safetensors \
-        {LIGHTNING}/high_noise_model.safetensors
-    !wget -nc -O {WORKSPACE}/models/loras/wan2.2_t2v_lightning_4steps_low_noise.safetensors \
-        {LIGHTNING}/low_noise_model.safetensors
+    hf_get(LIGHTNING_REPO,
+           "Wan2.2-T2V-A14B-4steps-lora-250928/high_noise_model.safetensors",
+           LIGHTNING_REVISION, f"{WORKSPACE}/models/loras",
+           "wan2.2_t2v_lightning_4steps_high_noise.safetensors")
+    hf_get(LIGHTNING_REPO,
+           "Wan2.2-T2V-A14B-4steps-lora-250928/low_noise_model.safetensors",
+           LIGHTNING_REVISION, f"{WORKSPACE}/models/loras",
+           "wan2.2_t2v_lightning_4steps_low_noise.safetensors")
 
 # --- cloudflared ------------------------------------------------------------
 !wget -nc -P /root https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb

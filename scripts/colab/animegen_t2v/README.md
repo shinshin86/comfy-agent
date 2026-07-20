@@ -1,6 +1,6 @@
 # AnimeGen-T2V on Colab A100
 
-Starter kit for running [aidealab/AnimeGen-T2V](https://huggingface.co/aidealab/AnimeGen-T2V)
+Kit for running [aidealab/AnimeGen-T2V](https://huggingface.co/aidealab/AnimeGen-T2V)
 text-to-video via ComfyUI + comfy-agent.
 
 AnimeGen-T2V is an **anime-style fine-tune of Wan 2.2 T2V A14B**. It ships
@@ -31,9 +31,9 @@ notes 1280×720 works with more VRAM/time.
 1. Colab runtime = **A100** (57 GB of weights; expert unets load one at a
    time). fp8-at-load is used to fit the standard A100 40 GB — see caveats.
 2. Run `01_setup.py` in a cell. Toggle `DOWNLOAD_LIGHTNING_LORA` off if you
-   only want the plain workflow. The two experts total ~57 GB and are
-   fetched with `aria2c -x16` (parallel) — a single `wget` stream to the HF
-   xet CDN throttles to ~1 MB/s, so the parallel download is essential.
+   only want the plain workflow. The two experts total ~57 GB and are fetched
+   with Hugging Face's Xet-aware `huggingface_hub` client, which supports the
+   Hub's current large-file storage and safely resumes interrupted downloads.
    Expect several minutes for the model download on a good Colab link.
 3. Run `../02_start_comfyui.py` in the next cell.
 4. Poll `/content/comfy_url.txt` for the tunnel URL.
@@ -53,13 +53,11 @@ notes 1280×720 works with more VRAM/time.
 
 ## Caveats
 
-- **Starter, not verified E2E**: this kit has not yet been run through the
-  full Colab → cloudflared → local `comfy-agent run` path. The AnimeGen
-  weights are distributed for the diffusers `WanPipeline`, not as a
-  ComfyUI repack — loading the raw bf16 safetensors via `UNETLoader` is
-  expected to work (state-dict keys match Wan 2.2) but is **unconfirmed**.
-  If `UNETLoader` fails to resolve the model, the weights may need a
-  Comfy-Org-style repack first.
+- **Verified E2E on Colab A100**: the Lightning workflow was run through the
+  full Colab → cloudflared → local `comfy-agent run` path at 512×288 with
+  33 frames. ComfyUI's built-in Wan loader recognized both raw AnimeGen
+  diffusers safetensors directly, so no custom node or repack is required.
+  The test completed in 185.84 seconds and produced a valid animated WebP.
 - **VRAM**: each expert is ~28.6 GB in bf16. The workflows set
   `weight_dtype: fp8_e4m3fn` so a single expert fits the standard A100
   40 GB. On A100 80 GB you can switch both `UNETLoader` nodes back to

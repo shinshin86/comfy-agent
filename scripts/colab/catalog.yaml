@@ -37,7 +37,7 @@ kits:
         quality: high
   - name: animegen_t2v
     path: animegen_t2v/
-    status: starter
+    status: verified
     tasks: [text_to_video]
     outputs: [video]
     gpu:
