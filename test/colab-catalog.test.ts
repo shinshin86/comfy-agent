@@ -181,6 +181,19 @@ describe("buildColabSuggestPayload", () => {
     });
   });
 
+  it("suggests SeedVR2 for explicit image upscaling", async () => {
+    const catalog = await loadColabCatalogFile(catalogPath);
+    const payload = buildColabSuggestPayload(catalog, {
+      goal: "seedvr2 image upscale and restoration",
+    });
+
+    expect(payload.suggestions[0]).toMatchObject({
+      kit: "seedvr2",
+      workflow: "seedvr2_3b_upscale",
+      task: "upscale",
+    });
+  });
+
   it("keeps suggestions free of local paths", async () => {
     const catalog = await loadColabCatalogFile(catalogPath);
     const payload = buildColabSuggestPayload(catalog, { goal: "anime image" });

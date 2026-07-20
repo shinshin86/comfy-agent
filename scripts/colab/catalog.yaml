@@ -324,6 +324,24 @@ kits:
         task: text_to_image
         speed: medium
         quality: standard
+  - name: seedvr2
+    path: seedvr2/
+    status: verified
+    tasks: [upscale]
+    outputs: [image]
+    gpu:
+      minimum: L4
+      recommended: A100
+    summary: SeedVR2 3B Int8 one-step image upscaling and restoration.
+    setup_file: 01_setup.py
+    license_notes: [Apache-2.0 model license; review upstream terms before use.]
+    tags: [image, upscale, restoration, seedvr2]
+    workflows:
+      - name: seedvr2_3b_upscale
+        file: seedvr2_3b_upscale.json
+        task: upscale
+        speed: medium
+        quality: high
   - name: sdxl_turbo
     path: sdxl_turbo/
     status: verified
