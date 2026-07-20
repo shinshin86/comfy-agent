@@ -68,6 +68,68 @@ type ObjectInfoNode = {
 };
 type ObjectInfo = Record<string, ObjectInfoNode>;
 
+type InferredUpload = {
+  baseName: "image" | "audio" | "video";
+  kind: "image" | "audio" | "file";
+  role: "input_image" | "input_audio" | "input_video";
+  description: string;
+};
+
+const inferUpload = (
+  classType: string | undefined,
+  inputName: string,
+): InferredUpload | null => {
+  const normalizedClass = (classType ?? "").toLowerCase();
+  const normalizedInput = inputName.toLowerCase();
+
+  if (
+    normalizedInput === "image" &&
+    (normalizedClass === "loadimage" || normalizedClass.endsWith("_loadimage"))
+  ) {
+    return {
+      baseName: "image",
+      kind: "image",
+      role: "input_image",
+      description: "Image file uploaded to the workflow input.",
+    };
+  }
+
+  if (
+    normalizedInput === "audio" &&
+    (normalizedClass === "loadaudio" || normalizedClass.endsWith("_loadaudio"))
+  ) {
+    return {
+      baseName: "audio",
+      kind: "audio",
+      role: "input_audio",
+      description: "Audio file uploaded to the workflow input.",
+    };
+  }
+
+  if (
+    normalizedInput === "video" &&
+    (normalizedClass === "loadvideo" || normalizedClass.endsWith("_loadvideo"))
+  ) {
+    return {
+      baseName: "video",
+      kind: "file",
+      role: "input_video",
+      description: "Video file uploaded to the workflow input.",
+    };
+  }
+
+  return null;
+};
+
+const allocateUploadName = (
+  baseName: InferredUpload["baseName"],
+  counts: Map<InferredUpload["baseName"], number>,
+) => {
+  const count = (counts.get(baseName) ?? 0) + 1;
+  counts.set(baseName, count);
+  return count === 1 ? baseName : `${baseName}_${count}`;
+};
+
 const getObjectInfoType = (
   objectInfo: ObjectInfo | null,
   classType: string | undefined,
@@ -169,13 +231,15 @@ const fetchObjectInfo = async (baseUrl: string) => {
   }
 };
 
-const buildPresetTemplate = (
+export const buildPresetTemplate = (
   name: string,
   workflowFile: string,
   workflow: Record<string, unknown>,
   objectInfo: ObjectInfo | null,
 ) => {
   const parameters: Record<string, unknown> = {};
+  const uploads: Record<string, unknown> = {};
+  const uploadCounts = new Map<InferredUpload["baseName"], number>();
 
   for (const [nodeId, nodeValue] of Object.entries(workflow)) {
     if (!nodeValue || typeof nodeValue !== "object") continue;
@@ -186,6 +250,23 @@ const buildPresetTemplate = (
 
     for (const [inputName, inputValue] of Object.entries(inputs)) {
       if (!isLiteralValue(inputValue)) continue;
+      const inferredUpload = inferUpload(classType, inputName);
+      if (inferredUpload) {
+        const uploadName = allocateUploadName(inferredUpload.baseName, uploadCounts);
+        const flagName = uploadName.replace(/_/g, "-");
+        uploads[uploadName] = {
+          kind: inferredUpload.kind,
+          cli_flag: `--${flagName}`,
+          target: {
+            node_id: nodeId,
+            input: inputName,
+          },
+          description: inferredUpload.description,
+          role: inferredUpload.role,
+          required: true,
+        };
+        continue;
+      }
       const paramName = `${nodeId}_${inputName}`;
       if (parameters[paramName]) continue;
       const objectType = getObjectInfoType(objectInfo, classType, inputName);
@@ -211,6 +292,7 @@ const buildPresetTemplate = (
     name,
     workflow: workflowFile,
     parameters: Object.keys(parameters).length > 0 ? parameters : undefined,
+    uploads: Object.keys(uploads).length > 0 ? uploads : undefined,
   };
 };
 

@@ -53,6 +53,24 @@ kits:
         task: text_to_image
         speed: fast
         quality: high
+  - name: birefnet
+    path: birefnet/
+    status: verified
+    tasks: [remove_background]
+    outputs: [image]
+    gpu:
+      minimum: T4
+      recommended: T4
+    summary: BiRefNet foreground extraction with transparent PNG output.
+    setup_file: 01_setup.py
+    license_notes: [MIT model license; review upstream terms before use.]
+    tags: [image, background_removal, segmentation, transparency]
+    workflows:
+      - name: birefnet_remove_background
+        file: birefnet_remove_background.json
+        task: remove_background
+        speed: fast
+        quality: high
   - name: flux1
     path: flux1/
     status: verified
@@ -113,6 +131,24 @@ kits:
         quality: standard
       - name: hidream_i1_full
         file: hidream_i1_full.json
+        task: text_to_image
+        speed: slow
+        quality: high
+  - name: hidream_o1
+    path: hidream_o1/
+    status: verified
+    tasks: [text_to_image]
+    outputs: [image]
+    gpu:
+      minimum: A100
+      recommended: A100
+    summary: HiDream-O1 Dev fp8 reasoning-oriented 2K text-to-image generation.
+    setup_file: 01_setup.py
+    license_notes: [MIT model license; review upstream terms before use.]
+    tags: [image, text_to_image, reasoning, hidream]
+    workflows:
+      - name: hidream_o1_dev_t2i
+        file: hidream_o1_dev_t2i.json
         task: text_to_image
         speed: slow
         quality: high
@@ -199,6 +235,24 @@ kits:
       - name: video_ltx2_3_ia2v_flat
         file: video_ltx2_3_ia2v_flat.json
         task: image_to_video
+        speed: slow
+        quality: high
+  - name: ltx23_t2v
+    path: ltx23_t2v/
+    status: verified
+    tasks: [text_to_video]
+    outputs: [video]
+    gpu:
+      minimum: A100
+      recommended: A100
+    summary: LTX-2.3 text-to-video with synchronized generated audio.
+    setup_file: 01_setup.py
+    license_notes: [Review the LTX-2.3 model license and Gemma terms before use.]
+    tags: [video, audio, text_to_video, ltx]
+    workflows:
+      - name: ltx23_t2v_audio
+        file: ltx23_t2v_audio.json
+        task: text_to_video
         speed: slow
         quality: high
   - name: ooo_anima
@@ -288,6 +342,24 @@ kits:
         task: text_to_image
         speed: medium
         quality: standard
+  - name: seedvr2
+    path: seedvr2/
+    status: verified
+    tasks: [upscale]
+    outputs: [image]
+    gpu:
+      minimum: L4
+      recommended: A100
+    summary: SeedVR2 3B Int8 one-step image upscaling and restoration.
+    setup_file: 01_setup.py
+    license_notes: [Apache-2.0 model license; review upstream terms before use.]
+    tags: [image, upscale, restoration, seedvr2]
+    workflows:
+      - name: seedvr2_3b_upscale
+        file: seedvr2_3b_upscale.json
+        task: upscale
+        speed: medium
+        quality: high
   - name: sdxl_turbo
     path: sdxl_turbo/
     status: verified
@@ -306,6 +378,24 @@ kits:
         task: text_to_image
         speed: fast
         quality: draft
+  - name: stable_audio3
+    path: stable_audio3/
+    status: verified
+    tasks: [text_to_audio]
+    outputs: [audio]
+    gpu:
+      minimum: L4
+      recommended: A100
+    summary: Stable Audio 3 Medium text-to-audio generation with MP3 output.
+    setup_file: 01_setup.py
+    license_notes: [Stable Audio Open model license; review upstream commercial-use terms.]
+    tags: [audio, music, sound_effects, stable_audio]
+    workflows:
+      - name: stable_audio3_medium_t2a
+        file: stable_audio3_medium_t2a.json
+        task: text_to_audio
+        speed: slow
+        quality: high
   - name: sulphur2
     path: sulphur2/
     status: verified
@@ -400,6 +490,24 @@ kits:
         file: wan22_ti2v_5b.json
         task: image_to_video
         speed: medium
+        quality: high
+  - name: wan22_s2v
+    path: wan22_s2v/
+    status: verified
+    tasks: [image_to_video]
+    outputs: [video]
+    gpu:
+      minimum: A100
+      recommended: A100
+    summary: Wan 2.2 S2V reference-image and audio-driven video generation.
+    setup_file: 01_setup.py
+    license_notes: [Apache-2.0 model license; review upstream terms before use.]
+    tags: [video, image_to_video, audio_to_video, speech, wan]
+    workflows:
+      - name: wan22_s2v
+        file: wan22_s2v.json
+        task: image_to_video
+        speed: slow
         quality: high
   - name: z_anime
     path: z_anime/

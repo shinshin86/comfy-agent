@@ -382,7 +382,7 @@ Preset-level fields:
 | Field | Type | Meaning |
 |---|---|---|
 | `description` | string | What the preset does. |
-| `task` | enum | One of `text_to_image`, `image_to_image`, `image_edit`, `inpaint`, `upscale`, `text_to_video`, `image_to_video`, `video_to_video`, `custom`. |
+| `task` | enum | One of `text_to_image`, `image_to_image`, `image_edit`, `remove_background`, `inpaint`, `upscale`, `text_to_audio`, `audio_to_audio`, `audio_inpaint`, `text_to_video`, `image_to_video`, `video_to_video`, `custom`. |
 | `tags` | string[] | Free-form labels for discovery. |
 
 Parameter fields (in addition to `type`, `target`, `required`, `default`):

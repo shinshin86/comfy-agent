@@ -42,6 +42,38 @@ describe("ColabCatalogSchema", () => {
     expect(result.success).toBe(true);
   });
 
+  it("accepts audio workflows and background-removal tasks", () => {
+    const result = ColabCatalogSchema.safeParse({
+      version: 1,
+      kits: [
+        {
+          name: "media_tools",
+          path: "media_tools/",
+          status: "starter",
+          tasks: ["text_to_audio", "remove_background"],
+          outputs: ["audio", "image"],
+          gpu: { minimum: "T4", recommended: "T4" },
+          summary: "Audio and image utility workflows.",
+          setup_file: "01_setup.py",
+          workflows: [
+            {
+              name: "music",
+              file: "music.json",
+              task: "text_to_audio",
+            },
+            {
+              name: "cutout",
+              file: "cutout.json",
+              task: "remove_background",
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(result.success).toBe(true);
+  });
+
   it("rejects absolute or parent-traversing paths so catalog output stays portable", () => {
     const result = ColabCatalogSchema.safeParse({
       version: 1,
@@ -95,6 +127,84 @@ describe("buildColabSuggestPayload", () => {
     expect(payload.suggestions.every((item) => item.task === "text_to_video")).toBe(true);
     expect(payload.suggestions.every((item) => item.outputs.includes("video"))).toBe(true);
     expect(payload.suggestions.map((item) => item.kit)).toContain("wan22");
+  });
+
+  it("suggests BiRefNet for explicit background removal goals", async () => {
+    const catalog = await loadColabCatalogFile(catalogPath);
+    const payload = buildColabSuggestPayload(catalog, {
+      goal: "remove background from an image on a T4",
+    });
+
+    expect(payload.suggestions[0]).toMatchObject({
+      kit: "birefnet",
+      workflow: "birefnet_remove_background",
+      task: "remove_background",
+    });
+  });
+
+  it("suggests Stable Audio 3 for music generation goals", async () => {
+    const catalog = await loadColabCatalogFile(catalogPath);
+    const payload = buildColabSuggestPayload(catalog, {
+      goal: "generate music and audio on an A100",
+    });
+
+    expect(payload.suggestions[0]).toMatchObject({
+      kit: "stable_audio3",
+      workflow: "stable_audio3_medium_t2a",
+      task: "text_to_audio",
+    });
+  });
+
+  it("suggests the LTX-2.3 audio-video kit when requested by name", async () => {
+    const catalog = await loadColabCatalogFile(catalogPath);
+    const payload = buildColabSuggestPayload(catalog, {
+      goal: "ltx23_t2v",
+    });
+
+    expect(payload.suggestions[0]).toMatchObject({
+      kit: "ltx23_t2v",
+      workflow: "ltx23_t2v_audio",
+      task: "text_to_video",
+    });
+  });
+
+  it("suggests the Wan 2.2 speech-to-video kit when requested by name", async () => {
+    const catalog = await loadColabCatalogFile(catalogPath);
+    const payload = buildColabSuggestPayload(catalog, {
+      goal: "wan22_s2v",
+    });
+
+    expect(payload.suggestions[0]).toMatchObject({
+      kit: "wan22_s2v",
+      workflow: "wan22_s2v",
+      task: "image_to_video",
+    });
+  });
+
+  it("suggests SeedVR2 for explicit image upscaling", async () => {
+    const catalog = await loadColabCatalogFile(catalogPath);
+    const payload = buildColabSuggestPayload(catalog, {
+      goal: "seedvr2 image upscale and restoration",
+    });
+
+    expect(payload.suggestions[0]).toMatchObject({
+      kit: "seedvr2",
+      workflow: "seedvr2_3b_upscale",
+      task: "upscale",
+    });
+  });
+
+  it("suggests HiDream-O1 when requested by name", async () => {
+    const catalog = await loadColabCatalogFile(catalogPath);
+    const payload = buildColabSuggestPayload(catalog, {
+      goal: "hidream_o1",
+    });
+
+    expect(payload.suggestions[0]).toMatchObject({
+      kit: "hidream_o1",
+      workflow: "hidream_o1_dev_t2i",
+      task: "text_to_image",
+    });
   });
 
   it("keeps suggestions free of local paths", async () => {

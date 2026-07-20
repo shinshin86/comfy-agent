@@ -155,6 +155,16 @@ export const resolveDynamicArgs = (
     }
   }
 
+  for (const [name, def] of Object.entries(uploadsDef)) {
+    if (uploads[name] !== undefined || !def.required) continue;
+    throw new CliError(
+      "MISSING_REQUIRED_UPLOAD",
+      t("param.required", { param: def.cli_flag }),
+      2,
+      { upload: name, flag: def.cli_flag },
+    );
+  }
+
   return { params, uploads };
 };
 

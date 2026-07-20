@@ -103,7 +103,7 @@ export const messages = {
   "colab.catalog_read_failed": "Failed to read Colab catalog.",
   "colab.catalog_invalid": "Invalid Colab catalog format.",
   "colab.invalid_task": "task must be a supported Colab catalog task.",
-  "colab.invalid_output": "output must be image/video.",
+  "colab.invalid_output": "output must be image/video/audio.",
   "colab.invalid_limit": "limit must be an integer >= 1.",
   "api.get_failed": "GET {path} failed.",
   "api.get_network_error": "Network error on GET {path}.",

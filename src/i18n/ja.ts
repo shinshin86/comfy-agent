@@ -106,7 +106,7 @@ export const messages = {
   "colab.catalog_read_failed": "Colab catalog の読み込みに失敗しました。",
   "colab.catalog_invalid": "Colab catalog の形式が不正です。",
   "colab.invalid_task": "task は対応している Colab catalog task を指定してください。",
-  "colab.invalid_output": "output は image/video のいずれかを指定してください。",
+  "colab.invalid_output": "output は image/video/audio のいずれかを指定してください。",
   "colab.invalid_limit": "limit は1以上の整数で指定してください。",
   "api.get_failed": "GET {path} が失敗しました。",
   "api.get_network_error": "GET {path} で通信エラーが発生しました。",
