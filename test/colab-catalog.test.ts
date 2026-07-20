@@ -155,6 +155,32 @@ describe("buildColabSuggestPayload", () => {
     });
   });
 
+  it("suggests the LTX-2.3 audio-video kit when requested by name", async () => {
+    const catalog = await loadColabCatalogFile(catalogPath);
+    const payload = buildColabSuggestPayload(catalog, {
+      goal: "ltx23_t2v",
+    });
+
+    expect(payload.suggestions[0]).toMatchObject({
+      kit: "ltx23_t2v",
+      workflow: "ltx23_t2v_audio",
+      task: "text_to_video",
+    });
+  });
+
+  it("suggests the Wan 2.2 speech-to-video kit when requested by name", async () => {
+    const catalog = await loadColabCatalogFile(catalogPath);
+    const payload = buildColabSuggestPayload(catalog, {
+      goal: "wan22_s2v",
+    });
+
+    expect(payload.suggestions[0]).toMatchObject({
+      kit: "wan22_s2v",
+      workflow: "wan22_s2v",
+      task: "image_to_video",
+    });
+  });
+
   it("keeps suggestions free of local paths", async () => {
     const catalog = await loadColabCatalogFile(catalogPath);
     const payload = buildColabSuggestPayload(catalog, { goal: "anime image" });

@@ -1,0 +1,128 @@
+{
+  "1": {
+    "class_type": "CheckpointLoaderSimple",
+    "inputs": { "ckpt_name": "ltx-2.3-22b-dev-fp8.safetensors" }
+  },
+  "2": {
+    "class_type": "LoraLoaderModelOnly",
+    "inputs": {
+      "model": ["1", 0],
+      "lora_name": "ltx_2.3_22b_distilled_1.1_lora_dynamic_fro09_avg_rank_111_bf16.safetensors",
+      "strength_model": 0.5
+    }
+  },
+  "3": {
+    "class_type": "LTXAVTextEncoderLoader",
+    "inputs": {
+      "text_encoder": "gemma_3_12B_it_fp4_mixed.safetensors",
+      "ckpt_name": "ltx-2.3-22b-dev-fp8.safetensors",
+      "device": "default"
+    }
+  },
+  "4": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "A cinematic close-up of a small robot assembling a glowing mechanical flower on a workbench. Metal parts click softly, servos hum, and the flower chimes when it opens.",
+      "clip": ["3", 0]
+    }
+  },
+  "5": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "blurry, static, low quality, distorted, subtitles",
+      "clip": ["3", 0]
+    }
+  },
+  "6": {
+    "class_type": "LTXVConditioning",
+    "inputs": {
+      "positive": ["4", 0],
+      "negative": ["5", 0],
+      "frame_rate": 24
+    }
+  },
+  "7": {
+    "class_type": "EmptyLTXVLatentVideo",
+    "inputs": { "width": 640, "height": 384, "length": 49, "batch_size": 1 }
+  },
+  "8": {
+    "class_type": "LTXVAudioVAELoader",
+    "inputs": { "ckpt_name": "ltx-2.3-22b-dev-fp8.safetensors" }
+  },
+  "9": {
+    "class_type": "LTXVEmptyLatentAudio",
+    "inputs": {
+      "frames_number": 49,
+      "frame_rate": 24,
+      "batch_size": 1,
+      "audio_vae": ["8", 0]
+    }
+  },
+  "10": {
+    "class_type": "LTXVConcatAVLatent",
+    "inputs": { "video_latent": ["7", 0], "audio_latent": ["9", 0] }
+  },
+  "11": {
+    "class_type": "RandomNoise",
+    "inputs": { "noise_seed": 42 }
+  },
+  "12": {
+    "class_type": "CFGGuider",
+    "inputs": {
+      "model": ["2", 0],
+      "positive": ["6", 0],
+      "negative": ["6", 1],
+      "cfg": 1
+    }
+  },
+  "13": {
+    "class_type": "KSamplerSelect",
+    "inputs": { "sampler_name": "euler" }
+  },
+  "14": {
+    "class_type": "ManualSigmas",
+    "inputs": { "sigmas": "1.0, 0.99375, 0.9875, 0.98125, 0.975, 0.909375, 0.725, 0.421875, 0.0" }
+  },
+  "15": {
+    "class_type": "SamplerCustomAdvanced",
+    "inputs": {
+      "noise": ["11", 0],
+      "guider": ["12", 0],
+      "sampler": ["13", 0],
+      "sigmas": ["14", 0],
+      "latent_image": ["10", 0]
+    }
+  },
+  "16": {
+    "class_type": "LTXVSeparateAVLatent",
+    "inputs": { "av_latent": ["15", 0] }
+  },
+  "17": {
+    "class_type": "VAEDecodeTiled",
+    "inputs": {
+      "samples": ["16", 0],
+      "vae": ["1", 2],
+      "tile_size": 768,
+      "overlap": 64,
+      "temporal_size": 64,
+      "temporal_overlap": 4
+    }
+  },
+  "18": {
+    "class_type": "LTXVAudioVAEDecode",
+    "inputs": { "samples": ["16", 1], "audio_vae": ["8", 0] }
+  },
+  "19": {
+    "class_type": "CreateVideo",
+    "inputs": { "images": ["17", 0], "fps": 24, "audio": ["18", 0], "bit_depth": 8 }
+  },
+  "20": {
+    "class_type": "SaveVideo",
+    "inputs": {
+      "video": ["19", 0],
+      "filename_prefix": "ltx23/t2v_audio",
+      "format": "mp4",
+      "codec": "h264"
+    }
+  }
+}
