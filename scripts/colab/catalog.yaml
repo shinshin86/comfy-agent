@@ -255,6 +255,24 @@ kits:
         task: text_to_video
         speed: slow
         quality: high
+  - name: moss_soundeffect_v2
+    path: moss_soundeffect_v2/
+    status: verified
+    tasks: [text_to_audio]
+    outputs: [audio]
+    gpu:
+      minimum: A100
+      recommended: A100
+    summary: MOSS-SoundEffect v2.0 text-to-sound generation at 48 kHz.
+    setup_file: 01_setup.py
+    license_notes: [Apache-2.0 model and inference package; review upstream terms before use.]
+    tags: [audio, sound_effects, sfx, openmoss, diffusion]
+    workflows:
+      - name: moss_soundeffect_v2_t2a
+        file: moss_soundeffect_v2_t2a.json
+        task: text_to_audio
+        speed: slow
+        quality: high
   - name: ooo_anima
     path: ooo_anima/
     status: verified

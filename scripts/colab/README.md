@@ -27,6 +27,7 @@ in `.mcp.json` at the repo root.
 | [`./wan22/`](./wan22/) | TI2V 5B verified E2E; T2V 14B starter | A100 | Wan 2.2 video |
 | [`./hunyuan_video/`](./hunyuan_video/) | Verified E2E (A100) | L4 24GB / A100 | Tencent Hunyuan Video T2V 720p (bf16 → fp8 at load) |
 | [`./ltx23/`](./ltx23/) | Starter | A100 | LTX-2.3 22B i2v video |
+| [`./moss_soundeffect_v2/`](./moss_soundeffect_v2/) | Verified E2E | A100 | MOSS-SoundEffect v2.0, 48 kHz text-to-sound effects |
 | [`./sulphur2/`](./sulphur2/) | Verified E2E (i2v + t2v, A100) | A100 | Sulphur-2, uncensored LTX-2.3 fine-tune (fp8mixed) — review Colab AUP |
 | [`./10eros/`](./10eros/) | i2v Verified E2E; t2v starter | A100 | 10Eros, uncensored LTX-2.3 fine-tune on Sulphur-2-base (fp8mixed_learned; own abliterated Gemma encoder) — review Colab AUP |
 
