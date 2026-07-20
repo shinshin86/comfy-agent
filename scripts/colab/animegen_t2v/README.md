@@ -57,7 +57,8 @@ notes 1280×720 works with more VRAM/time.
   full Colab → cloudflared → local `comfy-agent run` path at 512×288 with
   33 frames. ComfyUI's built-in Wan loader recognized both raw AnimeGen
   diffusers safetensors directly, so no custom node or repack is required.
-  The test completed in 185.84 seconds and produced a valid animated WebP.
+  The full CLI run completed in 218.09 seconds and saved a valid animated
+  WebP locally.
 - **VRAM**: each expert is ~28.6 GB in bf16. The workflows set
   `weight_dtype: fp8_e4m3fn` so a single expert fits the standard A100
   40 GB. On A100 80 GB you can switch both `UNETLoader` nodes back to
