@@ -324,6 +324,24 @@ kits:
         task: text_to_image
         speed: fast
         quality: draft
+  - name: stable_audio3
+    path: stable_audio3/
+    status: verified
+    tasks: [text_to_audio]
+    outputs: [audio]
+    gpu:
+      minimum: L4
+      recommended: A100
+    summary: Stable Audio 3 Medium text-to-audio generation with MP3 output.
+    setup_file: 01_setup.py
+    license_notes: [Stable Audio Open model license; review upstream commercial-use terms.]
+    tags: [audio, music, sound_effects, stable_audio]
+    workflows:
+      - name: stable_audio3_medium_t2a
+        file: stable_audio3_medium_t2a.json
+        task: text_to_audio
+        speed: slow
+        quality: high
   - name: sulphur2
     path: sulphur2/
     status: verified

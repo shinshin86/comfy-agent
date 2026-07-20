@@ -142,6 +142,19 @@ describe("buildColabSuggestPayload", () => {
     });
   });
 
+  it("suggests Stable Audio 3 for music generation goals", async () => {
+    const catalog = await loadColabCatalogFile(catalogPath);
+    const payload = buildColabSuggestPayload(catalog, {
+      goal: "generate music and audio on an A100",
+    });
+
+    expect(payload.suggestions[0]).toMatchObject({
+      kit: "stable_audio3",
+      workflow: "stable_audio3_medium_t2a",
+      task: "text_to_audio",
+    });
+  });
+
   it("keeps suggestions free of local paths", async () => {
     const catalog = await loadColabCatalogFile(catalogPath);
     const payload = buildColabSuggestPayload(catalog, { goal: "anime image" });
