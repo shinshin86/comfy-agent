@@ -1,0 +1,60 @@
+{
+  "1": {
+    "class_type": "CheckpointLoaderSimple",
+    "inputs": { "ckpt_name": "hidream_o1_image_dev_fp8_scaled.safetensors" }
+  },
+  "2": {
+    "class_type": "ModelNoiseScale",
+    "inputs": { "model": ["1", 0], "noise_scale": 7.6 }
+  },
+  "3": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "A tiny observatory on a moss-covered asteroid, brass instruments glowing under a deep indigo sky, cinematic moonlight, finely rendered natural textures",
+      "clip": ["1", 1]
+    }
+  },
+  "4": {
+    "class_type": "CLIPTextEncode",
+    "inputs": { "text": "", "clip": ["1", 1] }
+  },
+  "5": {
+    "class_type": "EmptyHiDreamO1LatentImage",
+    "inputs": { "width": 2048, "height": 2048, "batch_size": 1 }
+  },
+  "6": {
+    "class_type": "BasicScheduler",
+    "inputs": {
+      "model": ["2", 0],
+      "scheduler": "normal",
+      "steps": 28,
+      "denoise": 1
+    }
+  },
+  "7": {
+    "class_type": "SamplerLCM",
+    "inputs": { "s_noise": 1, "s_noise_end": 1, "noise_clip_std": 2.5 }
+  },
+  "8": {
+    "class_type": "SamplerCustom",
+    "inputs": {
+      "model": ["2", 0],
+      "add_noise": true,
+      "noise_seed": 42,
+      "cfg": 1,
+      "positive": ["3", 0],
+      "negative": ["4", 0],
+      "sampler": ["7", 0],
+      "sigmas": ["6", 0],
+      "latent_image": ["5", 0]
+    }
+  },
+  "9": {
+    "class_type": "VAEDecode",
+    "inputs": { "samples": ["8", 0], "vae": ["1", 2] }
+  },
+  "10": {
+    "class_type": "SaveImage",
+    "inputs": { "images": ["9", 0], "filename_prefix": "hidream_o1/t2i" }
+  }
+}

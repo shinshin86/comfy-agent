@@ -194,6 +194,19 @@ describe("buildColabSuggestPayload", () => {
     });
   });
 
+  it("suggests HiDream-O1 when requested by name", async () => {
+    const catalog = await loadColabCatalogFile(catalogPath);
+    const payload = buildColabSuggestPayload(catalog, {
+      goal: "hidream_o1",
+    });
+
+    expect(payload.suggestions[0]).toMatchObject({
+      kit: "hidream_o1",
+      workflow: "hidream_o1_dev_t2i",
+      task: "text_to_image",
+    });
+  });
+
   it("keeps suggestions free of local paths", async () => {
     const catalog = await loadColabCatalogFile(catalogPath);
     const payload = buildColabSuggestPayload(catalog, { goal: "anime image" });

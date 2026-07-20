@@ -134,6 +134,24 @@ kits:
         task: text_to_image
         speed: slow
         quality: high
+  - name: hidream_o1
+    path: hidream_o1/
+    status: verified
+    tasks: [text_to_image]
+    outputs: [image]
+    gpu:
+      minimum: A100
+      recommended: A100
+    summary: HiDream-O1 Dev fp8 reasoning-oriented 2K text-to-image generation.
+    setup_file: 01_setup.py
+    license_notes: [MIT model license; review upstream terms before use.]
+    tags: [image, text_to_image, reasoning, hidream]
+    workflows:
+      - name: hidream_o1_dev_t2i
+        file: hidream_o1_dev_t2i.json
+        task: text_to_image
+        speed: slow
+        quality: high
   - name: hunyuan_video
     path: hunyuan_video/
     status: verified
