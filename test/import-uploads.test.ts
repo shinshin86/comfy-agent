@@ -64,4 +64,28 @@ describe("buildPresetTemplate upload inference", () => {
       image_2: { cli_flag: "--image-2", target: { node_id: "11" } },
     });
   });
+
+  it("recognizes direct prompt fields on custom generation nodes", () => {
+    const preset = buildPresetTemplate(
+      "sound_effect",
+      "sound_effect.json",
+      {
+        "1": {
+          class_type: "MossSoundEffectV2",
+          inputs: {
+            prompt: "Rain on a metal roof",
+            negative_prompt: "speech",
+            steps: 100,
+          },
+        },
+      },
+      null,
+    );
+
+    expect(preset.parameters).toMatchObject({
+      "1_prompt": { role: "prompt" },
+      "1_negative_prompt": { role: "negative_prompt" },
+      "1_steps": { role: "steps", min: 1 },
+    });
+  });
 });

@@ -54,6 +54,7 @@ Ready-to-paste starter kits live under [`scripts/colab/`](./scripts/colab/):
 | [`anima/`](./scripts/colab/anima/)     | T4+  | Image (Anima Base v1.0, anime-style) |
 | [`flux2/`](./scripts/colab/flux2/)     | A100 | Image (Flux 2 dev)                   |
 | [`wan22/`](./scripts/colab/wan22/)     | A100 | Video (Wan 2.2 TI2V 5B / T2V 14B)    |
+| [`moss_soundeffect_v2/`](./scripts/colab/moss_soundeffect_v2/) | A100 | Audio (48 kHz sound effects)         |
 
 Flow (same for every kit):
 

@@ -164,6 +164,8 @@ const mapObjectInfoType = (value: unknown): "string" | "int" | "float" | "bool" 
 const inferParameterRole = (classType: string | undefined, inputName: string) => {
   const lowerInput = inputName.toLowerCase();
   const lowerClass = (classType ?? "").toLowerCase();
+  if (lowerInput === "prompt") return "prompt";
+  if (lowerInput === "negative_prompt") return "negative_prompt";
   if (lowerInput === "seed" || lowerInput.endsWith("_seed")) return "seed";
   if (lowerInput === "steps" || lowerInput.endsWith("_steps")) return "steps";
   if (lowerInput === "cfg" || lowerInput.includes("guidance")) return "guidance";

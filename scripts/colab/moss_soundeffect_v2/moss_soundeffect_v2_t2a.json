@@ -1,0 +1,21 @@
+{
+  "1": {
+    "class_type": "MossSoundEffectV2",
+    "inputs": {
+      "prompt": "The crisp, rhythmic click-clack of fast typing on a mechanical keyboard in a quiet office.",
+      "seconds": 5,
+      "steps": 100,
+      "cfg_scale": 4,
+      "sigma_shift": 5,
+      "seed": 42,
+      "negative_prompt": "speech, music, distortion, clipping"
+    }
+  },
+  "2": {
+    "class_type": "SaveAudio",
+    "inputs": {
+      "audio": ["1", 0],
+      "filename_prefix": "moss_soundeffect_v2/effect"
+    }
+  }
+}

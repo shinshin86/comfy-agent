@@ -54,6 +54,7 @@ comfy-agent run default --source remote --base-url http://127.0.0.1:8188 --promp
 | [`anima/`](./scripts/colab/anima/)     | T4+  | 画像（Anima Base v1.0、アニメ系） |
 | [`flux2/`](./scripts/colab/flux2/)     | A100 | 画像（Flux 2 dev）                |
 | [`wan22/`](./scripts/colab/wan22/)     | A100 | 動画（Wan 2.2 TI2V 5B / T2V 14B） |
+| [`moss_soundeffect_v2/`](./scripts/colab/moss_soundeffect_v2/) | A100 | 音声（48 kHz効果音）              |
 
 手順はどのキットでも同じです。
 

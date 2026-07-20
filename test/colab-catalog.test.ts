@@ -155,6 +155,20 @@ describe("buildColabSuggestPayload", () => {
     });
   });
 
+  it("suggests MOSS-SoundEffect v2.0 when requested by name", async () => {
+    const catalog = await loadColabCatalogFile(catalogPath);
+    const payload = buildColabSuggestPayload(catalog, {
+      goal: "moss_soundeffect_v2",
+    });
+
+    expect(payload.suggestions[0]).toMatchObject({
+      kit: "moss_soundeffect_v2",
+      workflow: "moss_soundeffect_v2_t2a",
+      task: "text_to_audio",
+      status: "verified",
+    });
+  });
+
   it("suggests the LTX-2.3 audio-video kit when requested by name", async () => {
     const catalog = await loadColabCatalogFile(catalogPath);
     const payload = buildColabSuggestPayload(catalog, {
