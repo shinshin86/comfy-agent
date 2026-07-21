@@ -38,6 +38,9 @@ The MP3 is downloaded below
 - Short clips are recommended for the first Colab run. Longer audio increases
   memory use and generation time.
 
-The checkpoint uses the Stable Audio Open model license. Review its current
-commercial-use and redistribution terms before publishing generated assets or
-redistributing weights.
+- Stable Audio 3 weights use the Stability AI Community License. Review the
+  current commercial-use and redistribution terms at https://stability.ai/license.
+- The bundled T5Gemma text encoder is governed by the Gemma Terms of Use:
+  https://ai.google.dev/gemma/terms.
+- Generated audio can still require rights review depending on the prompt and
+  intended use.

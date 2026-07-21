@@ -48,13 +48,16 @@ comfy-agent run default --source remote --base-url http://127.0.0.1:8188 --promp
 
 貼り付けるだけで動くスターターキットを [`scripts/colab/`](./scripts/colab/) に用意しています。
 
-| Kit                                    | GPU  | 出力                              |
-| -------------------------------------- | ---- | --------------------------------- |
-| [`z_image/`](./scripts/colab/z_image/) | T4+  | 画像（Z-Image turbo、最速）       |
-| [`anima/`](./scripts/colab/anima/)     | T4+  | 画像（Anima Base v1.0、アニメ系） |
-| [`flux2/`](./scripts/colab/flux2/)     | A100 | 画像（Flux 2 dev）                |
-| [`wan22/`](./scripts/colab/wan22/)     | A100 | 動画（Wan 2.2 TI2V 5B / T2V 14B） |
-| [`moss_soundeffect_v2/`](./scripts/colab/moss_soundeffect_v2/) | A100 | 音声（48 kHz効果音）              |
+| Kit                                                                        | GPU           | 出力                              |
+| -------------------------------------------------------------------------- | ------------- | --------------------------------- |
+| [`z_image/`](./scripts/colab/z_image/)                                     | T4+           | 画像（Z-Image turbo、最速）       |
+| [`anima/`](./scripts/colab/anima/)                                         | T4+           | 画像（Anima Base v1.0、アニメ系） |
+| [`flux2/`](./scripts/colab/flux2/)                                         | A100          | 画像（Flux 2 dev）                |
+| [`wan22/`](./scripts/colab/wan22/)                                         | A100          | 動画（Wan 2.2 TI2V 5B / T2V 14B） |
+| [`ace_step_1_5/`](./scripts/colab/ace_step_1_5/)                           | T4+（L4推奨） | 音楽（フル楽曲・歌詞・ボーカル）  |
+| [`stable_audio3_small_music/`](./scripts/colab/stable_audio3_small_music/) | T4+           | 音楽（インスト・BGM）             |
+| [`stable_audio3/`](./scripts/colab/stable_audio3/)                         | L4+           | 音楽・効果音                      |
+| [`moss_soundeffect_v2/`](./scripts/colab/moss_soundeffect_v2/)             | A100          | 音声（48 kHz効果音）              |
 
 手順はどのキットでも同じです。
 
@@ -90,9 +93,10 @@ comfy-agent colab catalog --json
 comfy-agent colab suggest "fast image generation on a T4" --json
 ```
 
-`colab suggest` はまず信頼度（`verified` > `partial` > `starter`）で並べ替え、
-自然言語の目的や `--task` / `--output` / `--gpu` フィルタは同じ信頼度内の
-タイブレークとしてのみ作用します。
+`colab suggest` は、出力メディア・音声機能・GPU要件が合わない候補を先に除外し、
+目的への適合度と信頼度（`verified` > `partial` > `starter`）で互換候補を並べます。
+互換候補がない場合、`--json` は代替候補と満たせない要件を返します。
+任意の `gpu.verified` はE2E実測済みGPUで、宣言上の互換下限 `gpu.minimum` とは別です。
 
 注意: `colab` はリポジトリ側の補助コマンドです。`scripts/colab/catalog.yaml`
 を読み込みますが、このファイルは **npm パッケージには同梱されません**。本リポジトリの
