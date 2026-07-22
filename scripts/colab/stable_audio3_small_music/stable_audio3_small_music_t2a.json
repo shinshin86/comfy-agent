@@ -1,0 +1,67 @@
+{
+  "1": {
+    "inputs": {
+      "ckpt_name": "stable_audio_3_small_music.safetensors"
+    },
+    "class_type": "CheckpointLoaderSimple"
+  },
+  "2": {
+    "inputs": {
+      "clip_name": "t5gemma_b_b_ul2.safetensors",
+      "type": "stable_audio",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader"
+  },
+  "3": {
+    "inputs": {
+      "text": "Warm instrumental city pop background music, bright electric piano, melodic bass, clean rhythm guitar, crisp drums, nostalgic summer night mood, 118 BPM",
+      "clip": ["2", 0]
+    },
+    "class_type": "CLIPTextEncode"
+  },
+  "4": {
+    "inputs": {
+      "conditioning": ["3", 0]
+    },
+    "class_type": "ConditioningZeroOut"
+  },
+  "5": {
+    "inputs": {
+      "seconds": 30,
+      "batch_size": 1
+    },
+    "class_type": "EmptyLatentAudio"
+  },
+  "6": {
+    "inputs": {
+      "model": ["1", 0],
+      "seed": 42,
+      "steps": 8,
+      "cfg": 1,
+      "sampler_name": "lcm",
+      "scheduler": "simple",
+      "positive": ["3", 0],
+      "negative": ["4", 0],
+      "latent_image": ["5", 0],
+      "denoise": 1
+    },
+    "class_type": "KSampler"
+  },
+  "7": {
+    "inputs": {
+      "samples": ["6", 0],
+      "vae": ["1", 2]
+    },
+    "class_type": "VAEDecodeAudio"
+  },
+  "8": {
+    "inputs": {
+      "audio": ["7", 0],
+      "filename_prefix": "stable_audio3_small_music/audio",
+      "format": "mp3",
+      "format.quality": "V0"
+    },
+    "class_type": "SaveAudioAdvanced"
+  }
+}

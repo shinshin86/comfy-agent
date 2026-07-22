@@ -48,13 +48,16 @@ No local GPU? Run ComfyUI on a Colab GPU runtime and drive it from
 
 Ready-to-paste starter kits live under [`scripts/colab/`](./scripts/colab/):
 
-| Kit                                    | GPU  | Output                               |
-| -------------------------------------- | ---- | ------------------------------------ |
-| [`z_image/`](./scripts/colab/z_image/) | T4+  | Image (Z-Image turbo, fastest)       |
-| [`anima/`](./scripts/colab/anima/)     | T4+  | Image (Anima Base v1.0, anime-style) |
-| [`flux2/`](./scripts/colab/flux2/)     | A100 | Image (Flux 2 dev)                   |
-| [`wan22/`](./scripts/colab/wan22/)     | A100 | Video (Wan 2.2 TI2V 5B / T2V 14B)    |
-| [`moss_soundeffect_v2/`](./scripts/colab/moss_soundeffect_v2/) | A100 | Audio (48 kHz sound effects)         |
+| Kit                                                                        | GPU                  | Output                               |
+| -------------------------------------------------------------------------- | -------------------- | ------------------------------------ |
+| [`z_image/`](./scripts/colab/z_image/)                                     | T4+                  | Image (Z-Image turbo, fastest)       |
+| [`anima/`](./scripts/colab/anima/)                                         | T4+                  | Image (Anima Base v1.0, anime-style) |
+| [`flux2/`](./scripts/colab/flux2/)                                         | A100                 | Image (Flux 2 dev)                   |
+| [`wan22/`](./scripts/colab/wan22/)                                         | A100                 | Video (Wan 2.2 TI2V 5B / T2V 14B)    |
+| [`ace_step_1_5/`](./scripts/colab/ace_step_1_5/)                           | T4+ (L4 recommended) | Audio (full songs, lyrics, vocals)   |
+| [`stable_audio3_small_music/`](./scripts/colab/stable_audio3_small_music/) | T4+                  | Audio (instrumental music / BGM)     |
+| [`stable_audio3/`](./scripts/colab/stable_audio3/)                         | L4+                  | Audio (music and sound effects)      |
+| [`moss_soundeffect_v2/`](./scripts/colab/moss_soundeffect_v2/)             | A100                 | Audio (48 kHz sound effects)         |
 
 Flow (same for every kit):
 
@@ -91,9 +94,12 @@ comfy-agent colab catalog --json
 comfy-agent colab suggest "fast image generation on a T4" --json
 ```
 
-`colab suggest` ranks kits by reliability first (`verified` > `partial` >
-`starter`); the natural-language goal and `--task` / `--output` / `--gpu`
-filters only break ties within the same reliability tier.
+`colab suggest` filters out incompatible media, audio capabilities, and GPU
+requirements first, then ranks compatible workflows by goal fit and reliability
+(`verified` > `partial` > `starter`). If nothing is compatible, `--json`
+returns alternatives together with their unmet requirements.
+The optional `gpu.verified` list records GPUs exercised in E2E tests; it is
+separate from the declared `gpu.minimum` compatibility floor.
 
 Note: `colab` is a repository-side helper. It reads
 `scripts/colab/catalog.yaml`, which is **not** bundled in the npm package, so

@@ -4,7 +4,9 @@ import { CliError } from "../io/errors.js";
 import {
   buildColabCatalogPayload,
   buildColabSuggestPayload,
+  COLAB_GPUS,
   loadColabCatalogFile,
+  normalizeColabGpu,
   type ColabOutput,
   type ColabTask,
 } from "../colab/catalog.js";
@@ -51,6 +53,16 @@ const resolveOutput = (value: string | undefined) => {
   throw new CliError("INVALID_PARAM", t("colab.invalid_output"), 2, { value });
 };
 
+const resolveGpu = (value: string | undefined) => {
+  if (!value) return undefined;
+  const gpu = normalizeColabGpu(value);
+  if (gpu) return gpu;
+  throw new CliError("INVALID_PARAM", t("colab.invalid_gpu"), 2, {
+    value,
+    supported: COLAB_GPUS.join(","),
+  });
+};
+
 const resolveLimit = (value: string | undefined) => {
   if (!value) return undefined;
   const parsed = Number(value);
@@ -85,7 +97,7 @@ export const runColabSuggest = async (goal: string | undefined, options: ColabSu
     goal,
     task: resolveTask(options.task),
     output: resolveOutput(options.output),
-    gpu: options.gpu,
+    gpu: resolveGpu(options.gpu),
     limit: resolveLimit(options.limit),
   });
 
@@ -95,9 +107,22 @@ export const runColabSuggest = async (goal: string | undefined, options: ColabSu
   }
 
   print(t("colab.suggest_header"));
+  if (payload.suggestions.length === 0) print(t("colab.suggest_none"));
   for (const item of payload.suggestions) {
     print(
-      `- ${item.kit}/${item.workflow}: ${item.task} -> ${item.outputs.join(",")} (${item.status}, score=${item.score})`,
+      `- ${item.kit}/${item.workflow}: ${item.task} -> ${item.workflow_output} (${item.status}, score=${item.score})`,
     );
+    const unverifiedGpu = item.reasons
+      .find((reason) => reason.startsWith("gpu_unverified:"))
+      ?.split(":")[1];
+    if (unverifiedGpu) print(`  ${t("colab.gpu_unverified", { gpu: unverifiedGpu })}`);
+  }
+  if (payload.alternatives.length > 0) {
+    print(t("colab.suggest_alternatives"));
+    for (const item of payload.alternatives) {
+      print(
+        `- ${item.kit}/${item.workflow}: ${item.task} -> ${item.workflow_output} (${item.status}; ${item.unmet_requirements?.join(", ")})`,
+      );
+    }
   }
 };

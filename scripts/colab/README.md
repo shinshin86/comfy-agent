@@ -28,12 +28,21 @@ in `.mcp.json` at the repo root.
 | [`./wan22/`](./wan22/) | TI2V 5B verified E2E; T2V 14B starter | A100 | Wan 2.2 video |
 | [`./hunyuan_video/`](./hunyuan_video/) | Verified E2E (A100) | L4 24GB / A100 | Tencent Hunyuan Video T2V 720p (bf16 → fp8 at load) |
 | [`./ltx23/`](./ltx23/) | Starter | A100 | LTX-2.3 22B i2v video |
+| [`./ace_step_1_5/`](./ace_step_1_5/) | A100 E2E verified; T4/L4 unverified | T4+ (L4 recommended) | ACE-Step 1.5 Turbo AIO, full songs with lyrics and vocals |
+| [`./stable_audio3_small_music/`](./stable_audio3_small_music/) | A100 E2E verified; T4 unverified | T4+ | Stable Audio 3 Small Music, lightweight instrumental music / BGM |
+| [`./stable_audio3/`](./stable_audio3/) | Verified E2E | L4+ | Stable Audio 3 Medium, music and sound effects |
 | [`./moss_soundeffect_v2/`](./moss_soundeffect_v2/) | Verified E2E | A100 | MOSS-SoundEffect v2.0, 48 kHz text-to-sound effects |
 | [`./sulphur2/`](./sulphur2/) | Verified E2E (i2v + t2v, A100) | A100 | Sulphur-2, uncensored LTX-2.3 fine-tune (fp8mixed) — review Colab AUP |
 | [`./10eros/`](./10eros/) | i2v Verified E2E; t2v starter | A100 | 10Eros, uncensored LTX-2.3 fine-tune on Sulphur-2-base (fp8mixed_learned; own abliterated Gemma encoder) — review Colab AUP |
 
 Each subdir has its own `01_setup.py` + workflow JSON(s) + README. The
 launcher `02_start_comfyui.py` at this level is **shared by all kits**.
+
+Statuses are evidence levels: **Starter** means the files are statically
+validated but still need a recorded Colab E2E; **Partial** means only some
+documented variants have passed; **Verified E2E** means setup, ComfyUI API,
+local `comfy-agent import`/`run`, and output inspection have passed on the GPU
+named in the kit's verification record.
 
 ## Common flow
 
@@ -93,5 +102,8 @@ launcher `02_start_comfyui.py` at this level is **shared by all kits**.
   mirrors the example embedded in `example.png` on circlestone-labs/Anima).
 - Model weights are downloaded from their respective upstream
   repositories at runtime and are **not** redistributed by this project.
-  Check each model's license before use — in particular, **Flux 2 [dev]
-  is released under a non-commercial license**.
+  Check each model and text encoder license before use. In particular,
+  **Flux 2 [dev] is released under a non-commercial license**; Stable Audio 3
+  uses the Stability AI Community License and its T5Gemma encoder uses the
+  Gemma Terms of Use. ACE-Step's original and Comfy-Org repack metadata declare
+  different permissive licenses, so review both before redistribution.

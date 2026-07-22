@@ -1,5 +1,31 @@
 version: 1
 kits:
+  - name: ace_step_1_5
+    path: ace_step_1_5/
+    status: partial
+    tasks: [text_to_audio]
+    outputs: [audio]
+    gpu:
+      minimum: T4
+      recommended: L4
+      verified: [A100]
+    summary: ACE-Step 1.5 Turbo AIO full-song music generation with lyrics and vocals.
+    setup_file: 01_setup.py
+    license_notes:
+      - Original ACE-Step 1.5 code and model card declare MIT; the Comfy-Org repack metadata declares Apache-2.0. Review both before redistribution.
+      - Review generated music for copyright, voice, and style-similarity risks.
+    tags: [audio, music, song, lyrics, vocals, japanese, multilingual, ace_step]
+    workflows:
+      - name: ace_step_1_5_t2a
+        file: ace_step_1_5_t2a.json
+        task: text_to_audio
+        output: audio
+        capabilities:
+          audio_kinds: [music]
+          lyrics: true
+          vocals: true
+        speed: medium
+        quality: high
   - name: anima
     path: anima/
     status: verified
@@ -294,6 +320,11 @@ kits:
       - name: moss_soundeffect_v2_t2a
         file: moss_soundeffect_v2_t2a.json
         task: text_to_audio
+        output: audio
+        capabilities:
+          audio_kinds: [sound_effect]
+          lyrics: false
+          vocals: false
         speed: slow
         quality: high
   - name: ooo_anima
@@ -429,13 +460,46 @@ kits:
       recommended: A100
     summary: Stable Audio 3 Medium text-to-audio generation with MP3 output.
     setup_file: 01_setup.py
-    license_notes: [Stable Audio Open model license; review upstream commercial-use terms.]
+    license_notes:
+      - Stable Audio 3 weights use the Stability AI Community License; review current commercial-use terms.
+      - The T5Gemma text encoder is governed by the Gemma Terms of Use.
     tags: [audio, music, sound_effects, stable_audio]
     workflows:
       - name: stable_audio3_medium_t2a
         file: stable_audio3_medium_t2a.json
         task: text_to_audio
+        output: audio
+        capabilities:
+          audio_kinds: [music, sound_effect]
+          lyrics: false
+          vocals: false
         speed: slow
+        quality: high
+  - name: stable_audio3_small_music
+    path: stable_audio3_small_music/
+    status: partial
+    tasks: [text_to_audio]
+    outputs: [audio]
+    gpu:
+      minimum: T4
+      recommended: T4
+      verified: [A100]
+    summary: Stable Audio 3 Small Music lightweight instrumental and BGM generation.
+    setup_file: 01_setup.py
+    license_notes:
+      - Stable Audio 3 weights use the Stability AI Community License; review current commercial-use terms.
+      - The T5Gemma text encoder is governed by the Gemma Terms of Use.
+    tags: [audio, music, instrumental, bgm, stable_audio, fast]
+    workflows:
+      - name: stable_audio3_small_music_t2a
+        file: stable_audio3_small_music_t2a.json
+        task: text_to_audio
+        output: audio
+        capabilities:
+          audio_kinds: [music]
+          lyrics: false
+          vocals: false
+        speed: fast
         quality: high
   - name: sulphur2
     path: sulphur2/
