@@ -9,6 +9,7 @@ import { runAnalyze } from "./analyze.js";
 import { runStatus } from "./status.js";
 import { runPresetShow } from "./preset-show.js";
 import { runColabCatalog, runColabSuggest } from "./colab.js";
+import { runConnect } from "./connect.js";
 import { errorPayloadFrom, exitCodeFrom, isCliError } from "../io/errors.js";
 import { log } from "../io/output.js";
 import { resolveLanguage, setLanguage, t } from "../i18n/index.js";
@@ -84,6 +85,7 @@ program
   .option("--seed-step <step>", t("cli.run.option.seed_step"))
   .option("--poll-interval-ms <ms>", t("cli.run.option.poll_interval"))
   .option("--timeout-seconds <sec>", t("cli.run.option.timeout"))
+  .option("--no-preflight", t("cli.run.option.no_preflight"))
   .option("--base-url <url>", t("cli.option.base_url"))
   .option("--source <local|remote|remote-catalog>", t("cli.run.option.source"))
   .option("--global", t("cli.option.global"))
@@ -103,6 +105,7 @@ program
   .description(t("cli.doctor.description"))
   .option("--json", t("cli.option.json"))
   .option("--base-url <url>", t("cli.option.base_url"))
+  .option("--preset <name>", t("cli.doctor.option.preset"))
   .option("--global", t("cli.option.global"))
   .option("--all-scopes", t("cli.doctor.option.all_scopes"))
   .option("--lang <lang>", t("cli.option.lang"))
@@ -163,6 +166,22 @@ program
   .action(async (imagePath, options) => {
     try {
       await runAnalyze(imagePath, options);
+    } catch (err) {
+      handleError(err, options?.json);
+    }
+  });
+
+program
+  .command("connect")
+  .description(t("cli.connect.description"))
+  .argument("<url>", t("cli.connect.arg.url"))
+  .option("--json", t("cli.option.json"))
+  .option("--force", t("cli.connect.option.force"))
+  .option("--global", t("cli.option.global"))
+  .option("--lang <lang>", t("cli.option.lang"))
+  .action(async (url, options) => {
+    try {
+      await runConnect(url, options);
     } catch (err) {
       handleError(err, options?.json);
     }

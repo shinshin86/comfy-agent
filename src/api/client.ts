@@ -35,9 +35,20 @@ export class ComfyClient {
           }
           throw new CliError("API_ERROR", t("api.get_failed", { path: urlPath }), 3, {
             status: res.status,
+            kind: "http",
           });
         }
-        return (await res.json()) as T;
+        const text = await res.text();
+        try {
+          return JSON.parse(text) as T;
+        } catch {
+          // A 200 with a non-JSON body (proxy login page, HTML error page):
+          // the server responded, so this is not a network failure.
+          throw new CliError("API_ERROR", t("api.get_failed", { path: urlPath }), 3, {
+            status: res.status,
+            kind: "invalid_response",
+          });
+        }
       } catch (err) {
         if (attempt < retries) {
           await sleep(delay);
@@ -46,6 +57,7 @@ export class ComfyClient {
         if (err instanceof CliError) throw err;
         throw new CliError("API_ERROR", t("api.get_network_error", { path: urlPath }), 3, {
           cause: String(err),
+          kind: "network",
         });
       }
     }
@@ -160,7 +172,7 @@ export class ComfyClient {
     return this.getJson("/queue", { retries: 1, retryDelayMs: 300 });
   }
 
-  async objectInfo() {
-    return this.getJson("/object_info", { retries: 1, retryDelayMs: 300 });
+  async objectInfo<T = unknown>() {
+    return this.getJson<T>("/object_info", { retries: 1, retryDelayMs: 300 });
   }
 }

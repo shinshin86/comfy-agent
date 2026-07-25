@@ -167,7 +167,9 @@ comfy-agent run text2img_v1 --global --prompt "A cat"
 
 1. `--base-url`
 2. 環境変数 `COMFY_AGENT_BASE_URL`
-3. 既定値 `http://127.0.0.1:8188`
+3. `.comfy-agent/config.yaml` の `base_url`（`comfy-agent connect` で保存。
+   コマンドのスコープを先に参照し、無ければもう一方のスコープを参照）
+4. 既定値 `http://127.0.0.1:8188`
 
 ## コマンド
 
@@ -246,6 +248,20 @@ remote ソースについて:
 - カタログ側は API から workflow JSON を直接取得できない項目が存在します。
 - 複雑な custom node 構成で検証エラーになる場合は、ComfyUI から API JSON をエクスポートして local preset として取り込んでください。
 
+### connect
+
+ComfyUI の base URL を疎通確認して `.comfy-agent/config.yaml` に保存します。
+以後のコマンドで `--base-url` や環境変数の指定が不要になります。
+Colab + trycloudflare のような「セッションごとに URL が変わる」サーバー向けで、
+ランタイム再起動後は新しい URL で `connect` し直すだけで復帰できます。
+
+```bash
+comfy-agent connect https://xxxx.trycloudflare.com
+comfy-agent connect https://xxxx.trycloudflare.com --json
+comfy-agent connect http://127.0.0.1:8188 --global
+comfy-agent connect https://xxxx.trycloudflare.com --force   # 疎通失敗でも保存
+```
+
 ### doctor
 
 ```bash
@@ -253,7 +269,13 @@ comfy-agent doctor
 comfy-agent doctor --json
 comfy-agent doctor --global
 comfy-agent doctor --all-scopes
+comfy-agent doctor --preset text2img_v1        # サーバーのモデル/ノード充足も検査
+comfy-agent doctor --preset text2img_v1 --json
 ```
+
+`--preset` を付けると `/object_info` を取得し、プリセットのワークフローが
+参照するノードクラス・モデルファイルが接続先サーバーに揃っているかを検査します
+（`--json` では `preflight` セクション。不足があれば exit code 3）。
 
 ### status
 
@@ -500,5 +522,15 @@ upload の項目:
 - `WORKDIR_NOT_FOUND`: `comfy-agent init` を先に実行してください。
 - `INVALID_PRESET`: YAML の構造が不正です。`version/name/workflow` を確認してください。
 - `MISSING_REQUIRED_PARAM`: 必須パラメータが不足しています。
-- `API_ERROR`: サーバー接続や応答エラーです。`base_url` を確認してください。
+- `SERVER_UNREACHABLE`: サーバーに接続できません。`base_url` を確認するか、
+  トンネル切れの場合は `comfy-agent connect <url>` で再接続してください。
+- `MISSING_NODE_ON_SERVER`: ワークフローが参照するノードクラスが接続先サーバーに
+  ありません（`details.missing_nodes`）。
+- `MISSING_MODEL_ON_SERVER`: ワークフローが参照するモデルファイルが接続先サーバーに
+  ありません（`details.missing_models`。各項目にサーバー側の `available` 一覧つき）。
+  多くの場合、サーバーが別のワークフロー/キット用にセットアップされていることを意味します。
+- `API_ERROR`: サーバーには接続できたものの応答エラーです。`base_url` を確認してください。
 - `TIMEOUT`: 完了待ちがタイムアウトしました。`--timeout-seconds` を増やしてください。
+
+`run` は送信前にサーバープリフライト検査を行います。デバッグ等で回避したい場合は
+`--no-preflight` を指定してください。

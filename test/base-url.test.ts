@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { decideComfyBaseUrl, resolveComfyBaseUrl } from "../src/utils/base-url.js";
+import { decideComfyBaseUrl } from "../src/utils/base-url.js";
 
 describe("base url resolver", () => {
   it("uses --base-url first", () => {
@@ -17,7 +17,7 @@ describe("base url resolver", () => {
   });
 
   it("falls back to default", () => {
-    const value = resolveComfyBaseUrl({}, {} as NodeJS.ProcessEnv);
-    expect(value).toBe("http://127.0.0.1:8188");
+    const decision = decideComfyBaseUrl({}, {} as NodeJS.ProcessEnv, () => null);
+    expect(decision).toEqual({ source: "default", value: "http://127.0.0.1:8188" });
   });
 });
