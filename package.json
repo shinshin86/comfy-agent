@@ -26,7 +26,7 @@
   },
   "scripts": {
     "clean": "node -e \"require('node:fs').rmSync('dist',{ recursive: true, force: true })\"",
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && node -e \"require('fs').chmodSync('dist/cli/index.js', 0o755)\"",
     "dev": "tsx src/cli/index.ts",
     "lint": "eslint .",
     "fmt": "prettier -w .",
