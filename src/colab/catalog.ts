@@ -569,6 +569,11 @@ export const buildColabSuggestPayload = (
       if (hints.musicVideo && kit.outputs.includes("audio") && kit.outputs.includes("video")) {
         score += 20;
         reasons.push("composite:music_video");
+      } else if (kit.outputs.length >= 3 && !hints.parallelMedia) {
+        // Conversely, a single-modality request should prefer a dedicated
+        // kit over a multi-modality combo whose setup is far heavier.
+        score -= 10;
+        reasons.push("composite:overkill_for_goal");
       }
       if (hints.wantsEdit && workflow.task === "image_edit") {
         score += 10;
