@@ -1,8 +1,8 @@
 # music_video — combo kit (audio + image + video on one runtime)
 
-**Status: Starter** (assembled from three existing kits — z_image is
-Verified E2E, ace_step_1_5 and wan22 are partial; the combined runtime has
-not yet passed the repo's E2E verification flow).
+**Status: Verified E2E** (A100, 2026-07-25 — full canonical flow: Colab
+setup → cloudflared tunnel → local `comfy-agent connect`/`import`/`run`
+for all three modalities → recipe assembly to a finished MV).
 
 One A100 Colab runtime that can do everything the
 [music-video recipe](../../../recipes/music-video/RECIPE.md) needs:
@@ -52,11 +52,20 @@ Then follow [recipes/music-video/RECIPE.md](../../../recipes/music-video/RECIPE.
 
 ## Verification record
 
-- [ ] `01_setup.py` completes on an A100 Colab runtime
-- [ ] `02_start_comfyui.py` writes a usable URL
-- [ ] `comfy-agent doctor` → `connection: OK` from a local machine
-- [ ] all three presets import; `doctor --preset` passes for each
-- [ ] one song + one keyframe + one i2v clip produced via `comfy-agent run`
-- [ ] recipe assembly step yields a playable MV
+Verified 2026-07-25 on an A100-SXM4-40GB Colab runtime, in a single
+run-through from a local macOS machine over a trycloudflare tunnel:
 
-Until every box is checked this kit stays **Starter**.
+- [x] `01_setup.py` completes on an A100 Colab runtime (~47 GB, ~12 min)
+- [x] `02_start_comfyui.py` writes a usable URL
+- [x] `comfy-agent doctor` → `connection: OK` from a local machine
+      (via `comfy-agent connect`, config-persisted base URL)
+- [x] all three presets import; `doctor --preset` passes for each
+- [x] song (ACE-Step, 60 s / 48 kHz mp3), keyframes (Z-Image, 1280x704),
+      and i2v clips (Wan 2.2 TI2V 5B, 121 frames via `--image` upload,
+      ~5 min/clip) all produced via `comfy-agent run` and saved locally
+- [x] recipe assembly (PIL webp→frames→ffmpeg) yields a playable MV
+      (35.3 s, h264 + AAC), spot-checked frame-by-frame
+
+Notes from the run: ffmpeg could not decode the animated WEBP directly —
+use the recipe's PIL frame-extraction fallback. Character consistency
+across scenes varies without a character LoRA.

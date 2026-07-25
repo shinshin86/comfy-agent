@@ -32,7 +32,7 @@ in `.mcp.json` at the repo root.
 | [`./stable_audio3_small_music/`](./stable_audio3_small_music/) | A100 E2E verified; T4 unverified | T4+ | Stable Audio 3 Small Music, lightweight instrumental music / BGM |
 | [`./stable_audio3/`](./stable_audio3/) | Verified E2E | L4+ | Stable Audio 3 Medium, music and sound effects |
 | [`./moss_soundeffect_v2/`](./moss_soundeffect_v2/) | Verified E2E | A100 | MOSS-SoundEffect v2.0, 48 kHz text-to-sound effects |
-| [`./music_video/`](./music_video/) | Starter | A100 | Combo kit: ACE-Step 1.5 songs + Z-Image keyframes + Wan 2.2 TI2V 5B clips on one runtime (see `recipes/music-video/`) |
+| [`./music_video/`](./music_video/) | Verified E2E | A100 | Combo kit: ACE-Step 1.5 songs + Z-Image keyframes + Wan 2.2 TI2V 5B clips on one runtime (see `recipes/music-video/`) |
 | [`./sulphur2/`](./sulphur2/) | Verified E2E (i2v + t2v, A100) | A100 | Sulphur-2, uncensored LTX-2.3 fine-tune (fp8mixed) — review Colab AUP |
 | [`./10eros/`](./10eros/) | i2v Verified E2E; t2v starter | A100 | 10Eros, uncensored LTX-2.3 fine-tune on Sulphur-2-base (fp8mixed_learned; own abliterated Gemma encoder) — review Colab AUP |
 

@@ -530,12 +530,13 @@ kits:
     composable: false
   - name: music_video
     path: music_video/
-    status: starter
+    status: verified
     tasks: [text_to_audio, text_to_image, text_to_video, image_to_video]
     outputs: [audio, image, video]
     gpu:
       minimum: A100
       recommended: A100
+      verified: [A100]
     summary: Combo kit for the music-video recipe — ACE-Step 1.5 songs, Z-Image keyframes, and Wan 2.2 TI2V 5B clips on one runtime.
     setup_file: 01_setup.py
     license_notes:
