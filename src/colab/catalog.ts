@@ -79,6 +79,14 @@ export const ColabWorkflowSchema = z
   })
   .strict();
 
+const ColabAssetSchema = z
+  .object({
+    file: z.string().min(1),
+    dir: z.string().min(1),
+    size_gb: z.number().positive().optional(),
+  })
+  .strict();
+
 export const ColabKitSchema = z
   .object({
     name: z.string().regex(/^[a-zA-Z0-9_-]+$/),
@@ -98,6 +106,17 @@ export const ColabKitSchema = z
     workflows: z.array(ColabWorkflowSchema).min(1),
     license_notes: z.array(z.string()).optional(),
     tags: z.array(z.string()).optional(),
+    // Model files the setup script installs on the ComfyUI host. Advisory:
+    // lets agents map a MISSING_MODEL_ON_SERVER value back to the kit that
+    // provides it, and estimate download volume for blueprints.
+    assets: z.array(ColabAssetSchema).min(1).optional(),
+    // Rough end-to-end setup time in minutes on the recommended GPU with the
+    // full asset set (downloads dominate; assumes ~100 MB/s from HF).
+    setup_minutes: z.number().positive().optional(),
+    // Whether this kit's setup can run additively on a runtime already set up
+    // by another kit (weights/nodes are additive; it does not pin the shared
+    // ComfyUI checkout to a fixed revision or replace the python env).
+    composable: z.boolean().optional(),
   })
   .strict()
   .superRefine((kit, ctx) => {
@@ -198,6 +217,7 @@ const sortCatalog = (catalog: ColabCatalog): ColabCatalog => ({
         })),
       license_notes: kit.license_notes ? [...kit.license_notes] : undefined,
       tags: kit.tags ? [...kit.tags] : undefined,
+      assets: kit.assets ? kit.assets.map((asset) => ({ ...asset })) : undefined,
     })),
 });
 
@@ -251,6 +271,9 @@ export type ColabSuggestion = {
   capabilities?: ColabKit["workflows"][number]["capabilities"];
   gpu: ColabKit["gpu"];
   status: ColabKit["status"];
+  setup_minutes?: number;
+  download_gb?: number;
+  composable?: boolean;
   score: number;
   reasons: string[];
   unmet_requirements?: string[];
@@ -578,6 +601,13 @@ export const buildColabSuggestPayload = (
           verified: kit.gpu.verified ? [...kit.gpu.verified] : undefined,
         },
         status: kit.status,
+        setup_minutes: kit.setup_minutes,
+        download_gb: kit.assets
+          ? Math.round(
+              kit.assets.reduce((sum, asset) => sum + (asset.size_gb ?? 0), 0) * 10,
+            ) / 10
+          : undefined,
+        composable: kit.composable,
         score,
         reasons: [...new Set(reasons)],
       };

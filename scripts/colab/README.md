@@ -69,6 +69,26 @@ named in the kit's verification record.
    auto-generated preset. Rename keys in the generated YAML if you prefer
    friendlier flags like `--prompt`.
 
+## Catalog metadata for agents
+
+`catalog.yaml` records, per kit, machine-readable setup-cost metadata that
+`comfy-agent colab catalog --json` / `colab suggest --json` expose:
+
+- `assets`: model files the kit's setup installs on the ComfyUI host
+  (`file`, `dir` under the ComfyUI workspace, approximate `size_gb`).
+  Agents use this to map a `MISSING_MODEL_ON_SERVER` error value back to
+  the kit that provides that file, and to estimate download volume.
+- `setup_minutes`: rough full-setup time on the recommended GPU
+  (downloads dominate; assumes a fast Colab↔HF connection). Advisory.
+- `composable`: whether the kit's setup can run **additively** on a runtime
+  another kit already set up (weights/custom nodes are additive, no pinned
+  ComfyUI revision, no replacement python env). Kits with `composable: false`
+  (e.g. `ace_step_1_5`, `stable_audio3_small_music` pin the ComfyUI revision;
+  `moss_soundeffect_v2` uses its own venv) should get a fresh runtime.
+
+Sizes were measured from the upstream download URLs; multi-variant kits list
+all variants, so the sum is the worst case, not always the default path.
+
 ## MCP automation
 
 `.mcp.json` registers `colab-mcp`. An MCP-aware client can:

@@ -26,6 +26,12 @@ kits:
           vocals: true
         speed: medium
         quality: high
+    assets:
+      - file: ace_step_1.5_turbo_aio.safetensors
+        dir: models/checkpoints
+        size_gb: 10
+    setup_minutes: 6
+    composable: false
   - name: anima
     path: anima/
     status: verified
@@ -43,6 +49,18 @@ kits:
         task: text_to_image
         speed: medium
         quality: high
+    assets:
+      - file: anima-base-v1.0.safetensors
+        dir: models/diffusion_models
+        size_gb: 4.2
+      - file: qwen_3_06b_base.safetensors
+        dir: models/text_encoders
+        size_gb: 1.2
+      - file: qwen_image_vae.safetensors
+        dir: models/vae
+        size_gb: 0.3
+    setup_minutes: 5
+    composable: true
   - name: anima_pencil
     path: anima_pencil/
     status: verified
@@ -61,6 +79,18 @@ kits:
         task: text_to_image
         speed: medium
         quality: high
+    assets:
+      - file: anima_pencil-v2.0.0.safetensors
+        dir: models/diffusion_models
+        size_gb: 4.2
+      - file: qwen_3_06b_base.safetensors
+        dir: models/text_encoders
+        size_gb: 1.2
+      - file: qwen_image_vae.safetensors
+        dir: models/vae
+        size_gb: 0.3
+    setup_minutes: 5
+    composable: true
   - name: animegen_t2v
     path: animegen_t2v/
     status: verified
@@ -84,6 +114,27 @@ kits:
         task: text_to_video
         speed: medium
         quality: high
+    assets:
+      - file: animegen_t2v_high_noise.safetensors
+        dir: models/diffusion_models
+        size_gb: 28.6
+      - file: animegen_t2v_low_noise.safetensors
+        dir: models/diffusion_models
+        size_gb: 28.6
+      - file: umt5_xxl_fp8_e4m3fn_scaled.safetensors
+        dir: models/text_encoders
+        size_gb: 6.7
+      - file: wan_2.1_vae.safetensors
+        dir: models/vae
+        size_gb: 0.3
+      - file: wan2.2_t2v_lightning_4steps_high_noise.safetensors
+        dir: models/loras
+        size_gb: 2.5
+      - file: wan2.2_t2v_lightning_4steps_low_noise.safetensors
+        dir: models/loras
+        size_gb: 1.2
+    setup_minutes: 20
+    composable: true
   - name: boogu
     path: boogu/
     status: verified
@@ -102,6 +153,18 @@ kits:
         task: text_to_image
         speed: fast
         quality: high
+    assets:
+      - file: boogu_image_turbo_fp8_scaled.safetensors
+        dir: models/diffusion_models
+        size_gb: 10.3
+      - file: qwen3vl_8b_fp8_scaled.safetensors
+        dir: models/text_encoders
+        size_gb: 10.6
+      - file: ae.safetensors
+        dir: models/vae
+        size_gb: 0.3
+    setup_minutes: 9
+    composable: true
   - name: birefnet
     path: birefnet/
     status: verified
@@ -120,6 +183,12 @@ kits:
         task: remove_background
         speed: fast
         quality: high
+    assets:
+      - file: birefnet.safetensors
+        dir: models/background_removal
+        size_gb: 0.4
+    setup_minutes: 4
+    composable: true
   - name: flux1
     path: flux1/
     status: verified
@@ -138,6 +207,12 @@ kits:
         task: text_to_image
         speed: slow
         quality: high
+    assets:
+      - file: flux1-dev-fp8.safetensors
+        dir: models/checkpoints
+        size_gb: 17.2
+    setup_minutes: 8
+    composable: true
   - name: flux2
     path: flux2/
     status: verified
@@ -156,6 +231,18 @@ kits:
         task: text_to_image
         speed: slow
         quality: high
+    assets:
+      - file: flux2_dev_fp8mixed.safetensors
+        dir: models/diffusion_models
+        size_gb: 35.5
+      - file: flux2-vae.safetensors
+        dir: models/vae
+        size_gb: 0.3
+      - file: mistral_3_small_flux2_fp8.safetensors
+        dir: models/text_encoders
+        size_gb: 18
+    setup_minutes: 17
+    composable: true
   - name: hidream_i1
     path: hidream_i1/
     status: verified
@@ -183,6 +270,36 @@ kits:
         task: text_to_image
         speed: slow
         quality: high
+    assets:
+      - file: clip_l_hidream.safetensors
+        dir: models/text_encoders
+        size_gb: 0.2
+      - file: clip_g_hidream.safetensors
+        dir: models/text_encoders
+        size_gb: 1.4
+      - file: t5xxl_fp8_e4m3fn_scaled.safetensors
+        dir: models/text_encoders
+        size_gb: 5.2
+      - file: llama_3.1_8b_instruct_fp8_scaled.safetensors
+        dir: models/text_encoders
+        size_gb: 9.1
+      - file: ae.safetensors
+        dir: models/vae
+        size_gb: 0.3
+      - file: hidream_i1_fast_fp8.safetensors
+        dir: models/diffusion_models
+        size_gb: 17.1
+      - file: hidream_i1_dev_fp8.safetensors
+        dir: models/diffusion_models
+        size_gb: 17.1
+      - file: hidream_i1_full_fp8.safetensors
+        dir: models/diffusion_models
+        size_gb: 17.1
+      - file: hidream_i1_full_fp16.safetensors
+        dir: models/diffusion_models
+        size_gb: 34.2
+    setup_minutes: 29
+    composable: true
   - name: hidream_o1
     path: hidream_o1/
     status: verified
@@ -201,6 +318,12 @@ kits:
         task: text_to_image
         speed: slow
         quality: high
+    assets:
+      - file: hidream_o1_image_dev_fp8_scaled.safetensors
+        dir: models/checkpoints
+        size_gb: 8.1
+    setup_minutes: 6
+    composable: true
   - name: hunyuan_video
     path: hunyuan_video/
     status: verified
@@ -218,6 +341,21 @@ kits:
         task: text_to_video
         speed: slow
         quality: high
+    assets:
+      - file: hunyuan_video_t2v_720p_bf16.safetensors
+        dir: models/diffusion_models
+        size_gb: 25.6
+      - file: hunyuan_video_vae_bf16.safetensors
+        dir: models/vae
+        size_gb: 0.5
+      - file: clip_l.safetensors
+        dir: models/text_encoders
+        size_gb: 0.2
+      - file: llava_llama3_fp8_scaled.safetensors
+        dir: models/text_encoders
+        size_gb: 9.1
+    setup_minutes: 12
+    composable: true
   - name: ideogram4
     path: ideogram4/
     status: verified
@@ -236,6 +374,24 @@ kits:
         task: text_to_image
         speed: slow
         quality: high
+    assets:
+      - file: ideogram4_fp8_scaled.safetensors
+        dir: models/diffusion_models
+        size_gb: 9.3
+      - file: ideogram4_unconditional_fp8_scaled.safetensors
+        dir: models/diffusion_models
+        size_gb: 9.3
+      - file: qwen3vl_8b_fp8_scaled.safetensors
+        dir: models/text_encoders
+        size_gb: 10.6
+      - file: flux2-vae.safetensors
+        dir: models/vae
+        size_gb: 0.3
+      - file: gemma4_e4b_it_fp8_scaled.safetensors
+        dir: models/text_encoders
+        size_gb: 9.1
+    setup_minutes: 13
+    composable: true
   - name: krea2
     path: krea2/
     status: verified
@@ -254,6 +410,18 @@ kits:
         task: text_to_image
         speed: fast
         quality: high
+    assets:
+      - file: krea2_turbo_fp8_scaled.safetensors
+        dir: models/diffusion_models
+        size_gb: 13.1
+      - file: qwen3vl_4b_fp8_scaled.safetensors
+        dir: models/text_encoders
+        size_gb: 5.2
+      - file: qwen_image_vae.safetensors
+        dir: models/vae
+        size_gb: 0.3
+    setup_minutes: 8
+    composable: true
   - name: ltx23
     path: ltx23/
     status: starter
@@ -286,6 +454,21 @@ kits:
         task: image_to_video
         speed: slow
         quality: high
+    assets:
+      - file: ltx-2.3-22b-dev.safetensors
+        dir: models/checkpoints
+        size_gb: 46.1
+      - file: gemma_3_12B_it_fp4_mixed.safetensors
+        dir: models/text_encoders
+        size_gb: 9.4
+      - file: ltx-2.3-spatial-upscaler-x2-1.0.safetensors
+        dir: models/latent_upscale_models
+        size_gb: 1
+      - file: ltx-2.3-22b-distilled-lora-384.safetensors
+        dir: models/loras
+        size_gb: 7.6
+    setup_minutes: 20
+    composable: true
   - name: ltx23_t2v
     path: ltx23_t2v/
     status: verified
@@ -304,6 +487,18 @@ kits:
         task: text_to_video
         speed: slow
         quality: high
+    assets:
+      - file: ltx-2.3-22b-dev-fp8.safetensors
+        dir: models/checkpoints
+        size_gb: 29.1
+      - file: gemma_3_12B_it_fp4_mixed.safetensors
+        dir: models/text_encoders
+        size_gb: 9.4
+      - file: ltx_2.3_22b_distilled_1.1_lora_dynamic_fro09_avg_rank_111_bf16.safetensors
+        dir: models/loras
+        size_gb: 2.7
+    setup_minutes: 14
+    composable: true
   - name: moss_soundeffect_v2
     path: moss_soundeffect_v2/
     status: verified
@@ -327,6 +522,12 @@ kits:
           vocals: false
         speed: slow
         quality: high
+    assets:
+      - file: "(snapshot: OpenMOSS-Team/MOSS-SoundEffect-v2.0)"
+        dir: models/moss_soundeffect_v2
+        size_gb: 11.2
+    setup_minutes: 6
+    composable: false
   - name: ooo_anima
     path: ooo_anima/
     status: verified
@@ -345,6 +546,18 @@ kits:
         task: text_to_image
         speed: medium
         quality: high
+    assets:
+      - file: OOO_Anima_v10.safetensors
+        dir: models/diffusion_models
+        size_gb: 4.2
+      - file: qwen_3_06b_base.safetensors
+        dir: models/text_encoders
+        size_gb: 1.2
+      - file: qwen_image_vae.safetensors
+        dir: models/vae
+        size_gb: 0.3
+    setup_minutes: 5
+    composable: true
   - name: qwen_image
     path: qwen_image/
     status: starter
@@ -362,6 +575,24 @@ kits:
         task: text_to_image
         speed: medium
         quality: high
+    assets:
+      - file: qwen_image_2512_bf16.safetensors
+        dir: models/diffusion_models
+        size_gb: 40.9
+      - file: qwen_image_2512_fp8_e4m3fn.safetensors
+        dir: models/diffusion_models
+        size_gb: 20.4
+      - file: qwen_2.5_vl_7b_fp8_scaled.safetensors
+        dir: models/text_encoders
+        size_gb: 9.4
+      - file: qwen_image_vae.safetensors
+        dir: models/vae
+        size_gb: 0.3
+      - file: Qwen-Image-Lightning-4steps-V1.0.safetensors
+        dir: models/loras
+        size_gb: 1.7
+    setup_minutes: 22
+    composable: true
   - name: qwen_image_edit
     path: qwen_image_edit/
     status: starter
@@ -379,6 +610,33 @@ kits:
         task: image_edit
         speed: medium
         quality: high
+    assets:
+      - file: qwen_image_edit_2509_fp8_e4m3fn.safetensors
+        dir: models/diffusion_models
+        size_gb: 20.4
+      - file: qwen_image_edit_fp8_e4m3fn.safetensors
+        dir: models/diffusion_models
+        size_gb: 20.4
+      - file: qwen_image_edit_2511_bf16.safetensors
+        dir: models/diffusion_models
+        size_gb: 40.9
+      - file: qwen_2.5_vl_7b_fp8_scaled.safetensors
+        dir: models/text_encoders
+        size_gb: 9.4
+      - file: qwen_image_vae.safetensors
+        dir: models/vae
+        size_gb: 0.3
+      - file: Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors
+        dir: models/loras
+        size_gb: 0.8
+      - file: anything2real_2601.safetensors
+        dir: models/loras
+        size_gb: 0.6
+      - file: qwen-image-edit-2511-multiple-angles-lora.safetensors
+        dir: models/loras
+        size_gb: 0.3
+    setup_minutes: 27
+    composable: true
   - name: sd35
     path: sd35/
     status: verified
@@ -397,6 +655,21 @@ kits:
         task: text_to_image
         speed: slow
         quality: high
+    assets:
+      - file: sd3.5_large_fp8_scaled.safetensors
+        dir: models/checkpoints
+        size_gb: 14.9
+      - file: clip_l.safetensors
+        dir: models/text_encoders
+        size_gb: 0.2
+      - file: clip_g.safetensors
+        dir: models/text_encoders
+        size_gb: 1.4
+      - file: t5xxl_fp8_e4m3fn_scaled.safetensors
+        dir: models/text_encoders
+        size_gb: 5.2
+    setup_minutes: 9
+    composable: true
   - name: sdxl
     path: sdxl/
     status: verified
@@ -414,6 +687,12 @@ kits:
         task: text_to_image
         speed: medium
         quality: standard
+    assets:
+      - file: sd_xl_base_1.0.safetensors
+        dir: models/checkpoints
+        size_gb: 6.9
+    setup_minutes: 5
+    composable: true
   - name: seedvr2
     path: seedvr2/
     status: verified
@@ -432,6 +711,15 @@ kits:
         task: upscale
         speed: medium
         quality: high
+    assets:
+      - file: seedvr2_3b_int8_convrot.safetensors
+        dir: models/diffusion_models
+        size_gb: 3.5
+      - file: ema_vae_fp16.safetensors
+        dir: models/vae
+        size_gb: 0.5
+    setup_minutes: 4
+    composable: true
   - name: sdxl_turbo
     path: sdxl_turbo/
     status: verified
@@ -450,6 +738,12 @@ kits:
         task: text_to_image
         speed: fast
         quality: draft
+    assets:
+      - file: sd_xl_turbo_1.0_fp16.safetensors
+        dir: models/checkpoints
+        size_gb: 6.9
+    setup_minutes: 5
+    composable: true
   - name: stable_audio3
     path: stable_audio3/
     status: verified
@@ -475,6 +769,15 @@ kits:
           vocals: false
         speed: slow
         quality: high
+    assets:
+      - file: stable_audio_3_medium.safetensors
+        dir: models/checkpoints
+        size_gb: 9.2
+      - file: t5gemma_b_b_ul2.safetensors
+        dir: models/text_encoders
+        size_gb: 1.2
+    setup_minutes: 6
+    composable: true
   - name: stable_audio3_small_music
     path: stable_audio3_small_music/
     status: partial
@@ -501,6 +804,15 @@ kits:
           vocals: false
         speed: fast
         quality: high
+    assets:
+      - file: stable_audio_3_small_music.safetensors
+        dir: models/checkpoints
+        size_gb: 2.3
+      - file: t5gemma_b_b_ul2.safetensors
+        dir: models/text_encoders
+        size_gb: 1.2
+    setup_minutes: 4
+    composable: false
   - name: sulphur2
     path: sulphur2/
     status: verified
@@ -529,6 +841,21 @@ kits:
         task: text_to_video
         speed: slow
         quality: high
+    assets:
+      - file: sulphur_dev_fp8mixed.safetensors
+        dir: models/checkpoints
+        size_gb: 29.2
+      - file: ltx-2.3-22b-distilled-lora-1.1_fro90_ceil72_condsafe.safetensors
+        dir: models/loras
+        size_gb: 0.7
+      - file: gemma_3_12B_it_fp4_mixed.safetensors
+        dir: models/text_encoders
+        size_gb: 9.4
+      - file: ltx-2.3-spatial-upscaler-x2-1.0.safetensors
+        dir: models/latent_upscale_models
+        size_gb: 1
+    setup_minutes: 14
+    composable: true
   - name: 10eros
     path: 10eros/
     status: partial
@@ -552,6 +879,21 @@ kits:
         task: text_to_video
         speed: slow
         quality: high
+    assets:
+      - file: 10Eros_v1.2_fp8mixed_learned.safetensors
+        dir: models/checkpoints
+        size_gb: 34.3
+      - file: gemma-3-12b-it-ablit-norms-biproj-fp8mixed.safetensors
+        dir: models/text_encoders
+        size_gb: 12.8
+      - file: ltx-2.3-22b-distilled-lora-1.1_fro90_ceil72_condsafe.safetensors
+        dir: models/loras
+        size_gb: 0.7
+      - file: ltx-2.3-spatial-upscaler-x2-1.0.safetensors
+        dir: models/latent_upscale_models
+        size_gb: 1
+    setup_minutes: 16
+    composable: true
   - name: wan21
     path: wan21/
     status: partial
@@ -574,6 +916,21 @@ kits:
         task: text_to_video
         speed: slow
         quality: high
+    assets:
+      - file: umt5_xxl_fp8_e4m3fn_scaled.safetensors
+        dir: models/text_encoders
+        size_gb: 6.7
+      - file: wan_2.1_vae.safetensors
+        dir: models/vae
+        size_gb: 0.3
+      - file: wan2.1_t2v_1.3B_fp16.safetensors
+        dir: models/diffusion_models
+        size_gb: 2.8
+      - file: wan2.1_t2v_14B_fp8_scaled.safetensors
+        dir: models/diffusion_models
+        size_gb: 14.3
+    setup_minutes: 10
+    composable: true
   - name: wan22
     path: wan22/
     status: partial
@@ -596,6 +953,27 @@ kits:
         task: image_to_video
         speed: medium
         quality: high
+    assets:
+      - file: umt5_xxl_fp8_e4m3fn_scaled.safetensors
+        dir: models/text_encoders
+        size_gb: 6.7
+      - file: wan2.2_ti2v_5B_fp16.safetensors
+        dir: models/diffusion_models
+        size_gb: 10
+      - file: wan2.2_vae.safetensors
+        dir: models/vae
+        size_gb: 1.4
+      - file: wan2.2_t2v_high_noise_14B_fp8_scaled.safetensors
+        dir: models/diffusion_models
+        size_gb: 14.3
+      - file: wan2.2_t2v_low_noise_14B_fp8_scaled.safetensors
+        dir: models/diffusion_models
+        size_gb: 14.3
+      - file: wan_2.1_vae.safetensors
+        dir: models/vae
+        size_gb: 0.3
+    setup_minutes: 15
+    composable: true
   - name: wan22_s2v
     path: wan22_s2v/
     status: verified
@@ -614,6 +992,24 @@ kits:
         task: image_to_video
         speed: slow
         quality: high
+    assets:
+      - file: wan2.2_s2v_14B_fp8_scaled.safetensors
+        dir: models/diffusion_models
+        size_gb: 16.4
+      - file: umt5_xxl_fp8_e4m3fn_scaled.safetensors
+        dir: models/text_encoders
+        size_gb: 6.7
+      - file: wan_2.1_vae.safetensors
+        dir: models/vae
+        size_gb: 0.3
+      - file: wav2vec2_large_english_fp16.safetensors
+        dir: models/audio_encoders
+        size_gb: 0.6
+      - file: wan2.2_t2v_lightx2v_4steps_lora_v1.1_high_noise.safetensors
+        dir: models/loras
+        size_gb: 1.2
+    setup_minutes: 10
+    composable: true
   - name: z_anime
     path: z_anime/
     status: partial
@@ -636,6 +1032,21 @@ kits:
         task: text_to_image
         speed: fast
         quality: standard
+    assets:
+      - file: qwen_3_4b-fp8.safetensors
+        dir: models/text_encoders
+        size_gb: 4
+      - file: ae.safetensors
+        dir: models/vae
+        size_gb: 0.2
+      - file: z-anime-base-fp8.safetensors
+        dir: models/diffusion_models
+        size_gb: 6.2
+      - file: z-anime-distill-8step-fp8.safetensors
+        dir: models/diffusion_models
+        size_gb: 6.2
+    setup_minutes: 8
+    composable: true
   - name: z_image
     path: z_image/
     status: verified
@@ -653,3 +1064,15 @@ kits:
         task: text_to_image
         speed: fast
         quality: standard
+    assets:
+      - file: z_image_turbo_bf16.safetensors
+        dir: models/diffusion_models
+        size_gb: 12.3
+      - file: ae.safetensors
+        dir: models/vae
+        size_gb: 0.3
+      - file: qwen_3_4b.safetensors
+        dir: models/text_encoders
+        size_gb: 8
+    setup_minutes: 9
+    composable: true
