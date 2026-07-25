@@ -528,6 +528,72 @@ kits:
         size_gb: 11.2
     setup_minutes: 6
     composable: false
+  - name: music_video
+    path: music_video/
+    status: starter
+    tasks: [text_to_audio, text_to_image, text_to_video, image_to_video]
+    outputs: [audio, image, video]
+    gpu:
+      minimum: A100
+      recommended: A100
+    summary: Combo kit for the music-video recipe — ACE-Step 1.5 songs, Z-Image keyframes, and Wan 2.2 TI2V 5B clips on one runtime.
+    setup_file: 01_setup.py
+    license_notes:
+      - ACE-Step 1.5 code/model card declare MIT; the Comfy-Org repack metadata declares Apache-2.0. Review both before redistribution.
+      - Review generated music for copyright, voice, and style-similarity risks before publishing a finished MV.
+      - Z-Image turbo and Wan 2.2 have their own upstream terms; review before commercial use.
+    tags: [music_video, mv, composite, audio, music, lyrics, vocals, image, video, wan, ace_step, z_image]
+    workflows:
+      - name: mv_song
+        file: ace_step_1_5_t2a.json
+        task: text_to_audio
+        output: audio
+        capabilities:
+          audio_kinds: [music]
+          lyrics: true
+          vocals: true
+        speed: medium
+        quality: high
+      - name: mv_keyframe
+        file: z_image_turbo.json
+        task: text_to_image
+        speed: fast
+        quality: standard
+      - name: mv_clip_t2v
+        file: wan22_ti2v_5b.json
+        task: text_to_video
+        speed: medium
+        quality: standard
+      - name: mv_clip_i2v
+        file: wan22_ti2v_5b_i2v.json
+        task: image_to_video
+        speed: medium
+        quality: standard
+        notes: Adds LoadImage -> start_image so keyframes drive each clip; upload via --image.
+    assets:
+      - file: ace_step_1.5_turbo_aio.safetensors
+        dir: models/checkpoints
+        size_gb: 10
+      - file: z_image_turbo_bf16.safetensors
+        dir: models/diffusion_models
+        size_gb: 12.3
+      - file: ae.safetensors
+        dir: models/vae
+        size_gb: 0.3
+      - file: qwen_3_4b.safetensors
+        dir: models/text_encoders
+        size_gb: 8
+      - file: umt5_xxl_fp8_e4m3fn_scaled.safetensors
+        dir: models/text_encoders
+        size_gb: 6.7
+      - file: wan2.2_ti2v_5B_fp16.safetensors
+        dir: models/diffusion_models
+        size_gb: 10
+      - file: wan2.2_vae.safetensors
+        dir: models/vae
+        size_gb: 1.4
+    setup_minutes: 16
+    composable: false
   - name: ooo_anima
     path: ooo_anima/
     status: verified
@@ -934,12 +1000,12 @@ kits:
   - name: wan22
     path: wan22/
     status: partial
-    tasks: [text_to_video, image_to_video]
+    tasks: [text_to_video]
     outputs: [video]
     gpu:
       minimum: A100
       recommended: A100
-    summary: Wan 2.2 text-to-video and text/image-to-video workflows.
+    summary: Wan 2.2 text-to-video workflows (TI2V 5B and T2V 14B). For image-driven clips see the music_video kit's i2v variant.
     setup_file: 01_setup.py
     tags: [video]
     workflows:
@@ -950,9 +1016,9 @@ kits:
         quality: high
       - name: wan22_ti2v_5b
         file: wan22_ti2v_5b.json
-        task: image_to_video
+        task: text_to_video
         speed: medium
-        quality: high
+        quality: standard
     assets:
       - file: umt5_xxl_fp8_e4m3fn_scaled.safetensors
         dir: models/text_encoders

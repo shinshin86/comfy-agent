@@ -521,6 +521,19 @@ describe("buildColabSuggestPayload", () => {
     );
   });
 
+  it("boosts composite kits covering audio and video for music-video goals", async () => {
+    const catalog = await loadColabCatalogFile(catalogPath);
+    const payload = buildColabSuggestPayload(catalog, {
+      goal: "music video",
+      limit: 10,
+    });
+    const composite = [...payload.suggestions, ...payload.alternatives].find(
+      (s) => s.kit === "music_video",
+    );
+    expect(composite).toBeDefined();
+    expect(composite!.reasons).toContain("composite:music_video");
+  });
+
   it("treats music video as a video output request", () => {
     const payload = buildColabSuggestPayload(buildMusicCatalog(), {
       goal: "make a music video on a T4",

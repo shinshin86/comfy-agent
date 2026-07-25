@@ -58,6 +58,7 @@ Ready-to-paste starter kits live under [`scripts/colab/`](./scripts/colab/):
 | [`stable_audio3_small_music/`](./scripts/colab/stable_audio3_small_music/) | T4+                  | Audio (instrumental music / BGM)     |
 | [`stable_audio3/`](./scripts/colab/stable_audio3/)                         | L4+                  | Audio (music and sound effects)      |
 | [`moss_soundeffect_v2/`](./scripts/colab/moss_soundeffect_v2/)             | A100                 | Audio (48 kHz sound effects)         |
+| [`music_video/`](./scripts/colab/music_video/)                             | A100                 | Combo: song + keyframes + video clips (music-video recipe) |
 
 Flow (same for every kit):
 

@@ -564,6 +564,12 @@ export const buildColabSuggestPayload = (
         score += 10;
         reasons.push("compound_request");
       }
+      // A music-video request needs audio AND video (usually image too);
+      // kits that cover both on one runtime save a full setup round-trip.
+      if (hints.musicVideo && kit.outputs.includes("audio") && kit.outputs.includes("video")) {
+        score += 20;
+        reasons.push("composite:music_video");
+      }
       if (hints.wantsEdit && workflow.task === "image_edit") {
         score += 10;
         reasons.push("task:image_edit");
