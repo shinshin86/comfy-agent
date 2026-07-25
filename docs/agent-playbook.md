@@ -32,8 +32,9 @@ Produce a **blueprint** first, in this order:
    ```bash
    comfy-agent colab suggest "<capability + style + constraints>" --json
    ```
-   The result includes GPU requirements, verification status, license notes,
-   and (once catalog enrichment lands) download sizes and setup minutes.
+   Each suggestion carries GPU requirements (`gpu`), verification status
+   (`status`), `download_gb`, `setup_minutes`, and `composable`; license
+   cautions live in `colab catalog --json` under the kit's `license_notes`.
 3. **Check the current state:**
    ```bash
    comfy-agent doctor --json                      # connection alive?
@@ -62,7 +63,7 @@ prompt design, scene splitting, parameter tables, output directories.
 - Therefore: the only thing a dead Colab session costs is the base URL.
   **Never re-import presets or redo setup that lives locally.**
 
-Connection resolution order (after Phase 1 lands):
+Connection resolution order:
 `--base-url` > `COMFY_AGENT_BASE_URL` > `.comfy-agent/config.yaml` > default.
 
 Persist a working URL with:
@@ -91,11 +92,20 @@ ephemerality tax entirely.
 
 ## 3. Error contract (CLI → agent)
 
-All commands emit `--json` errors in this shape:
+Commands with a `--json` flag (`run`, `doctor`, `list`, `status`, `preset`,
+`connect`, `analyze`, `colab *`) emit errors in this shape (`init` and
+`import` are text-only):
 
 ```json
 { "ok": false, "error": { "code": "...", "message": "...", "details": { } } }
 ```
+
+One shape exception: when `doctor` itself cannot reach the server it still
+exits 0-vs-3 as usual but reports the failure **inside** its normal payload
+as `connection: { ok: false, error: { code, message, details: "<string>" } }`
+— branch on `connection.error.code` there, not on `details.server`. The
+structured `details` objects in the table below come from thrown errors
+(`run` preflight, `connect`, and `doctor --preset`'s object_info fetch).
 
 Codes the orchestration flow relies on (Phase 1):
 
@@ -125,8 +135,8 @@ work that costs money, rights, or physical human action → the human decides.**
 | Local: server installed but not running | **agent** | Start it in background, wait for port, continue |
 | `SERVER_UNREACHABLE` and base URL is `*.trycloudflare.com` | **human (1 action)** | Say exactly: "Colab session expired. Open the notebook, Run All, paste the final line." Nothing else is lost — do not re-import. If a Colab automation MCP is available, offer to do it |
 | `SERVER_UNREACHABLE` and base URL is local | **agent** | Start/restart the local server |
-| `MISSING_MODEL_ON_SERVER`, local server | **agent (confirm if large)** | Map `missing[].value` → kit via catalog `assets`; download into the local ComfyUI. Ask first when downloads exceed a few GB |
-| `MISSING_MODEL_ON_SERVER`, Colab server | **human (setup cell)** | Identify the kit from catalog; hand the human that kit's `01_setup.py` cell. If the runtime's current kit is `composable`, the cell can run additively; otherwise advise a fresh runtime |
+| `MISSING_MODEL_ON_SERVER`, local server | **agent (confirm if large)** | Map `missing_models[].value` → kit via `colab catalog --json` (each kit's `assets[].file`); download into the local ComfyUI. Ask first when downloads exceed a few GB |
+| `MISSING_MODEL_ON_SERVER`, Colab server | **human (setup cell)** | Identify the providing kit from catalog `assets`; hand the human that kit's `01_setup.py` cell. If the kit to add has `composable: true`, the cell can run additively on the existing runtime; otherwise advise a fresh runtime |
 | `MISSING_NODE_ON_SERVER` | depends | Usually means wrong/outdated ComfyUI or missing custom node — treat like missing model: local = agent fixes, Colab = setup cell |
 | GPU below kit's `gpu.minimum` | **human (choice)** | Present: upgrade runtime (cost) vs. smaller model (quality delta). Never choose paid options silently |
 | License constraint (`license_notes`: non-commercial etc.) | **human (choice)** | Summarize the constraint, ask about intended use before generating |
