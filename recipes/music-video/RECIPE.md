@@ -108,6 +108,12 @@ comfy-agent run mv_clip --image sceneN.png \
   check against the shot list (subject correct? motion as planned? no
   morphing?). One retake with adjusted motion prompt or seed; keep the
   better take. Cap retakes (~1 per clip) to bound cost.
+- **Object hallucination rescue (no-retake fallback)**: i2v sometimes grows
+  props into a character's hands mid-clip. Scan the timeline for the clean
+  window (often the first ~1 s), then fill the planned bars with a 2x
+  slow-motion of that window (`select='lt(n,K)',setpts=2.0*PTS`) — frame
+  doubling reads as anime-style shooting on twos and suits emotional
+  close-ups.
 - Output is animated WEBP. ffmpeg often cannot decode it — use PIL:
   frames out (`ImageSequence`), then `ffmpeg -framerate 24 -i f_%04d.png`.
 
@@ -124,6 +130,11 @@ ffmpeg -i visual.mp4 -i song.mp3 -map 0:v -map 1:a -c:v copy -c:a aac \
   -ss <song_in> -shortest -af "afade=t=out:st=<end-2>:d=2" mv_final.mp4
 ```
 
+- **Trim by frame count, not seconds**: `-t <sec>` rounds up to the next
+  frame per segment (~+40 ms each) and the drift accumulates until later
+  cuts fall audibly off the beat. Convert bars to frames once
+  (1 bar @ 117.45 BPM / 24 fps ≈ 49 frames) and cut with
+  `-vf "select='gte(n,START)',setpts=PTS-STARTPTS" -frames:v N`.
 - Every cut lands on `offset + k * bar`. Verify by extracting the frame at
   each cut time and confirming the scene actually changes there.
 - Scene changes on section boundaries; chorus = 1-bar cuts, verse = 2-bar.
