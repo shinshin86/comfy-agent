@@ -85,6 +85,8 @@ const KNOWN_RUN_FLAGS = new Set([
   "seed-step",
   "poll-interval-ms",
   "timeout-seconds",
+  "no-preflight",
+  "preflight",
   "base-url",
   "source",
   "global",

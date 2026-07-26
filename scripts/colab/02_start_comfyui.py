@@ -61,6 +61,9 @@ def _tunnel(port: int) -> None:
             if m and not URL_FILE.exists():
                 URL_FILE.write_text(m.group(0))
                 print("[tunnel] URL:", m.group(0))
+                print("[tunnel] ComfyUI is ready. On your LOCAL machine, paste this line")
+                print("[tunnel] to your agent (or run it in a terminal):")
+                print(f"[tunnel]   comfy-agent connect {m.group(0)}")
 
 
 threading.Thread(target=_tunnel, args=(PORT,), daemon=True).start()

@@ -173,6 +173,66 @@ describe("ColabCatalogSchema", () => {
     expect(result.success).toBe(true);
   });
 
+  it("accepts assets, setup_minutes, and composable metadata", () => {
+    const result = ColabCatalogSchema.safeParse({
+      version: 1,
+      kits: [
+        {
+          name: "z_image",
+          path: "z_image/",
+          status: "verified",
+          tasks: ["text_to_image"],
+          outputs: ["image"],
+          gpu: { minimum: "T4", recommended: "T4" },
+          summary: "Fast image generation starter kit.",
+          setup_file: "01_setup.py",
+          workflows: [
+            { name: "z_image_turbo", file: "z_image_turbo.json", task: "text_to_image" },
+          ],
+          assets: [
+            { file: "z_image_turbo_bf16.safetensors", dir: "models/diffusion_models", size_gb: 12.2 },
+            { file: "ae.safetensors", dir: "models/vae" },
+          ],
+          setup_minutes: 9,
+          composable: true,
+        },
+      ],
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects malformed assets entries", () => {
+    const base = {
+      name: "z_image",
+      path: "z_image/",
+      status: "verified",
+      tasks: ["text_to_image"],
+      outputs: ["image"],
+      gpu: { minimum: "T4" },
+      summary: "s",
+      workflows: [{ name: "w", file: "w.json", task: "text_to_image" }],
+    };
+    expect(
+      ColabCatalogSchema.safeParse({
+        version: 1,
+        kits: [{ ...base, assets: [{ file: "x.safetensors" }] }],
+      }).success,
+    ).toBe(false);
+    expect(
+      ColabCatalogSchema.safeParse({
+        version: 1,
+        kits: [{ ...base, assets: [] }],
+      }).success,
+    ).toBe(false);
+    expect(
+      ColabCatalogSchema.safeParse({
+        version: 1,
+        kits: [{ ...base, assets: [{ file: "x.safetensors", dir: "models/vae", size_gb: -1 }] }],
+      }).success,
+    ).toBe(false);
+  });
+
   it("accepts audio workflows and background-removal tasks", () => {
     const result = ColabCatalogSchema.safeParse({
       version: 1,
@@ -291,6 +351,37 @@ describe("ColabCatalogSchema", () => {
 });
 
 describe("buildColabSuggestPayload", () => {
+  it("carries setup cost metadata into suggestions", () => {
+    const catalog = ColabCatalogSchema.parse({
+      version: 1,
+      kits: [
+        {
+          name: "kit_a",
+          path: "kit_a/",
+          status: "verified",
+          tasks: ["text_to_image"],
+          outputs: ["image"],
+          gpu: { minimum: "T4" },
+          summary: "image kit",
+          workflows: [{ name: "wf_a", file: "wf_a.json", task: "text_to_image" }],
+          assets: [
+            { file: "a.safetensors", dir: "models/checkpoints", size_gb: 10.25 },
+            { file: "b.safetensors", dir: "models/vae", size_gb: 0.4 },
+          ],
+          setup_minutes: 6,
+          composable: false,
+        },
+      ],
+    });
+    const payload = buildColabSuggestPayload(catalog, { goal: "image" });
+    expect(payload.suggestions[0]).toMatchObject({
+      kit: "kit_a",
+      setup_minutes: 6,
+      download_gb: 10.7,
+      composable: false,
+    });
+  });
+
   it("suggests fast image kits from a natural-language goal", async () => {
     const catalog = await loadColabCatalogFile(catalogPath);
     const payload = buildColabSuggestPayload(catalog, {
@@ -428,6 +519,19 @@ describe("buildColabSuggestPayload", () => {
     expect(payload.alternatives.map((item) => item.kit)).not.toEqual(
       expect.arrayContaining(["ace_step_1_5", "stable_audio3_small_music", "moss_soundeffect_v2"]),
     );
+  });
+
+  it("boosts composite kits covering audio and video for music-video goals", async () => {
+    const catalog = await loadColabCatalogFile(catalogPath);
+    const payload = buildColabSuggestPayload(catalog, {
+      goal: "music video",
+      limit: 10,
+    });
+    const composite = [...payload.suggestions, ...payload.alternatives].find(
+      (s) => s.kit === "music_video",
+    );
+    expect(composite).toBeDefined();
+    expect(composite!.reasons).toContain("composite:music_video");
   });
 
   it("treats music video as a video output request", () => {

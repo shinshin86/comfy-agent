@@ -58,6 +58,7 @@ Ready-to-paste starter kits live under [`scripts/colab/`](./scripts/colab/):
 | [`stable_audio3_small_music/`](./scripts/colab/stable_audio3_small_music/) | T4+                  | Audio (instrumental music / BGM)     |
 | [`stable_audio3/`](./scripts/colab/stable_audio3/)                         | L4+                  | Audio (music and sound effects)      |
 | [`moss_soundeffect_v2/`](./scripts/colab/moss_soundeffect_v2/)             | A100                 | Audio (48 kHz sound effects)         |
+| [`music_video/`](./scripts/colab/music_video/)                             | A100                 | Combo: song + keyframes + video clips (music-video recipe) |
 
 Flow (same for every kit):
 
@@ -166,7 +167,9 @@ comfy-agent run text2img_v1 --global --prompt "A cat"
 
 1. `--base-url`
 2. `COMFY_AGENT_BASE_URL`
-3. default `http://127.0.0.1:8188`
+3. `base_url` in `.comfy-agent/config.yaml` (written by `comfy-agent connect`;
+   the command's scope is checked first, then the other scope)
+4. default `http://127.0.0.1:8188`
 
 ## Commands
 
@@ -245,6 +248,20 @@ Remote source notes:
 - For some catalog entries, workflow JSON may not be directly downloadable from API endpoints.
 - If validation still fails for complex/custom graphs, export API JSON from ComfyUI and import it as a local preset.
 
+### `connect`
+
+Verify a ComfyUI base URL and persist it to `.comfy-agent/config.yaml`, so
+later commands need no `--base-url` / env var. Designed for ephemeral servers
+(e.g. Colab + trycloudflare, where the URL changes every session): re-running
+`connect` with the new URL is the only step needed after a runtime restart.
+
+```bash
+comfy-agent connect https://xxxx.trycloudflare.com
+comfy-agent connect https://xxxx.trycloudflare.com --json
+comfy-agent connect http://127.0.0.1:8188 --global
+comfy-agent connect https://xxxx.trycloudflare.com --force   # save even if unreachable
+```
+
 ### `doctor`
 
 ```bash
@@ -252,7 +269,14 @@ comfy-agent doctor
 comfy-agent doctor --json
 comfy-agent doctor --global
 comfy-agent doctor --all-scopes
+comfy-agent doctor --preset text2img_v1        # also check server has the models/nodes
+comfy-agent doctor --preset text2img_v1 --json
 ```
+
+With `--preset`, doctor additionally fetches `/object_info` and reports
+whether the connected server has every node class and model file the preset's
+workflow references (`preflight` section in `--json`; exit code 3 when
+something is missing).
 
 ### `status`
 
@@ -498,5 +522,16 @@ Error example:
 - `WORKDIR_NOT_FOUND`: run `comfy-agent init` first
 - `INVALID_PRESET`: invalid YAML structure (`version/name/workflow`)
 - `MISSING_REQUIRED_PARAM`: missing required parameter
-- `API_ERROR`: server connection/response error; verify `base_url`
+- `SERVER_UNREACHABLE`: could not reach the server at all; check `base_url`,
+  or reconnect an expired tunnel with `comfy-agent connect <url>`
+- `MISSING_NODE_ON_SERVER`: the workflow references a node class the connected
+  server does not have (`details.missing_nodes`)
+- `MISSING_MODEL_ON_SERVER`: the workflow references model files absent on the
+  connected server (`details.missing_models`, each with the server's
+  `available` list) — usually means the server was provisioned for a different
+  workflow/kit
+- `API_ERROR`: server reached but the request failed; verify `base_url`
 - `TIMEOUT`: increase `--timeout-seconds`
+
+`run` checks the server (preflight) before submitting; skip with
+`--no-preflight` if you need to bypass it for debugging.

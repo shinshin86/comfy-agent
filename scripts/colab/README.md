@@ -32,6 +32,7 @@ in `.mcp.json` at the repo root.
 | [`./stable_audio3_small_music/`](./stable_audio3_small_music/) | A100 E2E verified; T4 unverified | T4+ | Stable Audio 3 Small Music, lightweight instrumental music / BGM |
 | [`./stable_audio3/`](./stable_audio3/) | Verified E2E | L4+ | Stable Audio 3 Medium, music and sound effects |
 | [`./moss_soundeffect_v2/`](./moss_soundeffect_v2/) | Verified E2E | A100 | MOSS-SoundEffect v2.0, 48 kHz text-to-sound effects |
+| [`./music_video/`](./music_video/) | Verified E2E | A100 | Combo kit: ACE-Step 1.5 songs + Z-Image keyframes + Wan 2.2 TI2V 5B clips on one runtime (see `recipes/music-video/`) |
 | [`./sulphur2/`](./sulphur2/) | Verified E2E (i2v + t2v, A100) | A100 | Sulphur-2, uncensored LTX-2.3 fine-tune (fp8mixed) — review Colab AUP |
 | [`./10eros/`](./10eros/) | i2v Verified E2E; t2v starter | A100 | 10Eros, uncensored LTX-2.3 fine-tune on Sulphur-2-base (fp8mixed_learned; own abliterated Gemma encoder) — review Colab AUP |
 
@@ -68,6 +69,26 @@ named in the kit's verification record.
    Parameter flags follow `--<node_id>_<input>` matching the
    auto-generated preset. Rename keys in the generated YAML if you prefer
    friendlier flags like `--prompt`.
+
+## Catalog metadata for agents
+
+`catalog.yaml` records, per kit, machine-readable setup-cost metadata that
+`comfy-agent colab catalog --json` / `colab suggest --json` expose:
+
+- `assets`: model files the kit's setup installs on the ComfyUI host
+  (`file`, `dir` under the ComfyUI workspace, approximate `size_gb`).
+  Agents use this to map a `MISSING_MODEL_ON_SERVER` error value back to
+  the kit that provides that file, and to estimate download volume.
+- `setup_minutes`: rough full-setup time on the recommended GPU
+  (downloads dominate; assumes a fast Colab↔HF connection). Advisory.
+- `composable`: whether the kit's setup can run **additively** on a runtime
+  another kit already set up (weights/custom nodes are additive, no pinned
+  ComfyUI revision, no replacement python env). Kits with `composable: false`
+  (e.g. `ace_step_1_5`, `stable_audio3_small_music` pin the ComfyUI revision;
+  `moss_soundeffect_v2` uses its own venv) should get a fresh runtime.
+
+Sizes were measured from the upstream download URLs; multi-variant kits list
+all variants, so the sum is the worst case, not always the default path.
 
 ## MCP automation
 

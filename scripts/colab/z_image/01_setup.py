@@ -16,7 +16,11 @@ if USE_GOOGLE_DRIVE:
     WORKSPACE = "/content/drive/MyDrive/ComfyUI"
     os.chdir('/content/drive/MyDrive')
 else:
-    WORKSPACE = f"{os.getcwd()}/ComfyUI"
+    # Composable-safe: if the kernel cwd is already a ComfyUI checkout
+    # (another kit's setup ended with `%cd`), reuse it instead of nesting
+    # a second ComfyUI/ComfyUI clone the running server can't see.
+    current_dir = os.getcwd()
+    WORKSPACE = current_dir if os.path.isfile(os.path.join(current_dir, "main.py")) else f"{current_dir}/ComfyUI"
 
 # --- ComfyUI checkout -------------------------------------------------------
 if not os.path.isdir(WORKSPACE):

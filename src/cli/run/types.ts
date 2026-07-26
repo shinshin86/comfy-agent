@@ -10,6 +10,8 @@ export type RunOptions = {
   timeoutSeconds?: string;
   baseUrl?: string;
   global?: boolean;
+  /** commander --no-preflight sets this to false; default true */
+  preflight?: boolean;
 };
 
 export type RunSource = "auto" | "local" | "remote" | "remote-catalog";

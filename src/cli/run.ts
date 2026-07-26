@@ -11,6 +11,7 @@ import type { Preset } from "../preset/schema.js";
 import { resolvePresetPath } from "../preset/path.js";
 import { normalizeWorkflow } from "../workflow/normalize.js";
 import { applyParameters, applyUploads } from "../workflow/patch.js";
+import { assertPreflightPasses, fetchPreflightReport } from "../workflow/preflight.js";
 import { extractOutputFiles } from "../output/provider.js";
 import { resolveComfyBaseUrl } from "../utils/base-url.js";
 import { sleep } from "../utils/time.js";
@@ -379,6 +380,12 @@ export const runRun = async (presetName: string, options: RunOptions, rawArgs: s
     printJson(withUploads);
     return;
   }
+  if (options.preflight !== false) {
+    const preflightTarget = applyParameters(workflow, preset, params);
+    const report = await fetchPreflightReport(client, preflightTarget);
+    assertPreflightPasses(report, baseUrl);
+  }
+
   const outputDir = await getOutputDir(preset.name, options.out, scope);
   log(t("run.output_dir", { dir: outputDir }));
 

@@ -6,12 +6,17 @@ import { log, print, printJson } from "../io/output.js";
 import { t } from "../i18n/index.js";
 import { getSubdirPath, getWorkdirPath, SUBDIRS, type WorkdirScope } from "../io/workdir.js";
 import { decideComfyBaseUrl } from "../utils/base-url.js";
+import { loadPresetFile } from "../preset/loader.js";
+import { resolvePresetPath } from "../preset/path.js";
+import { normalizeWorkflow } from "../workflow/normalize.js";
+import { classifyServerError, fetchPreflightReport } from "../workflow/preflight.js";
 
 export type DoctorOptions = {
   json?: boolean;
   baseUrl?: string;
   global?: boolean;
   allScopes?: boolean;
+  preset?: string;
 };
 
 const baseUrlDecision = (options: DoctorOptions) => decideComfyBaseUrl(options);
@@ -70,8 +75,32 @@ const checkConnection = async (baseUrl: string) => {
     return { ok: true } as const;
   } catch (err) {
     const message = err instanceof CliError ? err.message : t("doctor.connection_failed");
-    return { ok: false, error: { message, details: String(err) } } as const;
+    const code = classifyServerError(err) === "unreachable" ? "SERVER_UNREACHABLE" : "API_ERROR";
+    return {
+      ok: false,
+      error: { code, message, details: String(err) },
+    } as const;
   }
+};
+
+const checkPresetPreflight = async (
+  presetName: string,
+  baseUrl: string,
+  scope: WorkdirScope,
+) => {
+  const presetPath = await resolvePresetPath(presetName, scope);
+  const preset = await loadPresetFile(presetPath);
+  const workflowPath = path.join(getSubdirPath("workflows", process.cwd(), scope), preset.workflow);
+  const raw = await fs.readFile(workflowPath, "utf-8");
+  let workflow: ReturnType<typeof normalizeWorkflow>;
+  try {
+    workflow = normalizeWorkflow(JSON.parse(raw));
+  } catch (err) {
+    throw new CliError("INVALID_WORKFLOW", (err as Error).message, 2, { file: workflowPath });
+  }
+  const client = new ComfyClient(baseUrl);
+  const report = await fetchPreflightReport(client, workflow);
+  return { preset: preset.name, ...report };
 };
 
 export const runDoctor = async (options: DoctorOptions) => {
@@ -85,8 +114,21 @@ export const runDoctor = async (options: DoctorOptions) => {
   );
   const connection = await checkConnection(baseUrl);
 
+  let preflight: Awaited<ReturnType<typeof checkPresetPreflight>> | null = null;
+  if (options.preset && connection.ok) {
+    preflight = await checkPresetPreflight(
+      options.preset,
+      baseUrl,
+      options.global ? "global" : "local",
+    );
+  }
+  const preflightFailed =
+    preflight !== null &&
+    preflight.checked &&
+    (preflight.missing_nodes.length > 0 || preflight.missing_models.length > 0);
+
   const hasWorkdirIssues = workdirs.some((workdir) => workdir.issues.length > 0);
-  const exitCode = connection.ok ? (hasWorkdirIssues ? 2 : 0) : 3;
+  const exitCode = !connection.ok || preflightFailed ? 3 : hasWorkdirIssues ? 2 : 0;
 
   if (options.json) {
     if (options.allScopes) {
@@ -99,6 +141,7 @@ export const runDoctor = async (options: DoctorOptions) => {
           workdir: { root: entry.root, subdirs: entry.subdirs },
         })),
         connection,
+        ...(preflight ? { preflight } : {}),
       });
     } else {
       const workdir = workdirs[0]!;
@@ -112,6 +155,7 @@ export const runDoctor = async (options: DoctorOptions) => {
           subdirs: workdir.subdirs,
         },
         connection,
+        ...(preflight ? { preflight } : {}),
       });
     }
     process.exit(exitCode);
@@ -149,6 +193,28 @@ export const runDoctor = async (options: DoctorOptions) => {
 
   if (!connection.ok) {
     log(t("doctor.connection_fix"));
+  }
+
+  if (preflight) {
+    if (!preflight.checked) {
+      log(t("doctor.preflight_skipped", { preset: preflight.preset }));
+    } else if (preflightFailed) {
+      log(t("doctor.preflight_ng", { preset: preflight.preset }));
+      for (const node of preflight.missing_nodes) {
+        log(t("doctor.preflight_missing_node", { node: node.class_type, id: node.node_id }));
+      }
+      for (const model of preflight.missing_models) {
+        log(
+          t("doctor.preflight_missing_model", {
+            value: model.value,
+            node: model.class_type,
+            input: model.input,
+          }),
+        );
+      }
+    } else {
+      print(t("doctor.preflight_ok", { preset: preflight.preset }));
+    }
   }
 
   process.exit(exitCode);
