@@ -652,6 +652,23 @@ describe("buildColabSuggestPayload", () => {
     });
   });
 
+  it("suggests both verified MiniMax H3 video modes with cost metadata", async () => {
+    const catalog = await loadColabCatalogFile(catalogPath);
+    const payload = buildColabSuggestPayload(catalog, {
+      goal: "minimax h3",
+      limit: 2,
+    });
+
+    expect(payload.suggestions.map((item) => item.task).sort()).toEqual([
+      "image_to_video",
+      "text_to_video",
+    ]);
+    expect(payload.suggestions.every((item) => item.kit === "minimax_h3")).toBe(true);
+    expect(payload.suggestions.every((item) => item.status === "verified")).toBe(true);
+    expect(payload.suggestions.every((item) => item.gpu.verified?.includes("A100"))).toBe(true);
+    expect(payload.suggestions.every((item) => item.download_gb === 42.5)).toBe(true);
+  });
+
   it("suggests the LTX-2.3 audio-video kit when requested by name", async () => {
     const catalog = await loadColabCatalogFile(catalogPath);
     const payload = buildColabSuggestPayload(catalog, {

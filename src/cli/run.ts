@@ -9,7 +9,11 @@ import { getSubdirPath, getWorkdirPath } from "../io/workdir.js";
 import { loadPresetFile } from "../preset/loader.js";
 import type { Preset } from "../preset/schema.js";
 import { resolvePresetPath } from "../preset/path.js";
-import { normalizeWorkflow } from "../workflow/normalize.js";
+import {
+  normalizeWorkflow,
+  workflowHasSubgraphs,
+  type WorkflowObjectInfo,
+} from "../workflow/normalize.js";
 import { applyParameters, applyUploads } from "../workflow/patch.js";
 import { assertPreflightPasses, fetchPreflightReport } from "../workflow/preflight.js";
 import { extractOutputFiles } from "../output/provider.js";
@@ -61,7 +65,7 @@ const ensureWorkdir = async (scope: "local" | "global") => {
   }
 };
 
-const loadWorkflow = async (preset: Preset) => {
+const loadWorkflow = async (preset: Preset, client: ComfyClient) => {
   const workflowPath = path.join(getSubdirPath("workflows"), preset.workflow);
   const raw = await fs.readFile(workflowPath, "utf-8");
   let parsed: unknown;
@@ -74,18 +78,25 @@ const loadWorkflow = async (preset: Preset) => {
     });
   }
 
+  const objectInfo = workflowHasSubgraphs(parsed)
+    ? await client.objectInfo<WorkflowObjectInfo>()
+    : null;
   try {
-    return normalizeWorkflow(parsed);
+    return normalizeWorkflow(parsed, { objectInfo });
   } catch (err) {
     throw new CliError("INVALID_WORKFLOW", (err as Error).message, 2, { file: workflowPath });
   }
 };
 
-const tryLoadLocalRunTarget = async (presetName: string, scope: "local" | "global") => {
+const tryLoadLocalRunTarget = async (
+  presetName: string,
+  scope: "local" | "global",
+  client: ComfyClient,
+) => {
   try {
     const presetPath = await resolvePresetPath(presetName, scope);
     const preset = await loadPresetFile(presetPath);
-    const workflow = await loadWorkflow(preset);
+    const workflow = await loadWorkflow(preset, client);
     return { source: "local" as const, preset, workflow };
   } catch (err) {
     if (err instanceof CliError && err.code === "PRESET_NOT_FOUND") return null;
@@ -310,7 +321,7 @@ export const runRun = async (presetName: string, options: RunOptions, rawArgs: s
   const requestedSource = resolveRunSource(options.source);
   const client = new ComfyClient(baseUrl);
 
-  const localTarget = await tryLoadLocalRunTarget(presetName, scope);
+  const localTarget = await tryLoadLocalRunTarget(presetName, scope, client);
   let remoteTarget: Awaited<ReturnType<typeof tryLoadRemoteUserdataRunTarget>> | null = null;
   let remoteCatalogTarget: Awaited<ReturnType<typeof tryLoadRemoteCatalogRunTarget>> | null = null;
   let remoteError: unknown = null;

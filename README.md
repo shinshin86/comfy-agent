@@ -162,6 +162,7 @@ comfy-agent run text2img_v1 --global --prompt "A cat"
   (audio/file uploads also use ComfyUI's input upload path and can target
   nodes such as `LoadAudio`)
 - During `import`, GET `/object_info` (if available) to improve type inference
+  and to expand ComfyUI subgraph templates safely
 
 ## `base_url` Precedence
 
@@ -182,7 +183,8 @@ comfy-agent init --global
 
 ### `import`
 
-Import a ComfyUI workflow API JSON and generate a preset template.
+Import a ComfyUI API JSON or saved UI workflow JSON and generate a preset
+template.
 
 ```bash
 comfy-agent import ./workflow_api.json --name text2img_v1
@@ -190,7 +192,13 @@ comfy-agent import ./workflow_api.json --name text2img_v1 --base-url http://127.
 comfy-agent import ./workflow_api.json --name text2img_v1 --global
 ```
 
-Note: For this flow, export workflow API JSON from ComfyUI first. Direct import from the currently opened editor state is not supported.
+UI workflows containing `definitions.subgraphs` require a reachable target
+ComfyUI server. `comfy-agent` uses its live `/object_info` input order to
+flatten active subgraph nodes into API nodes before saving locally. It stops
+with a concrete error when a node schema is unavailable or when a muted/bypass
+execution mode cannot be represented safely; it does not save the subgraph
+UUID as a node class. Direct import from unsaved in-memory editor state is not
+supported—save or download the workflow JSON first.
 
 If `/object_info` is available, inference is enhanced and cached at `.comfy-agent/cache/object_info.json`.
 

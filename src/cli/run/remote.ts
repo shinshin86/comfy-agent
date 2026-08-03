@@ -16,7 +16,9 @@ import {
   detectParamType,
   isLiteralValue,
   normalizeWorkflow,
+  workflowHasSubgraphs,
   type Workflow,
+  type WorkflowObjectInfo,
 } from "../../workflow/normalize.js";
 
 const asString = (value: unknown): string | undefined => {
@@ -132,9 +134,12 @@ const inferParametersFromWorkflow = (workflow: Workflow): Record<string, Paramet
   return parameters;
 };
 
-const normalizeWorkflowCandidate = (value: unknown): Workflow | null => {
+const normalizeWorkflowCandidate = (
+  value: unknown,
+  objectInfo?: WorkflowObjectInfo | null,
+): Workflow | null => {
   try {
-    return normalizeWorkflow(value);
+    return normalizeWorkflow(value, { objectInfo });
   } catch {
     return null;
   }
@@ -308,12 +313,21 @@ export const resolveRemoteWorkflow = async (
   rawTemplate: unknown,
   options?: { preferUserdata?: boolean },
 ): Promise<Workflow> => {
-  const inline = normalizeWorkflowCandidate(rawTemplate);
+  let objectInfo: WorkflowObjectInfo | null | undefined;
+  const normalizeCandidate = async (value: unknown): Promise<Workflow | null> => {
+    if (workflowHasSubgraphs(value) && objectInfo === undefined) {
+      const fetched = await client.getJson("/object_info", { retries: 1, retryDelayMs: 300 });
+      objectInfo = asRecord(fetched) as WorkflowObjectInfo | null;
+    }
+    return normalizeWorkflowCandidate(value, objectInfo);
+  };
+
+  const inline = await normalizeCandidate(rawTemplate);
   if (inline) return inline;
 
   const raw = asRecord(rawTemplate) ?? {};
   const candidate =
-    normalizeWorkflowCandidate(raw.workflow) ?? normalizeWorkflowCandidate(raw.prompt);
+    (await normalizeCandidate(raw.workflow)) ?? (await normalizeCandidate(raw.prompt));
   if (candidate) return candidate;
 
   const tried: string[] = [];
@@ -328,7 +342,7 @@ export const resolveRemoteWorkflow = async (
       tried.push(workflowPath);
       try {
         const payload = await client.getJson(workflowPath, { retries: 1, retryDelayMs: 300 });
-        const normalized = normalizeWorkflowCandidate(payload);
+        const normalized = await normalizeCandidate(payload);
         if (normalized) return normalized;
       } catch {
         continue;

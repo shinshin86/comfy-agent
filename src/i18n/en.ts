@@ -119,6 +119,14 @@ export const messages = {
   "preset.invalid": "Invalid preset format.",
   "workdir.conflict_not_dir": "{path} exists and is not a directory. Use --force to recreate.",
   "workflow.normalize_failed": "Failed to detect workflow API JSON format.",
+  "workflow.subgraph_object_info_required":
+    "This ComfyUI workflow contains subgraphs. Connect to the target ComfyUI server so comfy-agent can fetch /object_info and expand them safely.",
+  "workflow.subgraph_node_info_missing":
+    "Cannot expand the subgraph because /object_info has no schema for node class {type}. Update ComfyUI and retry the import.",
+  "workflow.subgraph_mode_unsupported":
+    "Cannot expand subgraph node {type}: execution mode {mode} is not supported yet.",
+  "workflow.subgraph_cycle": "Cannot expand a cyclic subgraph output: {id}.",
+  "workflow.subgraph_invalid": "The ComfyUI subgraph definition is invalid or incomplete.",
   "run.workdir_missing": ".comfy-agent not found. Run comfy-agent init first.",
   "run.invalid_workflow_json": "Failed to parse workflow JSON.",
   "run.remote_workflow_not_found": "Failed to resolve remote workflow JSON.",
