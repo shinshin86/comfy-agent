@@ -122,6 +122,14 @@ export const messages = {
   "preset.invalid": "プリセットの形式が不正です。",
   "workdir.conflict_not_dir": "{path} がディレクトリではありません。--force で再作成できます。",
   "workflow.normalize_failed": "workflow API JSON の形式を検出できませんでした。",
+  "workflow.subgraph_object_info_required":
+    "このComfyUI workflowにはサブグラフが含まれます。安全に展開するため、対象のComfyUIへ接続して /object_info を取得してください。",
+  "workflow.subgraph_node_info_missing":
+    "サブグラフを展開できません。/object_info にノードクラス {type} の定義がありません。ComfyUIを更新して再度importしてください。",
+  "workflow.subgraph_mode_unsupported":
+    "サブグラフノード {type} を展開できません。実行モード {mode} は未対応です。",
+  "workflow.subgraph_cycle": "循環するサブグラフ出力を展開できません: {id}",
+  "workflow.subgraph_invalid": "ComfyUIのサブグラフ定義が不正または不完全です。",
   "run.workdir_missing":
     ".comfy-agent が見つかりません。先に comfy-agent init を実行してください。",
   "run.invalid_workflow_json": "workflow JSON の解析に失敗しました。",

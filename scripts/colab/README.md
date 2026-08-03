@@ -28,6 +28,7 @@ in `.mcp.json` at the repo root.
 | [`./wan22/`](./wan22/) | TI2V 5B verified E2E; T2V 14B starter | A100 | Wan 2.2 video |
 | [`./hunyuan_video/`](./hunyuan_video/) | Verified E2E (A100) | L4 24GB / A100 | Tencent Hunyuan Video T2V 720p (bf16 → fp8 at load) |
 | [`./ltx23/`](./ltx23/) | Starter | A100 | LTX-2.3 22B i2v video |
+| [`./minimax_h3/`](./minimax_h3/) | Verified E2E | A100 | MiniMax H3 T2V/I2V with native stereo audio (42.47 GB download; territory-restricted upstream license—review runtime region before use) |
 | [`./ace_step_1_5/`](./ace_step_1_5/) | A100 E2E verified; T4/L4 unverified | T4+ (L4 recommended) | ACE-Step 1.5 Turbo AIO, full songs with lyrics and vocals |
 | [`./stable_audio3_small_music/`](./stable_audio3_small_music/) | A100 E2E verified; T4 unverified | T4+ | Stable Audio 3 Small Music, lightweight instrumental music / BGM |
 | [`./stable_audio3/`](./stable_audio3/) | Verified E2E | L4+ | Stable Audio 3 Medium, music and sound effects |

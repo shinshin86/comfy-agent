@@ -6,7 +6,13 @@ import { CliError } from "../io/errors.js";
 import { getSubdirPath, getWorkdirPath } from "../io/workdir.js";
 import { log, print } from "../io/output.js";
 import { t } from "../i18n/index.js";
-import { detectParamType, isLiteralValue, normalizeWorkflow } from "../workflow/normalize.js";
+import {
+  detectParamType,
+  isLiteralValue,
+  normalizeWorkflow,
+  workflowHasSubgraphs,
+  type WorkflowObjectInfo,
+} from "../workflow/normalize.js";
 import { resolveComfyBaseUrl } from "../utils/base-url.js";
 
 export type ImportOptions = {
@@ -40,19 +46,25 @@ const ensureWorkdir = async (scope: "local" | "global") => {
   }
 };
 
-const loadWorkflowFile = async (filePath: string) => {
+const loadWorkflowFile = async (filePath: string): Promise<unknown> => {
   const raw = await fs.readFile(filePath, "utf-8");
-  let parsed: unknown;
   try {
-    parsed = JSON.parse(raw);
+    return JSON.parse(raw) as unknown;
   } catch (err) {
     throw new CliError("INVALID_WORKFLOW", t("import.invalid_workflow_json"), 2, {
       file: filePath,
       cause: String(err),
     });
   }
+};
+
+const normalizeImportedWorkflow = (
+  parsed: unknown,
+  filePath: string,
+  objectInfo: WorkflowObjectInfo | null,
+) => {
   try {
-    return normalizeWorkflow(parsed);
+    return normalizeWorkflow(parsed, { objectInfo });
   } catch (err) {
     throw new CliError("INVALID_WORKFLOW", (err as Error).message, 2, { file: filePath });
   }
@@ -60,13 +72,7 @@ const loadWorkflowFile = async (filePath: string) => {
 
 const resolveBaseUrl = (options: ImportOptions) => resolveComfyBaseUrl(options);
 
-type ObjectInfoNode = {
-  input?: {
-    required?: Record<string, unknown>;
-    optional?: Record<string, unknown>;
-  };
-};
-type ObjectInfo = Record<string, ObjectInfoNode>;
+type ObjectInfo = WorkflowObjectInfo;
 
 type InferredUpload = {
   baseName: "image" | "audio" | "video";
@@ -319,7 +325,7 @@ export const runImport = async (workflowPath: string, options: ImportOptions) =>
   const scope = options.global ? "global" : "local";
   await ensureWorkdir(scope);
   const name = sanitizeName(options.name);
-  const workflow = await loadWorkflowFile(workflowPath);
+  const parsed = await loadWorkflowFile(workflowPath);
   const baseUrl = resolveBaseUrl(options);
 
   const workflowsDir = getSubdirPath("workflows", process.cwd(), scope);
@@ -333,18 +339,20 @@ export const runImport = async (workflowPath: string, options: ImportOptions) =>
   const workflowDest = path.join(workflowsDir, workflowFileName);
   const presetDest = path.join(presetsDir, presetFileName);
 
-  await writeFileSafe(workflowDest, `${JSON.stringify(workflow, null, 2)}\n`, options.force);
-
   await fs.mkdir(cacheDir, { recursive: true });
   const cache = await loadObjectInfoCache(cachePath);
   let objectInfo = cache[baseUrl] ?? null;
-  if (!objectInfo) {
-    objectInfo = await fetchObjectInfo(baseUrl);
-    if (objectInfo) {
-      cache[baseUrl] = objectInfo;
+  if (!objectInfo || workflowHasSubgraphs(parsed)) {
+    const liveObjectInfo = await fetchObjectInfo(baseUrl);
+    if (liveObjectInfo) {
+      objectInfo = liveObjectInfo;
+      cache[baseUrl] = liveObjectInfo;
       await saveObjectInfoCache(cachePath, cache);
     }
   }
+
+  const workflow = normalizeImportedWorkflow(parsed, workflowPath, objectInfo);
+  await writeFileSafe(workflowDest, `${JSON.stringify(workflow, null, 2)}\n`, options.force);
 
   const presetTemplate = buildPresetTemplate(name, workflowFileName, workflow, objectInfo);
   const presetYaml = YAML.stringify(presetTemplate);

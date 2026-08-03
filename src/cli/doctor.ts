@@ -8,7 +8,11 @@ import { getSubdirPath, getWorkdirPath, SUBDIRS, type WorkdirScope } from "../io
 import { decideComfyBaseUrl } from "../utils/base-url.js";
 import { loadPresetFile } from "../preset/loader.js";
 import { resolvePresetPath } from "../preset/path.js";
-import { normalizeWorkflow } from "../workflow/normalize.js";
+import {
+  normalizeWorkflow,
+  workflowHasSubgraphs,
+  type WorkflowObjectInfo,
+} from "../workflow/normalize.js";
 import { classifyServerError, fetchPreflightReport } from "../workflow/preflight.js";
 
 export type DoctorOptions = {
@@ -92,13 +96,25 @@ const checkPresetPreflight = async (
   const preset = await loadPresetFile(presetPath);
   const workflowPath = path.join(getSubdirPath("workflows", process.cwd(), scope), preset.workflow);
   const raw = await fs.readFile(workflowPath, "utf-8");
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw) as unknown;
+  } catch (err) {
+    throw new CliError("INVALID_WORKFLOW", t("run.invalid_workflow_json"), 2, {
+      file: workflowPath,
+      cause: String(err),
+    });
+  }
+  const client = new ComfyClient(baseUrl);
+  const objectInfo = workflowHasSubgraphs(parsed)
+    ? await client.objectInfo<WorkflowObjectInfo>()
+    : null;
   let workflow: ReturnType<typeof normalizeWorkflow>;
   try {
-    workflow = normalizeWorkflow(JSON.parse(raw));
+    workflow = normalizeWorkflow(parsed, { objectInfo });
   } catch (err) {
     throw new CliError("INVALID_WORKFLOW", (err as Error).message, 2, { file: workflowPath });
   }
-  const client = new ComfyClient(baseUrl);
   const report = await fetchPreflightReport(client, workflow);
   return { preset: preset.name, ...report };
 };

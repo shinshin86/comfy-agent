@@ -21,6 +21,57 @@ describe("extractUserdataJsonCandidates", () => {
 });
 
 describe("resolveRemoteWorkflow userdata fallback", () => {
+  it("fetches object_info and expands an inline subgraph template", async () => {
+    const getJson = vi.fn(async (urlPath: string) => {
+      if (urlPath === "/object_info") {
+        return {
+          PrimitiveStringMultiline: {
+            input: { required: { value: ["STRING", { multiline: true }] } },
+            input_order: { required: ["value"] },
+          },
+        };
+      }
+      throw new CliError("API_ERROR", "not found", 3, { status: 404 });
+    });
+    const workflow = {
+      nodes: [{ id: 5, type: "subgraph-id", inputs: [], widgets_values: ["hello"] }],
+      links: [],
+      definitions: {
+        subgraphs: [
+          {
+            id: "subgraph-id",
+            inputs: [{ name: "value", type: "STRING" }],
+            outputs: [],
+            nodes: [
+              {
+                id: 2,
+                type: "PrimitiveStringMultiline",
+                inputs: [
+                  { name: "value", type: "STRING", link: 100, widget: { name: "value" } },
+                ],
+                widgets_values: ["fallback"],
+              },
+            ],
+            links: [
+              { id: 100, origin_id: -10, origin_slot: 0, target_id: 2, target_slot: 0 },
+            ],
+          },
+        ],
+      },
+    };
+
+    await expect(resolveRemoteWorkflow({ getJson }, "inline-subgraph", workflow)).resolves.toEqual({
+      "5:2": {
+        class_type: "PrimitiveStringMultiline",
+        inputs: { value: "hello" },
+      },
+    });
+    expect(getJson).toHaveBeenCalledWith("/object_info", {
+      retries: 1,
+      retryDelayMs: 300,
+    });
+  });
+
   it("loads workflow from /userdata when template endpoints do not have workflow json", async () => {
     const workflow = {
       "1": {
