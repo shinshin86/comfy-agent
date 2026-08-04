@@ -8,6 +8,9 @@ Both workflows completed the required Colab A100 E2E path on 2026-08-03:
 setup, cloudflared connection, local import/run, MP4 download, frame
 inspection, and non-empty audio probing all passed.
 
+Prompt writing: see [docs/minimax-h3-prompting.md](../../../docs/minimax-h3-prompting.md)
+for how to structure H3 prompts (visual timeline + audio + music in one block).
+
 Upstream references:
 
 - https://docs.comfy.org/tutorials/video/minimax/minimax-h3

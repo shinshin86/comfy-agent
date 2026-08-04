@@ -46,6 +46,10 @@ For a new creative goal (e.g. "make a music video", "10-second anime clip"):
 5. Get approval before big downloads or paid-GPU choices. While Colab boots,
    prepare prompts/parameters — don't idle.
 
+Model-specific prompting: for MiniMax H3 runs (`minimax_h3_t2v` /
+`minimax_h3_i2v`), use the `minimax-h3-prompting` skill before composing
+`--104_prompt`.
+
 ## Error handling (decision table digest)
 
 - Time-only problems → fix yourself (install, start server, retry ≤3 with

@@ -29,6 +29,15 @@ Key invariants:
 - `comfy-agent run` preflights the server automatically; trust its error
   codes rather than probing ComfyUI endpoints by hand.
 
+Model-specific prompt construction:
+
+- **MiniMax H3** (`minimax_h3_t2v` / `minimax_h3_i2v`): read
+  [docs/minimax-h3-prompting.md](docs/minimax-h3-prompting.md) before
+  composing `--104_prompt`. H3 generates video + stereo audio in one pass;
+  the prompt must direct both, rendered in the official three-field format
+  (`integrated_multimodal_description` / `overall_soundscape` /
+  `non_diegetic_music`).
+
 For repo development rules (building, testing, Colab kit verification
 standards), see [CLAUDE.md](CLAUDE.md) — the E2E verification rules there
 are non-negotiable regardless of which agent you are.
