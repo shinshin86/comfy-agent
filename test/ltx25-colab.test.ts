@@ -30,6 +30,11 @@ describe("LTX-2.5 Colab kit", () => {
     const setup = await fs.readFile(path.join(kitDir, "01_setup.py"), "utf-8");
 
     expect(setup).toContain('COMFYUI_REVISION = "c2bcbecd82ec5ae66594340b395c24ef0217b238"');
+    expect(setup).toContain("COMFYUI_ARCHIVE_SIZE = 11781636");
+    expect(setup).toContain(
+      'COMFYUI_ARCHIVE_SHA256 = "9ed49823d5e2e4b42b54683d9677bb5f3e90f8386fb044d05439dcba2c3f981a"',
+    );
+    expect(setup).toContain("https://codeload.github.com/Comfy-Org/ComfyUI/tar.gz/");
     expect(setup).toContain('LTX25_REVISION = "28dac7acdc1f78a70e98687db261a949754f8941"');
     expect(setup).toContain('GEMMA4_REVISION = "fb53025d538a4d19de09e37d01ee49b41f18e486"');
     expect(setup).toContain('WORKFLOW_REVISION = "96a8cab7fa7b4c201910cd59cdd94dcc3c2d2deb"');

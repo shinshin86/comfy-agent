@@ -57,8 +57,8 @@ the current upstream agreement and intended use.
 - Allow at least 65-70 GB of free runtime disk for models, ComfyUI, packages,
   Hub metadata, and outputs.
 - Default official workflows: 1280x720, 5 seconds, 24 fps, synchronized audio.
-- The setup pins ComfyUI v0.32.0 and therefore is not additive to an arbitrary
-  existing runtime.
+- The setup pins and SHA-256 verifies the ComfyUI v0.32.0 source archive and
+  therefore is not additive to an arbitrary existing runtime.
 
 The default model is the distilled int8 ConvRot transformer. T2V and I2V use a
 two-stage path with the spatial latent upscaler. FLF2V uses the same transformer,

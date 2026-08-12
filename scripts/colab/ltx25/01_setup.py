@@ -12,6 +12,8 @@ USE_GOOGLE_DRIVE = False
 UPDATE_COMFYUI = False
 
 COMFYUI_REVISION = "c2bcbecd82ec5ae66594340b395c24ef0217b238"  # v0.32.0
+COMFYUI_ARCHIVE_SIZE = 11781636
+COMFYUI_ARCHIVE_SHA256 = "9ed49823d5e2e4b42b54683d9677bb5f3e90f8386fb044d05439dcba2c3f981a"
 LTX25_REPO = "Lightricks/LTX-2.5"
 LTX25_REVISION = "28dac7acdc1f78a70e98687db261a949754f8941"
 GEMMA4_REPO = "Comfy-Org/gemma-4"
@@ -70,16 +72,61 @@ else:
     current_dir = os.getcwd()
     WORKSPACE = current_dir if os.path.isfile(os.path.join(current_dir, "main.py")) else f"{current_dir}/ComfyUI"
 
-if not os.path.isdir(WORKSPACE):
-    run("git", "clone", "--filter=blob:none", "https://github.com/Comfy-Org/ComfyUI.git", WORKSPACE)
-
-os.chdir(WORKSPACE)
 if UPDATE_COMFYUI:
+    if os.path.exists(WORKSPACE) and not os.path.isdir(os.path.join(WORKSPACE, ".git")):
+        raise RuntimeError(
+            "UPDATE_COMFYUI requires a Git checkout. Use a fresh runtime or set "
+            "UPDATE_COMFYUI = False for the pinned archive."
+        )
+    if not os.path.isdir(WORKSPACE):
+        run(
+            "git",
+            "clone",
+            "--depth",
+            "1",
+            "https://github.com/Comfy-Org/ComfyUI.git",
+            WORKSPACE,
+        )
+    os.chdir(WORKSPACE)
     run("git", "fetch", "--depth", "1", "origin", "master")
     run("git", "checkout", "--detach", "FETCH_HEAD")
 else:
-    run("git", "fetch", "--depth", "1", "origin", COMFYUI_REVISION)
-    run("git", "checkout", "--detach", COMFYUI_REVISION)
+    marker = os.path.join(WORKSPACE, ".comfy-agent-comfyui-revision")
+    marker_revision = ""
+    if os.path.isfile(marker):
+        with open(marker, "r", encoding="utf-8") as handle:
+            marker_revision = handle.read().strip()
+
+    if not (
+        os.path.isfile(os.path.join(WORKSPACE, "main.py"))
+        and marker_revision == COMFYUI_REVISION
+    ):
+        if os.path.isfile(os.path.join(WORKSPACE, "main.py")):
+            raise RuntimeError(
+                f"Existing ComfyUI at {WORKSPACE} is not the pinned archive. "
+                "Use a fresh runtime to avoid overwriting an arbitrary installation."
+            )
+        if os.path.exists(WORKSPACE):
+            shutil.rmtree(WORKSPACE)
+
+        archive_path = f"/content/ComfyUI-{COMFYUI_REVISION}.tar.gz"
+        ensure_download(
+            f"https://codeload.github.com/Comfy-Org/ComfyUI/tar.gz/{COMFYUI_REVISION}",
+            archive_path,
+            COMFYUI_ARCHIVE_SIZE,
+            COMFYUI_ARCHIVE_SHA256,
+        )
+        extracted_path = os.path.join(
+            os.path.dirname(WORKSPACE), f"ComfyUI-{COMFYUI_REVISION}"
+        )
+        if os.path.exists(extracted_path):
+            shutil.rmtree(extracted_path)
+        run("tar", "-xzf", archive_path, "-C", os.path.dirname(WORKSPACE))
+        os.replace(extracted_path, WORKSPACE)
+        with open(marker, "w", encoding="utf-8") as handle:
+            handle.write(f"{COMFYUI_REVISION}\n")
+
+    os.chdir(WORKSPACE)
 
 run(sys.executable, "-m", "pip", "install", "-q", "-r", f"{WORKSPACE}/requirements.txt")
 run(sys.executable, "-m", "pip", "install", "-q", "huggingface_hub>=0.34.0", "hf_xet>=1.1.5")
