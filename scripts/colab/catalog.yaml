@@ -499,6 +499,64 @@ kits:
         size_gb: 2.7
     setup_minutes: 14
     composable: true
+  - name: ltx25
+    path: ltx25/
+    status: starter
+    tasks: [text_to_video, image_to_video]
+    outputs: [video]
+    gpu:
+      minimum: A100
+      recommended: A100
+    summary: LTX-2.5 native text/image/first-last-frame video generation with synchronized audio.
+    setup_file: 01_setup.py
+    license_notes:
+      - Gated Hugging Face access requires accepting the LTX-2.5 terms and supplying a Read token through the HF_TOKEN Colab Secret.
+      - LTX-2.x Community License requires a paid license for commercial use by entities with aggregate annual revenue of at least USD 10 million, except defined non-commercial uses.
+      - Review the full Acceptable Use Policy, AI-generated-content disclosure requirements, and restrictions on competing products before use.
+    tags: [video, audio, t2v, i2v, flf2v, ltx, native_audio, gated]
+    workflows:
+      - name: ltx25_t2v
+        file: video_ltx2_5_t2v.json
+        task: text_to_video
+        output: video
+        speed: slow
+        quality: high
+        notes: Official two-stage 1280x720 T2V template with synchronized generated audio.
+      - name: ltx25_i2v
+        file: video_ltx2_5_i2v.json
+        task: image_to_video
+        output: video
+        speed: slow
+        quality: high
+        notes: Official two-stage I2V template; upload a first-frame image.
+      - name: ltx25_flf2v
+        file: video_ltx2_5_flf2v.json
+        task: image_to_video
+        output: video
+        speed: slow
+        quality: high
+        notes: Official first/last-frame interpolation template; upload two aligned images.
+    assets:
+      - file: ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors
+        dir: models/diffusion_models
+        size_gb: 21.504034224
+      - file: gemma4-12b-with-proj-ltx-2.5-comfy-int8-convrot.safetensors
+        dir: models/text_encoders
+        size_gb: 15.372971786
+      - file: gemma4_e2b_it_bf16.safetensors
+        dir: models/text_encoders
+        size_gb: 10.27877416
+      - file: ltx-2.5-video-vae-bf16.safetensors
+        dir: models/vae
+        size_gb: 1.472223346
+      - file: ltx-2.5-audio-vae-bf16.safetensors
+        dir: models/vae
+        size_gb: 0.36486654
+      - file: ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors
+        dir: models/latent_upscale_models
+        size_gb: 0.995778752
+    setup_minutes: 15
+    composable: false
   - name: minimax_h3
     path: minimax_h3/
     status: verified

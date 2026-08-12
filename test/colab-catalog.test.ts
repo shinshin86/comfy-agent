@@ -682,6 +682,25 @@ describe("buildColabSuggestPayload", () => {
     });
   });
 
+  it("suggests all LTX-2.5 native video modes with gated setup metadata", async () => {
+    const catalog = await loadColabCatalogFile(catalogPath);
+    const payload = buildColabSuggestPayload(catalog, {
+      goal: "ltx25",
+      limit: 3,
+    });
+
+    expect(payload.suggestions.map((item) => item.workflow).sort()).toEqual([
+      "ltx25_flf2v",
+      "ltx25_i2v",
+      "ltx25_t2v",
+    ]);
+    expect(payload.suggestions.every((item) => item.kit === "ltx25")).toBe(true);
+    expect(payload.suggestions.every((item) => item.status === "starter")).toBe(true);
+    expect(payload.suggestions.every((item) => item.gpu.recommended === "A100")).toBe(true);
+    expect(payload.suggestions.every((item) => item.download_gb === 50)).toBe(true);
+    expect(payload.suggestions.every((item) => item.composable === false)).toBe(true);
+  });
+
   it("suggests the Wan 2.2 speech-to-video kit when requested by name", async () => {
     const catalog = await loadColabCatalogFile(catalogPath);
     const payload = buildColabSuggestPayload(catalog, {
