@@ -86,6 +86,7 @@ type GraphContext = {
 
 const UI_NON_EXECUTION_NODE_TYPES = new Set(["MarkdownNote"]);
 const WIDGET_INPUT_TYPES = new Set(["INT", "FLOAT", "NUMBER", "STRING", "BOOLEAN", "COMBO"]);
+const DYNAMIC_COMBO_INPUT_TYPE = "COMFY_DYNAMICCOMBO_V3";
 
 const isUiWorkflow = (value: unknown): value is Record<string, unknown> => {
   if (!isPlainObject(value)) return false;
@@ -129,6 +130,9 @@ const isWidgetInput = (input: UiWorkflowNodeInput): boolean => {
 const matchesWidgetValueType = (inputType: unknown, value: unknown): boolean => {
   if (Array.isArray(inputType)) return typeof value === "string";
   if (typeof inputType !== "string") return true;
+  if (inputType.includes(",")) {
+    return inputType.split(",").some((type) => matchesWidgetValueType(type.trim(), value));
+  }
   if (inputType === "INT") return typeof value === "number" && Number.isInteger(value);
   if (inputType === "FLOAT" || inputType === "NUMBER") return typeof value === "number";
   if (inputType === "BOOLEAN") return typeof value === "boolean";
@@ -310,15 +314,40 @@ const isWidgetSpec = (spec: unknown): boolean => {
   const options = isPlainObject(spec[1]) ? spec[1] : null;
   if (options?.forceInput === true) return false;
   if (Array.isArray(type)) return true;
-  return typeof type === "string" && WIDGET_INPUT_TYPES.has(type.toUpperCase());
-};
-
-const widgetInputNames = (nodeInfo: ObjectInfoNode): string[] => {
-  return orderedInputNames(nodeInfo).filter((name) => isWidgetSpec(inputSpec(nodeInfo, name)));
+  return (
+    typeof type === "string" &&
+    type.split(",").some((part) => WIDGET_INPUT_TYPES.has(part.trim().toUpperCase()))
+  );
 };
 
 const widgetTypeForSpec = (spec: unknown): unknown => {
   return Array.isArray(spec) && spec.length > 0 ? spec[0] : undefined;
+};
+
+const isDynamicComboSpec = (spec: unknown): boolean => {
+  if (!Array.isArray(spec) || spec.length < 2) return false;
+  return typeof spec[0] === "string" && spec[0].toUpperCase() === DYNAMIC_COMBO_INPUT_TYPE;
+};
+
+const dynamicComboOptions = (spec: unknown): Record<string, unknown>[] => {
+  if (!isDynamicComboSpec(spec)) return [];
+  const dynamicSpec = spec as unknown[];
+  const options = isPlainObject(dynamicSpec[1]) ? dynamicSpec[1].options : undefined;
+  return Array.isArray(options) ? options.filter(isPlainObject) : [];
+};
+
+const dynamicComboInputNames = (option: Record<string, unknown>): string[] => {
+  const inputs = isPlainObject(option.inputs) ? option.inputs : {};
+  const required = isPlainObject(inputs.required) ? Object.keys(inputs.required) : [];
+  const optional = isPlainObject(inputs.optional) ? Object.keys(inputs.optional) : [];
+  return [...required, ...optional];
+};
+
+const dynamicComboInputSpec = (option: Record<string, unknown>, name: string): unknown => {
+  const inputs = isPlainObject(option.inputs) ? option.inputs : {};
+  const required = isPlainObject(inputs.required) ? inputs.required : {};
+  const optional = isPlainObject(inputs.optional) ? inputs.optional : {};
+  return required[name] ?? optional[name];
 };
 
 const mapWidgetValues = (
@@ -329,15 +358,48 @@ const mapWidgetValues = (
   const result: Record<string, unknown> = {};
   let valueIndex = 0;
 
-  for (const name of widgetInputNames(nodeInfo)) {
-    const expectedType = widgetTypeForSpec(inputSpec(nodeInfo, name));
+  const takeNextValue = (expectedType: unknown): { found: boolean; value?: unknown } => {
     while (valueIndex < values.length) {
       const candidate = values[valueIndex];
       valueIndex += 1;
       if (!matchesWidgetValueType(expectedType, candidate)) continue;
-      result[name] = candidate;
-      break;
+      return { found: true, value: candidate };
     }
+    return { found: false };
+  };
+
+  for (const name of orderedInputNames(nodeInfo)) {
+    const spec = inputSpec(nodeInfo, name);
+    if (isDynamicComboSpec(spec)) {
+      const options = dynamicComboOptions(spec);
+      const optionKeys = new Set(
+        options.map((option) => option.key).filter((key): key is string => typeof key === "string"),
+      );
+      let selectedKey: string | undefined;
+      while (valueIndex < values.length) {
+        const candidate = values[valueIndex];
+        valueIndex += 1;
+        if (typeof candidate !== "string" || !optionKeys.has(candidate)) continue;
+        selectedKey = candidate;
+        break;
+      }
+      if (selectedKey === undefined) continue;
+      result[name] = selectedKey;
+
+      const selected = options.find((option) => option.key === selectedKey);
+      if (!selected) continue;
+      for (const nestedName of dynamicComboInputNames(selected)) {
+        const nestedSpec = dynamicComboInputSpec(selected, nestedName);
+        if (!isWidgetSpec(nestedSpec)) continue;
+        const nestedValue = takeNextValue(widgetTypeForSpec(nestedSpec));
+        if (nestedValue.found) result[`${name}.${nestedName}`] = nestedValue.value;
+      }
+      continue;
+    }
+
+    if (!isWidgetSpec(spec)) continue;
+    const nextValue = takeNextValue(widgetTypeForSpec(spec));
+    if (nextValue.found) result[name] = nextValue.value;
   }
 
   return result;

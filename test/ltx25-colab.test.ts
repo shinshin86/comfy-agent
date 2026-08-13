@@ -26,6 +26,18 @@ const workflowSha256 = async (name: string) =>
     .digest("hex");
 
 describe("LTX-2.5 Colab kit", () => {
+  it("records the completed A100 E2E verification", async () => {
+    const readme = await fs.readFile(path.join(kitDir, "README.md"), "utf-8");
+
+    expect(readme).toContain("Verified E2E on 2026-08-13");
+    expect(readme).toContain("NVIDIA A100-SXM4-40GB");
+    expect(readme).toContain("132.60 s (T2V)");
+    expect(readme).toContain("117.90 s (I2V)");
+    expect(readme).toContain("151.32 s (FLF2V)");
+    expect(readme).toContain("1280x704");
+    expect(readme).toContain("48 kHz");
+  });
+
   it("pins ComfyUI, model repositories, workflow provenance, cloudflared, and asset sizes", async () => {
     const setup = await fs.readFile(path.join(kitDir, "01_setup.py"), "utf-8");
 

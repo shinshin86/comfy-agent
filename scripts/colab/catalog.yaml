@@ -501,12 +501,13 @@ kits:
     composable: true
   - name: ltx25
     path: ltx25/
-    status: starter
+    status: verified
     tasks: [text_to_video, image_to_video]
     outputs: [video]
     gpu:
       minimum: A100
       recommended: A100
+      verified: [A100]
     summary: LTX-2.5 native text/image/first-last-frame video generation with synchronized audio.
     setup_file: 01_setup.py
     license_notes:

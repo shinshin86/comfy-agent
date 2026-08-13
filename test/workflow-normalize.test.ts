@@ -182,6 +182,180 @@ describe("normalizeWorkflow", () => {
     });
   });
 
+  it("expands dynamic combo widgets into flattened API inputs", () => {
+    const uiWorkflow = {
+      nodes: [{ id: 5, type: "subgraph-id", inputs: [], widgets_values: [] }],
+      links: [],
+      definitions: {
+        subgraphs: [
+          {
+            id: "subgraph-id",
+            inputs: [],
+            outputs: [],
+            links: [],
+            nodes: [
+              {
+                id: 2,
+                type: "TextGenerate",
+                inputs: [
+                  { name: "clip", type: "CLIP", link: null },
+                  { name: "prompt", type: "STRING", link: null, widget: { name: "prompt" } },
+                  { name: "max_length", type: "INT", link: null, widget: { name: "max_length" } },
+                  {
+                    name: "sampling_mode",
+                    type: "COMFY_DYNAMICCOMBO_V3",
+                    link: null,
+                    widget: { name: "sampling_mode" },
+                  },
+                  { name: "thinking", type: "BOOLEAN", link: null, widget: { name: "thinking" } },
+                ],
+                widgets_values: [
+                  "expand this",
+                  600,
+                  "on",
+                  0.7,
+                  64,
+                  0.95,
+                  0.05,
+                  1.15,
+                  42,
+                  0,
+                  false,
+                ],
+              },
+              {
+                id: 4,
+                type: "TextGenerate",
+                inputs: [
+                  { name: "clip", type: "CLIP", link: null },
+                  { name: "prompt", type: "STRING", link: null, widget: { name: "prompt" } },
+                  { name: "max_length", type: "INT", link: null, widget: { name: "max_length" } },
+                  {
+                    name: "sampling_mode",
+                    type: "COMFY_DYNAMICCOMBO_V3",
+                    link: null,
+                    widget: { name: "sampling_mode" },
+                  },
+                  { name: "thinking", type: "BOOLEAN", link: null, widget: { name: "thinking" } },
+                ],
+                widgets_values: ["do not sample", 256, "off", true],
+              },
+              {
+                id: 3,
+                type: "EmptyLatentAudio",
+                inputs: [
+                  {
+                    name: "frames_number",
+                    type: "INT",
+                    link: null,
+                    widget: { name: "frames_number" },
+                  },
+                  {
+                    name: "frame_rate",
+                    type: "FLOAT,INT",
+                    link: null,
+                    widget: { name: "frame_rate" },
+                  },
+                ],
+                widgets_values: [97, 25, 1],
+              },
+            ],
+          },
+        ],
+      },
+    };
+    const objectInfo: WorkflowObjectInfo = {
+      TextGenerate: {
+        input: {
+          required: {
+            clip: ["CLIP", { forceInput: true }],
+            prompt: ["STRING", { multiline: true }],
+            max_length: ["INT", { default: 256 }],
+            sampling_mode: [
+              "COMFY_DYNAMICCOMBO_V3",
+              {
+                options: [
+                  {
+                    key: "on",
+                    inputs: {
+                      required: {
+                        temperature: ["FLOAT", { default: 0.7 }],
+                        top_k: ["INT", { default: 64 }],
+                        top_p: ["FLOAT", { default: 0.95 }],
+                        min_p: ["FLOAT", { default: 0.05 }],
+                        repetition_penalty: ["FLOAT", { default: 1.05 }],
+                        seed: ["INT", { default: 0 }],
+                      },
+                      optional: {
+                        presence_penalty: ["FLOAT", { default: 0 }],
+                      },
+                    },
+                  },
+                  { key: "off", inputs: { required: {} } },
+                ],
+              },
+            ],
+          },
+          optional: {
+            thinking: ["BOOLEAN", { default: false }],
+          },
+        },
+        input_order: {
+          required: ["clip", "prompt", "max_length", "sampling_mode"],
+          optional: ["thinking"],
+        },
+      },
+      EmptyLatentAudio: {
+        input: {
+          required: {
+            frames_number: ["INT", { default: 97 }],
+            frame_rate: ["FLOAT,INT", { default: 25 }],
+            batch_size: ["INT", { default: 1 }],
+          },
+        },
+        input_order: {
+          required: ["frames_number", "frame_rate", "batch_size"],
+        },
+      },
+    };
+
+    expect(normalizeWorkflow(uiWorkflow, { objectInfo })).toEqual({
+      "5:2": {
+        class_type: "TextGenerate",
+        inputs: {
+          prompt: "expand this",
+          max_length: 600,
+          sampling_mode: "on",
+          "sampling_mode.temperature": 0.7,
+          "sampling_mode.top_k": 64,
+          "sampling_mode.top_p": 0.95,
+          "sampling_mode.min_p": 0.05,
+          "sampling_mode.repetition_penalty": 1.15,
+          "sampling_mode.seed": 42,
+          "sampling_mode.presence_penalty": 0,
+          thinking: false,
+        },
+      },
+      "5:4": {
+        class_type: "TextGenerate",
+        inputs: {
+          prompt: "do not sample",
+          max_length: 256,
+          sampling_mode: "off",
+          thinking: true,
+        },
+      },
+      "5:3": {
+        class_type: "EmptyLatentAudio",
+        inputs: {
+          frames_number: 97,
+          frame_rate: 25,
+          batch_size: 1,
+        },
+      },
+    });
+  });
+
   it("requires object_info instead of silently importing a subgraph container", () => {
     const uiWorkflow = {
       nodes: [{ id: 5, type: "subgraph-id", inputs: [], widgets_values: [] }],

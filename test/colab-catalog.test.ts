@@ -695,8 +695,9 @@ describe("buildColabSuggestPayload", () => {
       "ltx25_t2v",
     ]);
     expect(payload.suggestions.every((item) => item.kit === "ltx25")).toBe(true);
-    expect(payload.suggestions.every((item) => item.status === "starter")).toBe(true);
+    expect(payload.suggestions.every((item) => item.status === "verified")).toBe(true);
     expect(payload.suggestions.every((item) => item.gpu.recommended === "A100")).toBe(true);
+    expect(payload.suggestions.every((item) => item.gpu.verified?.includes("A100"))).toBe(true);
     expect(payload.suggestions.every((item) => item.download_gb === 50)).toBe(true);
     expect(payload.suggestions.every((item) => item.composable === false)).toBe(true);
   });
