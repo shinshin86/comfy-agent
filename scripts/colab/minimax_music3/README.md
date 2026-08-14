@@ -4,7 +4,7 @@ This starter kit generates complete songs with lyrics and expressive vocals
 using ComfyUI's native MiniMax Music 3 support. The bundled workflow uses the
 official INT8 DiT and pruned INT8 text encoder repacks plus the audio VAE.
 
-Status: **Starter — static checks only; Colab E2E verification is pending.**
+Status: **Verified E2E on Colab A100; L4 remains unverified.**
 
 ## Pinned components
 
@@ -27,8 +27,8 @@ the verification status.
 
 ## Flow
 
-1. Select an A100 Colab runtime for the first verification. L4 with the INT8
-   models is the provisional minimum but remains unverified.
+1. Select an A100 Colab runtime. L4 with the INT8 models is the provisional
+   minimum but remains unverified.
 2. Run `01_setup.py` in a Colab code cell.
 3. Run `../02_start_comfyui.py` in another cell.
 4. Read the trycloudflare URL from `/content/comfy_url.txt`.
@@ -66,9 +66,10 @@ The MP3 is downloaded below
 - Start at 30 seconds for validation. Longer songs increase autoregressive,
   diffusion, and audio-decoding time.
 
-The workflow uses tiled VAE decoding to reduce peak VRAM. The model itself
-produces 32 kHz, 16-bit stereo audio; the workflow saves an MP3 for convenient
-transfer through comfy-agent.
+The workflow uses tiled VAE decoding to reduce peak VRAM and saves an MP3 for
+convenient transfer through comfy-agent. The upstream reference pipeline
+describes 32 kHz, 16-bit stereo output, while ComfyUI's pinned Music 3 DAV
+loader currently exposes 44.1 kHz; the A100 E2E output was 44.1 kHz stereo.
 
 ## License and upstream references
 
@@ -97,16 +98,26 @@ Upstream:
 - https://github.com/Comfy-Org/ComfyUI/pull/15570
 - https://github.com/Comfy-Org/workflow_templates/blob/main/templates/audio_minimax_music_3.json
 
-## Verification checklist
+## Verification record
 
-- [ ] `01_setup.py` completes on the target Colab GPU.
-- [ ] `02_start_comfyui.py` produces a usable trycloudflare URL.
-- [ ] Local `comfy-agent doctor` reports a healthy connection.
-- [ ] Local `comfy-agent import` creates the preset.
-- [ ] `doctor --preset` finds every model and native node.
-- [ ] Local `comfy-agent run` downloads the generated MP3.
-- [ ] Duration, sample rate, channels, level, and ending are probed.
-- [ ] The generated song is played and checked against caption and lyrics.
+Verified on 2026-08-14 with a Colab `NVIDIA A100-SXM4-40GB` runtime and the
+canonical local Mac -> cloudflared -> Colab flow:
 
-Keep the kit at Starter until every item is observed in one canonical local
-Mac -> cloudflared -> Colab run.
+- `01_setup.py` completed and all three pinned model checksums plus the
+  cloudflared checksum passed.
+- `02_start_comfyui.py` produced a usable trycloudflare URL, and local
+  `comfy-agent doctor` reported a healthy connection.
+- Local `comfy-agent import` created the preset; `doctor --preset` reported no
+  missing model or native node.
+- Local `comfy-agent run` completed in 207.50 seconds according to the ComfyUI
+  log and downloaded one MP3 to the local output directory.
+- The output was 29.989 seconds, 44.1 kHz stereo, 994,023 bytes, and about
+  265 kb/s. Mean volume was -19.2 dB; no >=0.5-second interval fell below
+  -45 dB.
+- Audio statistics found no NaN, infinity, denormal, or flat-topped clipping;
+  the stereo waveform and spectrogram showed structured harmonic and transient
+  content across the full song. A complete local `afplay` invocation exited
+  successfully.
+
+L4 behavior and long-form generation near the five-minute limit remain
+unverified.

@@ -60,4 +60,14 @@ describe("MiniMax Music 3 Colab kit", () => {
       inputs: { audio: ["8", 0], format: "mp3", "format.quality": "V0" },
     });
   });
+
+  it("records the canonical A100 E2E evidence and ComfyUI output sample rate", async () => {
+    const readme = await fs.readFile(path.join(kitDir, "README.md"), "utf-8");
+
+    expect(readme).toContain("Verified E2E on Colab A100");
+    expect(readme).toContain("NVIDIA A100-SXM4-40GB");
+    expect(readme).toContain("207.50 seconds");
+    expect(readme).toContain("29.989 seconds, 44.1 kHz stereo");
+    expect(readme).toContain("complete local `afplay` invocation exited");
+  });
 });

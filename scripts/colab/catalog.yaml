@@ -605,12 +605,13 @@ kits:
     composable: false
   - name: minimax_music3
     path: minimax_music3/
-    status: starter
+    status: verified
     tasks: [text_to_audio]
     outputs: [audio]
     gpu:
       minimum: L4
       recommended: A100
+      verified: [A100]
     summary: MiniMax Music 3 long-form song generation with lyrics and expressive vocals.
     setup_file: 01_setup.py
     license_notes:
