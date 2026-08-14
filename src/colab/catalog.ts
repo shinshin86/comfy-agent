@@ -303,6 +303,7 @@ const normalizeName = (value: string | undefined) =>
     .replace(/[._\-\s]+/g, " ")
     .replace(/[^a-z0-9\u3040-\u30ff\u3400-\u9fff ]+/g, " ")
     .replace(/\s+/g, " ")
+    .replace(/ (?=\d)/g, "")
     .trim();
 
 const goalContainsName = (goal: string | undefined, name: string) => {

@@ -428,10 +428,23 @@ describe("buildColabSuggestPayload", () => {
     });
   });
 
-  it("suggests Stable Audio 3 for music generation goals", async () => {
+  it("suggests the dedicated verified Music 3 kit for generic music goals", async () => {
     const catalog = await loadColabCatalogFile(catalogPath);
     const payload = buildColabSuggestPayload(catalog, {
       goal: "generate music and audio on an A100",
+    });
+
+    expect(payload.suggestions[0]).toMatchObject({
+      kit: "minimax_music3",
+      workflow: "minimax_music3_t2a",
+      task: "text_to_audio",
+    });
+  });
+
+  it("suggests Stable Audio 3 when requested by name", async () => {
+    const catalog = await loadColabCatalogFile(catalogPath);
+    const payload = buildColabSuggestPayload(catalog, {
+      goal: "Stable Audio 3 music and sound effects on an A100",
     });
 
     expect(payload.suggestions[0]).toMatchObject({
@@ -439,6 +452,7 @@ describe("buildColabSuggestPayload", () => {
       workflow: "stable_audio3_medium_t2a",
       task: "text_to_audio",
     });
+    expect(payload.suggestions[0].reasons).toContain("name:exact");
   });
 
   it("filters incompatible media before reliability for lyrics and vocals", () => {
@@ -635,6 +649,19 @@ describe("buildColabSuggestPayload", () => {
     });
 
     expect(payload.suggestions[0]).toMatchObject({ kit: "moss_soundeffect_v2" });
+    expect(payload.suggestions[0].reasons).toContain("name:exact");
+  });
+
+  it("normalizes optional spaces before digits in exact kit names", async () => {
+    const catalog = await loadColabCatalogFile(catalogPath);
+    const payload = buildColabSuggestPayload(catalog, {
+      goal: "MiniMax Music 3 complete song with lyrics and vocals",
+    });
+
+    expect(payload.suggestions[0]).toMatchObject({
+      kit: "minimax_music3",
+      workflow: "minimax_music3_t2a",
+    });
     expect(payload.suggestions[0].reasons).toContain("name:exact");
   });
 
