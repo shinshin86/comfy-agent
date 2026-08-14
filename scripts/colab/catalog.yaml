@@ -603,6 +603,44 @@ kits:
         size_gb: 0.605254808
     setup_minutes: 15
     composable: false
+  - name: minimax_music3
+    path: minimax_music3/
+    status: starter
+    tasks: [text_to_audio]
+    outputs: [audio]
+    gpu:
+      minimum: L4
+      recommended: A100
+    summary: MiniMax Music 3 long-form song generation with lyrics and expressive vocals.
+    setup_file: 01_setup.py
+    license_notes:
+      - MiniMax-Music3 Community License; commercial UIs must display MiniMax-Music3, and covered revenue above USD 20 million requires prior authorization.
+      - Hosted generation requires safeguards, and publicly distributed outputs must disclose that they are machine-generated.
+      - Review generated music for copyright, voice, and style-similarity risks.
+    tags: [audio, music, song, lyrics, vocals, minimax, long_form]
+    workflows:
+      - name: minimax_music3_t2a
+        file: minimax_music3_t2a.json
+        task: text_to_audio
+        output: audio
+        capabilities:
+          audio_kinds: [music]
+          lyrics: true
+          vocals: true
+        speed: slow
+        quality: high
+    assets:
+      - file: minimax_music3_dit_int8_convrot.safetensors
+        dir: models/diffusion_models
+        size_gb: 2.5
+      - file: minimax_music3_text_encoder_pruned_int8_convrot.safetensors
+        dir: models/text_encoders
+        size_gb: 9.2
+      - file: minimax_music3_dav.safetensors
+        dir: models/vae
+        size_gb: 0.2
+    setup_minutes: 8
+    composable: false
   - name: moss_soundeffect_v2
     path: moss_soundeffect_v2/
     status: verified

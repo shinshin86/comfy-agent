@@ -30,6 +30,7 @@ in `.mcp.json` at the repo root.
 | [`./ltx23/`](./ltx23/) | Starter | A100 | LTX-2.3 22B i2v video |
 | [`./ltx25/`](./ltx25/) | Verified E2E | A100 | LTX-2.5 native T2V/I2V/FLF2V with synchronized audio (49.99 GB; gated HF access; LTX-2.x Community License) |
 | [`./minimax_h3/`](./minimax_h3/) | Verified E2E | A100 | MiniMax H3 T2V/I2V with native stereo audio (42.47 GB download; territory-restricted upstream license—review runtime region before use) |
+| [`./minimax_music3/`](./minimax_music3/) | Starter | L4+ (A100 recommended) | MiniMax Music 3 complete songs with lyrics and vocals (11.9 GB INT8 stack; Community License) |
 | [`./ace_step_1_5/`](./ace_step_1_5/) | A100 E2E verified; T4/L4 unverified | T4+ (L4 recommended) | ACE-Step 1.5 Turbo AIO, full songs with lyrics and vocals |
 | [`./stable_audio3_small_music/`](./stable_audio3_small_music/) | A100 E2E verified; T4 unverified | T4+ | Stable Audio 3 Small Music, lightweight instrumental music / BGM |
 | [`./stable_audio3/`](./stable_audio3/) | Verified E2E | L4+ | Stable Audio 3 Medium, music and sound effects |

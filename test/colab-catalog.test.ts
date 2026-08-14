@@ -638,6 +638,19 @@ describe("buildColabSuggestPayload", () => {
     expect(payload.suggestions[0].reasons).toContain("name:exact");
   });
 
+  it("normalizes optional spaces before digits in exact kit names", async () => {
+    const catalog = await loadColabCatalogFile(catalogPath);
+    const payload = buildColabSuggestPayload(catalog, {
+      goal: "MiniMax Music 3 complete song with lyrics and vocals",
+    });
+
+    expect(payload.suggestions[0]).toMatchObject({
+      kit: "minimax_music3",
+      workflow: "minimax_music3_t2a",
+    });
+    expect(payload.suggestions[0].reasons).toContain("name:exact");
+  });
+
   it("suggests MOSS-SoundEffect v2.0 when requested by name", async () => {
     const catalog = await loadColabCatalogFile(catalogPath);
     const payload = buildColabSuggestPayload(catalog, {
