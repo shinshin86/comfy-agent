@@ -46,18 +46,55 @@ comfy-agent run default --source remote --base-url http://127.0.0.1:8188 --promp
 手元に GPU がなくても、Colab の GPU ランタイムで ComfyUI を動かし、
 ローカルの `comfy-agent` から cloudflared トンネル越しに呼び出せます。
 
-貼り付けるだけで動くスターターキットを [`scripts/colab/`](./scripts/colab/) に用意しています。
+貼り付けるだけで動くキットを、現在 **36種類** 用意しています。
+以下は [`scripts/colab/`](./scripts/colab/) の実装済みcatalogと
+対応した一覧です。各リンク先でセットアップスクリプト、workflow、パラメータ、
+GPUの目安、ライセンス上の注意を確認できます。
 
-| Kit                                                                        | GPU           | 出力                              |
-| -------------------------------------------------------------------------- | ------------- | --------------------------------- |
-| [`z_image/`](./scripts/colab/z_image/)                                     | T4+           | 画像（Z-Image turbo、最速）       |
-| [`anima/`](./scripts/colab/anima/)                                         | T4+           | 画像（Anima Base v1.0、アニメ系） |
-| [`flux2/`](./scripts/colab/flux2/)                                         | A100          | 画像（Flux 2 dev）                |
-| [`wan22/`](./scripts/colab/wan22/)                                         | A100          | 動画（Wan 2.2 TI2V 5B / T2V 14B） |
-| [`ace_step_1_5/`](./scripts/colab/ace_step_1_5/)                           | T4+（L4推奨） | 音楽（フル楽曲・歌詞・ボーカル）  |
-| [`stable_audio3_small_music/`](./scripts/colab/stable_audio3_small_music/) | T4+           | 音楽（インスト・BGM）             |
-| [`stable_audio3/`](./scripts/colab/stable_audio3/)                         | L4+           | 音楽・効果音                      |
-| [`moss_soundeffect_v2/`](./scripts/colab/moss_soundeffect_v2/)             | A100          | 音声（48 kHz効果音）              |
+| 種別 | キット / モデル | 状態 | 最小GPU | 対応内容 |
+| --- | --- | --- | --- | --- |
+| 画像 | [`z_image/`](./scripts/colab/z_image/) | 検証済み | T4 | Z-Image Turbo テキスト→画像 |
+| 画像 | [`sdxl/`](./scripts/colab/sdxl/) | 検証済み | T4 | Stable Diffusion XL Base テキスト→画像 |
+| 画像 | [`sdxl_turbo/`](./scripts/colab/sdxl_turbo/) | 検証済み | T4 | SDXL Turbo 1-step テキスト→画像 |
+| 画像 | [`anima/`](./scripts/colab/anima/) | 検証済み | T4 | Anima Base v1.0 アニメ画像生成 |
+| 画像 | [`ooo_anima/`](./scripts/colab/ooo_anima/) | 検証済み | T4 | OOO_Anima v10 アニメ画像生成 |
+| 画像 | [`anima_pencil/`](./scripts/colab/anima_pencil/) | 検証済み | T4 | anima_pencil v2 アニメ画像生成 |
+| 画像 | [`z_anime/`](./scripts/colab/z_anime/) | 一部検証 | T4 | Z-Anime base / distilled 画像生成 |
+| 画像 | [`qwen_image/`](./scripts/colab/qwen_image/) | Starter | L4 | Qwen-Image テキスト→画像 |
+| 画像 | [`qwen_image_edit/`](./scripts/colab/qwen_image_edit/) | Starter | L4 | Qwen-Image-Edit 指示ベース画像編集 |
+| 画像 | [`boogu/`](./scripts/colab/boogu/) | 検証済み | L4 | Boogu-Image Turbo テキスト→画像 |
+| 画像 | [`krea2/`](./scripts/colab/krea2/) | 検証済み | L4 | Krea 2 Turbo テキスト→画像 |
+| 画像 | [`flux1/`](./scripts/colab/flux1/) | 検証済み | L4 | Flux 1 dev テキスト→画像 |
+| 画像 | [`flux2/`](./scripts/colab/flux2/) | 検証済み | A100 | Flux 2 dev テキスト→画像 |
+| 画像 | [`hidream_i1/`](./scripts/colab/hidream_i1/) | 検証済み | L4 | HiDream-I1 Fast / Dev / Full 画像生成 |
+| 画像 | [`hidream_o1/`](./scripts/colab/hidream_o1/) | 検証済み | A100 | HiDream-O1 Dev 推論指向2K画像生成 |
+| 画像 | [`ideogram4/`](./scripts/colab/ideogram4/) | 検証済み | L4 | Ideogram 4.0 文字描画に強い画像生成 |
+| 画像 | [`sd35/`](./scripts/colab/sd35/) | 検証済み | L4 | Stable Diffusion 3.5 Large 画像生成 |
+| 画像 | [`birefnet/`](./scripts/colab/birefnet/) | 検証済み | T4 | BiRefNet 背景除去・透過PNG |
+| 画像 | [`seedvr2/`](./scripts/colab/seedvr2/) | 検証済み | L4 | SeedVR2 高解像度化・修復 |
+| 動画 | [`wan21/`](./scripts/colab/wan21/) | 一部検証 | T4 | Wan 2.1 1.3B / 14B テキスト→動画 |
+| 動画 | [`wan22/`](./scripts/colab/wan22/) | 一部検証 | A100 | Wan 2.2 TI2V 5B / T2V 14B |
+| 動画 | [`wan22_s2v/`](./scripts/colab/wan22_s2v/) | 検証済み | A100 | Wan 2.2 S2V 参照画像＋音声→動画 |
+| 動画 | [`animegen_t2v/`](./scripts/colab/animegen_t2v/) | 検証済み | A100 | AnimeGen-T2V アニメ動画生成 |
+| 動画 | [`hunyuan_video/`](./scripts/colab/hunyuan_video/) | 検証済み | L4 | Hunyuan Video テキスト→動画 |
+| 動画 | [`ltx23/`](./scripts/colab/ltx23/) | Starter | A100 | LTX-2.3 画像 / 画像＋音声→動画 |
+| 動画 | [`ltx23_t2v/`](./scripts/colab/ltx23_t2v/) | 検証済み | A100 | LTX-2.3 音声付きテキスト→動画 |
+| 動画 | [`ltx25/`](./scripts/colab/ltx25/) | 検証済み | A100 | LTX-2.5 T2V / I2V / 始終端フレーム＋音声 |
+| 動画 | [`minimax_h3/`](./scripts/colab/minimax_h3/) | 検証済み | A100 | MiniMax H3 T2V / I2V＋ステレオ音声 |
+| 動画 | [`sulphur2/`](./scripts/colab/sulphur2/) | 検証済み | A100 | Sulphur-2 T2V / I2V |
+| 動画 | [`10eros/`](./scripts/colab/10eros/) | 一部検証 | A100 | 10Eros T2V / I2V |
+| 音声 | [`ace_step_1_5/`](./scripts/colab/ace_step_1_5/) | 一部検証 | T4 | ACE-Step 1.5 歌詞・ボーカル付きフル楽曲 |
+| 音声 | [`minimax_music3/`](./scripts/colab/minimax_music3/) | 検証済み | L4 | MiniMax Music 3 歌詞・ボーカル付き楽曲 |
+| 音声 | [`stable_audio3_small_music/`](./scripts/colab/stable_audio3_small_music/) | 一部検証 | T4 | Stable Audio 3 Small Music インスト・BGM |
+| 音声 | [`stable_audio3/`](./scripts/colab/stable_audio3/) | 検証済み | L4 | Stable Audio 3 Medium 音楽・効果音 |
+| 音声 | [`moss_soundeffect_v2/`](./scripts/colab/moss_soundeffect_v2/) | 検証済み | A100 | MOSS-SoundEffect v2 48 kHz効果音 |
+| 複合 | [`music_video/`](./scripts/colab/music_video/) | 検証済み | A100 | 楽曲＋キーフレーム＋動画クリップのMVレシピ |
+
+状態はモデル品質ではなく検証証拠を表します。**検証済み**はColabからローカルCLIまでの
+一連のE2Eを通過、**一部検証**は一部GPUまたはworkflow variantのみ通過、
+**Starter**は静的検証済みでE2E記録待ちです。キットによってはアクセス制限、
+非商用、地域、利用規約上の制約があります。モデルのダウンロードや有料GPUの選択前に、
+リンク先のREADMEを確認してください。
 
 手順はどのキットでも同じです。
 
@@ -72,18 +109,21 @@ comfy-agent run default --source remote --base-url http://127.0.0.1:8188 --promp
    !cat /content/comfy_url.txt
    ```
 
-5. 手元のマシンに戻り、同梱の workflow を import して実行:
+5. 手元のマシンに戻り、同梱workflowを一度だけimportし、現在のトンネルURLへ
+   接続してプリフライト後に実行:
 
    ```bash
    comfy-agent import ./scripts/colab/z_image/z_image_turbo.json --name z_image_turbo
-   export COMFY_AGENT_BASE_URL=https://<id>.trycloudflare.com
-   comfy-agent run z_image_turbo --prompt "a cat riding a bicycle"
+   comfy-agent connect https://<id>.trycloudflare.com
+   comfy-agent doctor --preset z_image_turbo
+   comfy-agent run z_image_turbo --4_text "a cat riding a bicycle"
    ```
 
 補足:
 
-- `trycloudflare` の URL はセッション毎に変わるので、Colab ランタイムを再起動したら
-  `COMFY_AGENT_BASE_URL` を再設定してください。
+- preset・workflow・生成物はローカルの `.comfy-agent/` に残ります。Colabランタイムの
+  再起動後はキットのセルを再実行してComfyUIとモデルを復元し、新しいURLで
+  `comfy-agent connect <new-url>` を実行すれば、再importせずに再開できます。
 - モデル別のパラメータフラグや VRAM/所要時間の目安は、各キットの `README.md` を参照してください。
 
 AIエージェント向けのキット情報は `colab` 補助コマンドで取得できます。
@@ -91,12 +131,20 @@ AIエージェント向けのキット情報は `colab` 補助コマンドで取
 ```bash
 comfy-agent colab catalog --json
 comfy-agent colab suggest "fast image generation on a T4" --json
+comfy-agent doctor --json
+comfy-agent doctor --preset <preset> --json
 ```
 
 `colab suggest` は、出力メディア・音声機能・GPU要件が合わない候補を先に除外し、
 目的への適合度と信頼度（`verified` > `partial` > `starter`）で互換候補を並べます。
 互換候補がない場合、`--json` は代替候補と満たせない要件を返します。
 任意の `gpu.verified` はE2E実測済みGPUで、宣言上の互換下限 `gpu.minimum` とは別です。
+
+catalogからはモデル資産、推定ダウンロード量・セットアップ時間、他キットと同居可能か、
+ライセンス上の注意も取得できます。`doctor --preset` は接続先に必要なモデルとノードが
+揃っているか検査し、`run` も実行前に同じプリフライトを自動実行します。
+設計、復旧、成果物検証までの全体フローは
+[Agent Playbook](./docs/agent-playbook.md) を参照してください。
 
 注意: `colab` はリポジトリ側の補助コマンドです。`scripts/colab/catalog.yaml`
 を読み込みますが、このファイルは **npm パッケージには同梱されません**。本リポジトリの

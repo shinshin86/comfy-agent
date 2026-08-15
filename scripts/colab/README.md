@@ -6,9 +6,14 @@ in `.mcp.json` at the repo root.
 
 ## Per-model starter kits
 
+The machine-readable catalog currently contains **36 kits**: 27 verified,
+6 partial, and 3 starter kits. The per-workflow notes below preserve more
+specific verification details where a kit contains multiple variants.
+
 | Kit | Status | GPU | Notes |
 |---|---|---|---|
 | [`./z_image/`](./z_image/) | Verified E2E | T4+ | Z-Image turbo, fastest |
+| [`./boogu/`](./boogu/) | Verified E2E | L4+ | Boogu-Image Turbo fp8, native ComfyUI text-to-image |
 | [`./sd35/`](./sd35/) | Verified E2E | L4+ / A100 | Stable Diffusion 3.5 Large fp8 scaled (Comfy-Org repack, no HF token; Stability Community License) |
 | [`./sdxl/`](./sdxl/) | Verified E2E | T4+ | Stable Diffusion XL base 1.0, OpenRAIL++ |
 | [`./sdxl_turbo/`](./sdxl_turbo/) | Verified E2E | T4+ | SDXL Turbo, 1-step distilled (non-commercial) |
@@ -22,12 +27,17 @@ in `.mcp.json` at the repo root.
 | [`./flux1/`](./flux1/) | Verified E2E | L4+ / A100 | Flux 1 dev fp8 (Comfy-Org repack, no HF token) |
 | [`./flux2/`](./flux2/) | Verified E2E | A100 | Flux 2 dev, fp8mixed repack |
 | [`./hidream_i1/`](./hidream_i1/) | Verified E2E (Fast/Dev/Full fp8) | L4+ (Fast/Dev) / A100 (Full) | HiDream-I1 17B (Fast/Dev/Full fp8, MIT, no HF token) |
+| [`./hidream_o1/`](./hidream_o1/) | Verified E2E | A100 | HiDream-O1 Dev fp8, reasoning-oriented native 2K text-to-image |
 | [`./ideogram4/`](./ideogram4/) | Verified E2E (A100, fp8) | A100 (L4+ w/ offload) | Ideogram 4.0 fp8 day-0 (asymmetric CFG, dual diffusion models, non-commercial) |
 | [`./krea2/`](./krea2/) | Verified E2E | L4+ | Krea 2 Turbo fp8 (8-step distilled, native ComfyUI 0.25.0+, Qwen-Image stack; community license) |
+| [`./birefnet/`](./birefnet/) | Verified E2E | T4+ | BiRefNet foreground extraction and transparent PNG output |
+| [`./seedvr2/`](./seedvr2/) | Verified E2E | L4+ | SeedVR2 3B Int8 one-step image upscaling and restoration |
 | [`./wan21/`](./wan21/) | 1.3B verified E2E; 14B starter | T4 (1.3B) / L4+ (14B) | Wan 2.1 T2V (1.3B fp16, 14B fp8_scaled) |
 | [`./wan22/`](./wan22/) | TI2V 5B verified E2E; T2V 14B starter | A100 | Wan 2.2 video |
+| [`./wan22_s2v/`](./wan22_s2v/) | Verified E2E | A100 | Wan 2.2 S2V reference-image and audio-driven video generation |
 | [`./hunyuan_video/`](./hunyuan_video/) | Verified E2E (A100) | L4 24GB / A100 | Tencent Hunyuan Video T2V 720p (bf16 → fp8 at load) |
 | [`./ltx23/`](./ltx23/) | Starter | A100 | LTX-2.3 22B i2v video |
+| [`./ltx23_t2v/`](./ltx23_t2v/) | Verified E2E | A100 | LTX-2.3 text-to-video with synchronized generated audio |
 | [`./ltx25/`](./ltx25/) | Verified E2E | A100 | LTX-2.5 native T2V/I2V/FLF2V with synchronized audio (49.99 GB; gated HF access; LTX-2.x Community License) |
 | [`./minimax_h3/`](./minimax_h3/) | Verified E2E | A100 | MiniMax H3 T2V/I2V with native stereo audio (42.47 GB download; territory-restricted upstream license—review runtime region before use) |
 | [`./minimax_music3/`](./minimax_music3/) | Verified E2E (A100) | L4+ (A100 verified) | MiniMax Music 3 complete songs with lyrics and vocals (11.9 GB INT8 stack; Community License) |

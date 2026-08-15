@@ -845,6 +845,24 @@ describe("loadColabCatalogFile", () => {
     expect(catalog.kits.map((kit) => kit.name)).toEqual(kitDirs);
   });
 
+  it("lists every catalog kit in the public README files", async () => {
+    const catalog = await loadColabCatalogFile(catalogPath);
+    const readmes = [
+      { file: "README.md", linkPrefix: "./scripts/colab/" },
+      { file: "README.ja.md", linkPrefix: "./scripts/colab/" },
+      { file: "scripts/colab/README.md", linkPrefix: "./" },
+    ];
+
+    for (const { file, linkPrefix } of readmes) {
+      const contents = await fs.readFile(path.join(repoRoot, file), "utf8");
+      const missing = catalog.kits
+        .filter((kit) => !contents.includes(`](${linkPrefix}${kit.path})`))
+        .map((kit) => kit.name);
+
+      expect(missing, `${file} is missing catalog kit links`).toEqual([]);
+    }
+  });
+
   it("references workflow files that exist on disk", async () => {
     const catalog = await loadColabCatalogFile(catalogPath);
     const colabDir = path.join(repoRoot, "scripts", "colab");
