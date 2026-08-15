@@ -46,19 +46,56 @@ If you use ComfyUI running on Google Colab, you can run it by specifying the URL
 No local GPU? Run ComfyUI on a Colab GPU runtime and drive it from
 `comfy-agent` on your laptop over a cloudflared tunnel.
 
-Ready-to-paste starter kits live under [`scripts/colab/`](./scripts/colab/):
+There are currently **36 ready-to-paste kits** under
+[`scripts/colab/`](./scripts/colab/). The table below mirrors the implemented
+kit catalog; each link includes its setup script, workflows, parameters, GPU
+notes, and license cautions.
 
-| Kit                                                                        | GPU                  | Output                               |
-| -------------------------------------------------------------------------- | -------------------- | ------------------------------------ |
-| [`z_image/`](./scripts/colab/z_image/)                                     | T4+                  | Image (Z-Image turbo, fastest)       |
-| [`anima/`](./scripts/colab/anima/)                                         | T4+                  | Image (Anima Base v1.0, anime-style) |
-| [`flux2/`](./scripts/colab/flux2/)                                         | A100                 | Image (Flux 2 dev)                   |
-| [`wan22/`](./scripts/colab/wan22/)                                         | A100                 | Video (Wan 2.2 TI2V 5B / T2V 14B)    |
-| [`ace_step_1_5/`](./scripts/colab/ace_step_1_5/)                           | T4+ (L4 recommended) | Audio (full songs, lyrics, vocals)   |
-| [`stable_audio3_small_music/`](./scripts/colab/stable_audio3_small_music/) | T4+                  | Audio (instrumental music / BGM)     |
-| [`stable_audio3/`](./scripts/colab/stable_audio3/)                         | L4+                  | Audio (music and sound effects)      |
-| [`moss_soundeffect_v2/`](./scripts/colab/moss_soundeffect_v2/)             | A100                 | Audio (48 kHz sound effects)         |
-| [`music_video/`](./scripts/colab/music_video/)                             | A100                 | Combo: song + keyframes + video clips (music-video recipe) |
+| Media | Kit / model | Status | Minimum GPU | Capability |
+| --- | --- | --- | --- | --- |
+| Image | [`z_image/`](./scripts/colab/z_image/) | Verified | T4 | Z-Image Turbo text-to-image |
+| Image | [`sdxl/`](./scripts/colab/sdxl/) | Verified | T4 | Stable Diffusion XL Base text-to-image |
+| Image | [`sdxl_turbo/`](./scripts/colab/sdxl_turbo/) | Verified | T4 | SDXL Turbo one-step text-to-image |
+| Image | [`anima/`](./scripts/colab/anima/) | Verified | T4 | Anima Base v1.0 anime text-to-image |
+| Image | [`ooo_anima/`](./scripts/colab/ooo_anima/) | Verified | T4 | OOO_Anima v10 anime text-to-image |
+| Image | [`anima_pencil/`](./scripts/colab/anima_pencil/) | Verified | T4 | anima_pencil v2 anime text-to-image |
+| Image | [`z_anime/`](./scripts/colab/z_anime/) | Partial | T4 | Z-Anime base / distilled text-to-image |
+| Image | [`qwen_image/`](./scripts/colab/qwen_image/) | Starter | L4 | Qwen-Image text-to-image |
+| Image | [`qwen_image_edit/`](./scripts/colab/qwen_image_edit/) | Starter | L4 | Qwen-Image-Edit instruction-based editing |
+| Image | [`boogu/`](./scripts/colab/boogu/) | Verified | L4 | Boogu-Image Turbo text-to-image |
+| Image | [`krea2/`](./scripts/colab/krea2/) | Verified | L4 | Krea 2 Turbo text-to-image |
+| Image | [`flux1/`](./scripts/colab/flux1/) | Verified | L4 | Flux 1 dev text-to-image |
+| Image | [`flux2/`](./scripts/colab/flux2/) | Verified | A100 | Flux 2 dev text-to-image |
+| Image | [`hidream_i1/`](./scripts/colab/hidream_i1/) | Verified | L4 | HiDream-I1 Fast / Dev / Full text-to-image |
+| Image | [`hidream_o1/`](./scripts/colab/hidream_o1/) | Verified | A100 | HiDream-O1 Dev reasoning-oriented 2K text-to-image |
+| Image | [`ideogram4/`](./scripts/colab/ideogram4/) | Verified | L4 | Ideogram 4.0 text-to-image with strong text rendering |
+| Image | [`sd35/`](./scripts/colab/sd35/) | Verified | L4 | Stable Diffusion 3.5 Large text-to-image |
+| Image | [`birefnet/`](./scripts/colab/birefnet/) | Verified | T4 | BiRefNet background removal / transparent PNG |
+| Image | [`seedvr2/`](./scripts/colab/seedvr2/) | Verified | L4 | SeedVR2 image upscaling and restoration |
+| Video | [`wan21/`](./scripts/colab/wan21/) | Partial | T4 | Wan 2.1 1.3B / 14B text-to-video |
+| Video | [`wan22/`](./scripts/colab/wan22/) | Partial | A100 | Wan 2.2 TI2V 5B / T2V 14B |
+| Video | [`wan22_s2v/`](./scripts/colab/wan22_s2v/) | Verified | A100 | Wan 2.2 S2V reference-image + audio-to-video |
+| Video | [`animegen_t2v/`](./scripts/colab/animegen_t2v/) | Verified | A100 | AnimeGen-T2V anime text-to-video |
+| Video | [`hunyuan_video/`](./scripts/colab/hunyuan_video/) | Verified | L4 | Hunyuan Video text-to-video |
+| Video | [`ltx23/`](./scripts/colab/ltx23/) | Starter | A100 | LTX-2.3 image / image+audio-to-video |
+| Video | [`ltx23_t2v/`](./scripts/colab/ltx23_t2v/) | Verified | A100 | LTX-2.3 text-to-video with generated audio |
+| Video | [`ltx25/`](./scripts/colab/ltx25/) | Verified | A100 | LTX-2.5 T2V / I2V / first-last-frame video with audio |
+| Video | [`minimax_h3/`](./scripts/colab/minimax_h3/) | Verified | A100 | MiniMax H3 T2V / I2V with native stereo audio |
+| Video | [`sulphur2/`](./scripts/colab/sulphur2/) | Verified | A100 | Sulphur-2 T2V / I2V |
+| Video | [`10eros/`](./scripts/colab/10eros/) | Partial | A100 | 10Eros T2V / I2V |
+| Audio | [`ace_step_1_5/`](./scripts/colab/ace_step_1_5/) | Partial | T4 | ACE-Step 1.5 full songs with lyrics and vocals |
+| Audio | [`minimax_music3/`](./scripts/colab/minimax_music3/) | Verified | L4 | MiniMax Music 3 songs with lyrics and vocals |
+| Audio | [`stable_audio3_small_music/`](./scripts/colab/stable_audio3_small_music/) | Partial | T4 | Stable Audio 3 Small Music instrumental / BGM |
+| Audio | [`stable_audio3/`](./scripts/colab/stable_audio3/) | Verified | L4 | Stable Audio 3 Medium music and sound effects |
+| Audio | [`moss_soundeffect_v2/`](./scripts/colab/moss_soundeffect_v2/) | Verified | A100 | MOSS-SoundEffect v2 48 kHz sound effects |
+| Combo | [`music_video/`](./scripts/colab/music_video/) | Verified | A100 | Song + keyframes + video clips music-video recipe |
+
+Statuses describe verification evidence, not model quality: **Verified** has
+passed the complete Colab-to-local CLI flow; **Partial** has verified only
+some GPUs or workflow variants; **Starter** is statically validated but still
+awaits recorded end-to-end verification. Some kits have gated,
+non-commercial, territory, or acceptable-use restrictions—review the linked
+kit README before downloading models or choosing a paid GPU runtime.
 
 Flow (same for every kit):
 
@@ -73,18 +110,21 @@ Flow (same for every kit):
    !cat /content/comfy_url.txt
    ```
 
-5. Back on your machine, import the bundled workflow and run it:
+5. Back on your machine, import the bundled workflow once, connect the current
+   tunnel URL, preflight the preset, and run it:
 
    ```bash
    comfy-agent import ./scripts/colab/z_image/z_image_turbo.json --name z_image_turbo
-   export COMFY_AGENT_BASE_URL=https://<id>.trycloudflare.com
-   comfy-agent run z_image_turbo --prompt "a cat riding a bicycle"
+   comfy-agent connect https://<id>.trycloudflare.com
+   comfy-agent doctor --preset z_image_turbo
+   comfy-agent run z_image_turbo --4_text "a cat riding a bicycle"
    ```
 
 Notes:
 
-- `trycloudflare` URLs change every session — re-export
-  `COMFY_AGENT_BASE_URL` after restarting the Colab runtime.
+- Presets, workflows, and outputs stay local under `.comfy-agent/`. After a
+  Colab reset, rerun the kit cells to restore ComfyUI and its models, then run
+  `comfy-agent connect <new-url>` and resume without importing again.
 - See each kit's `README.md` for model-specific parameter flags and
   VRAM/runtime expectations.
 
@@ -93,6 +133,8 @@ Agent-readable kit metadata is available via the `colab` helper command:
 ```bash
 comfy-agent colab catalog --json
 comfy-agent colab suggest "fast image generation on a T4" --json
+comfy-agent doctor --json
+comfy-agent doctor --preset <preset> --json
 ```
 
 `colab suggest` filters out incompatible media, audio capabilities, and GPU
@@ -101,6 +143,12 @@ requirements first, then ranks compatible workflows by goal fit and reliability
 returns alternatives together with their unmet requirements.
 The optional `gpu.verified` list records GPUs exercised in E2E tests; it is
 separate from the declared `gpu.minimum` compatibility floor.
+
+The catalog also exposes model assets, estimated download size/setup time,
+composability, and license notes. `doctor --preset` checks whether the current
+server has every required model and node, while `run` performs the same
+preflight automatically. See the [Agent Playbook](./docs/agent-playbook.md)
+for the complete blueprint, recovery, and artifact-verification flow.
 
 Note: `colab` is a repository-side helper. It reads
 `scripts/colab/catalog.yaml`, which is **not** bundled in the npm package, so
