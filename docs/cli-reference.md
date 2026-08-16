@@ -216,6 +216,34 @@ Every synchronous run also writes job records, so a locally interrupted command 
 be resumed. ComfyUI history is in memory: if the server process or Colab runtime is
 restarted, the job may become `JOB_LOST` and must be submitted again.
 
+### `history`
+
+Use `history` to inspect creative work; use `jobs` for operational inspection and
+resuming submissions.
+
+```bash
+comfy-agent history
+comfy-agent history list --preset portrait --kind image --limit 20
+comfy-agent history --search "soft light" --since 7d --json
+comfy-agent history --character miko --favorite --all-scopes --json
+comfy-agent history show <job_id> --json
+comfy-agent history note <job_id> "Keep the lighting soft" --json
+comfy-agent history tag <job_id> portrait approved --json
+comfy-agent history tag <job_id> reject --reason "identity drift" --json
+comfy-agent history tag <job_id> reject --rm --json
+comfy-agent history open <job_id>
+```
+
+List filters include `--preset`, `--character`, `--kind image|video|audio`, `--status`,
+`--tag`, `--search`, `--since <ISO|7d|24h>`, `--favorite`, `--rejected`, and `--limit`
+(default 30). The default scope is local; `--global` selects global records and
+`--all-scopes` merges both. Cross-scope JSON truncates `prompt_final` to 60 characters
+unless `--full-prompts` is set.
+
+`history show` includes the job record, `run.json`, the `verify/verify.json` summary when
+present, and absolute output paths. Full job IDs and unique prefixes are accepted.
+`history open` only prints the output directory and never opens a GUI.
+
 ### `jobs`
 
 Inspect, resume, and prune local job records.

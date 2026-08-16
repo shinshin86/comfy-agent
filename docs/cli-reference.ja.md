@@ -215,6 +215,33 @@ remote source の補足:
 ComfyUI history はメモリ上にあり、server process や Colab runtime が再起動すると
 `JOB_LOST` になり、再 submit が必要な場合があります。
 
+### `history`
+
+制作内容の確認には `history`、投入済み job の運用・再開には `jobs` を使います。
+
+```bash
+comfy-agent history
+comfy-agent history list --preset portrait --kind image --limit 20
+comfy-agent history --search "soft light" --since 7d --json
+comfy-agent history --character miko --favorite --all-scopes --json
+comfy-agent history show <job_id> --json
+comfy-agent history note <job_id> "Keep the lighting soft" --json
+comfy-agent history tag <job_id> portrait approved --json
+comfy-agent history tag <job_id> reject --reason "identity drift" --json
+comfy-agent history tag <job_id> reject --rm --json
+comfy-agent history open <job_id>
+```
+
+一覧では `--preset`、`--character`、`--kind image|video|audio`、`--status`、`--tag`、
+`--search`、`--since <ISO|7d|24h>`、`--favorite`、`--rejected`、`--limit`（既定30）を
+指定できます。既定 scope は local、`--global` は global、`--all-scopes` は両方を統合
+します。scope 横断時の JSON は、`--full-prompts` を付けない限り `prompt_final` を60文字に
+切り詰めます。
+
+`history show` は job record、`run.json`、存在する場合は `verify/verify.json` の summary、
+出力ファイルの絶対パスを返します。完全な job ID と一意な prefix を使用できます。
+`history open` は GUI を開かず、出力ディレクトリだけを表示します。
+
 ### `jobs`
 
 local job record の確認、再開、整理を行います。

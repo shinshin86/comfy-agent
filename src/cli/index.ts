@@ -13,6 +13,13 @@ import { runPlaybook } from "./playbook.js";
 import { runSkillInstall, runSkillList } from "./skill.js";
 import { runConnect } from "./connect.js";
 import { runJobsList, runJobsPrune, runJobsShow, runJobsWait } from "./jobs.js";
+import {
+  runHistoryList,
+  runHistoryNote,
+  runHistoryOpen,
+  runHistoryShow,
+  runHistoryTag,
+} from "./history.js";
 import { runVerify } from "./verify.js";
 import { CliError, errorPayloadFrom, exitCodeFrom, isCliError } from "../io/errors.js";
 import { log } from "../io/output.js";
@@ -180,6 +187,110 @@ jobs
   .action(async (options) => {
     try {
       await runJobsPrune(options);
+    } catch (err) {
+      handleError(err, options?.json);
+    }
+  });
+
+const withHistoryListOptions = (command: Command) =>
+  command
+    .option("--preset <name>", t("cli.history.list.option.preset"))
+    .option("--character <name>", t("cli.history.list.option.character"))
+    .option("--kind <image|video|audio>", t("cli.history.list.option.kind"))
+    .option("--status <status>", t("cli.history.list.option.status"))
+    .option("--tag <tag>", t("cli.history.list.option.tag"))
+    .option("--search <text>", t("cli.history.list.option.search"))
+    .option("--since <ISO|7d|24h>", t("cli.history.list.option.since"))
+    .option("--favorite", t("cli.history.list.option.favorite"))
+    .option("--rejected", t("cli.history.list.option.rejected"))
+    .option("--limit <n>", t("cli.history.list.option.limit"))
+    .option("--all-scopes", t("cli.history.list.option.all_scopes"))
+    .option("--full-prompts", t("cli.history.list.option.full_prompts"))
+    .option("--global", t("cli.option.global"))
+    .option("--json", t("cli.option.json"))
+    .option("--lang <lang>", t("cli.option.lang"));
+
+const history = withHistoryListOptions(
+  program.command("history").description(t("cli.history.description")),
+);
+
+history.action(async (options) => {
+  try {
+    await runHistoryList(options);
+  } catch (err) {
+    handleError(err, options?.json);
+  }
+});
+
+withHistoryListOptions(history.command("list").description(t("cli.history.list.description"))).action(
+  async (options) => {
+    try {
+      await runHistoryList(options);
+    } catch (err) {
+      handleError(err, options?.json);
+    }
+  },
+);
+
+history
+  .command("show")
+  .description(t("cli.history.show.description"))
+  .argument("<job_id>", t("cli.history.arg.id"))
+  .option("--global", t("cli.option.global"))
+  .option("--json", t("cli.option.json"))
+  .option("--lang <lang>", t("cli.option.lang"))
+  .action(async (jobId, options) => {
+    try {
+      await runHistoryShow(jobId, options);
+    } catch (err) {
+      handleError(err, options?.json);
+    }
+  });
+
+history
+  .command("note")
+  .description(t("cli.history.note.description"))
+  .argument("<job_id>", t("cli.history.arg.id"))
+  .argument("<text>", t("cli.history.note.arg.text"))
+  .option("--global", t("cli.option.global"))
+  .option("--json", t("cli.option.json"))
+  .option("--lang <lang>", t("cli.option.lang"))
+  .action(async (jobId, text, options) => {
+    try {
+      await runHistoryNote(jobId, text, options);
+    } catch (err) {
+      handleError(err, options?.json);
+    }
+  });
+
+history
+  .command("tag")
+  .description(t("cli.history.tag.description"))
+  .argument("<job_id>", t("cli.history.arg.id"))
+  .argument("<tags...>", t("cli.history.tag.arg.tags"))
+  .option("--rm", t("cli.history.tag.option.rm"))
+  .option("--reason <text>", t("cli.history.tag.option.reason"))
+  .option("--global", t("cli.option.global"))
+  .option("--json", t("cli.option.json"))
+  .option("--lang <lang>", t("cli.option.lang"))
+  .action(async (jobId, tags, options) => {
+    try {
+      await runHistoryTag(jobId, tags, options);
+    } catch (err) {
+      handleError(err, options?.json);
+    }
+  });
+
+history
+  .command("open")
+  .description(t("cli.history.open.description"))
+  .argument("<job_id>", t("cli.history.arg.id"))
+  .option("--global", t("cli.option.global"))
+  .option("--json", t("cli.option.json"))
+  .option("--lang <lang>", t("cli.option.lang"))
+  .action(async (jobId, options) => {
+    try {
+      await runHistoryOpen(jobId, options);
     } catch (err) {
       handleError(err, options?.json);
     }

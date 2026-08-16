@@ -17,6 +17,7 @@ import type { ProgressEventRecord } from "../api/progress.js";
 import { createProgressUi } from "../jobs/progress-ui.js";
 import { assertJobsDirWritable, updateJob, writeJob } from "../jobs/store.js";
 import { upsertRunManifest } from "../jobs/manifest.js";
+import { summarizePromptFields } from "../jobs/summary.js";
 import type { JobOutput, JobRecord } from "../jobs/types.js";
 import { awaitAndDownload, submitPrompt } from "../jobs/wait.js";
 import {
@@ -293,6 +294,7 @@ export const runRun = async (presetName: string, options: RunOptions, rawArgs: s
     if (seedValue !== null) {
       runParams = withSeedValue(runParams, seedValue);
     }
+    const promptFields = summarizePromptFields(preset, runParams);
 
     const patched = applyParameters(workflow, preset, runParams);
     const withUploads = applyUploads(patched, preset, resolvedUploads);
@@ -324,6 +326,18 @@ export const runRun = async (presetName: string, options: RunOptions, rawArgs: s
       submitted_at: new Date().toISOString(),
       status: "submitted",
       outputs: [],
+      ...(promptFields.prompt_input === undefined
+        ? {}
+        : {
+            prompt_input: promptFields.prompt_input,
+            prompt_final: promptFields.prompt_input,
+          }),
+      ...(promptFields.prompt_source === undefined
+        ? {}
+        : { prompt_source: promptFields.prompt_source }),
+      ...(promptFields.negative === undefined
+        ? {}
+        : { negative_final: promptFields.negative }),
     };
 
     let jobFile: string | undefined;

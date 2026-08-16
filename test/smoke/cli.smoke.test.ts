@@ -556,4 +556,44 @@ describe("mock ComfyUI CLI smoke", () => {
     expect(payload).toMatchObject({ ok: true, preset: "q", source: "local" });
     expect(runs).toHaveLength(1);
   });
+
+  it("17: run prompt fields are searchable through history", async () => {
+    const server = await startServer();
+    const workdir = await createTmpWorkdir();
+    await importSmokePreset(workdir, server);
+
+    const run = await runCli(
+      [
+        "run",
+        "smoke",
+        "--source",
+        "local",
+        "--json",
+        "--prompt",
+        "hello smoke",
+        "--poll-interval-ms",
+        "50",
+        "--timeout-seconds",
+        "10",
+      ],
+      cliOptions(workdir, server.baseUrl),
+    );
+    expect(run.code, run.stderr).toBe(0);
+
+    const history = await runCli(
+      ["history", "--search", "hello smoke", "--json"],
+      cliOptions(workdir, server.baseUrl),
+    );
+    const payload = parseJson(history);
+    const jobs = payload.jobs as JsonObject[];
+
+    expect(history.code, history.stderr).toBe(0);
+    expect(payload).toMatchObject({ ok: true, scopes: ["local"], total: 1 });
+    expect(jobs).toHaveLength(1);
+    expect(jobs[0]).toMatchObject({
+      preset: "smoke",
+      prompt_input: "hello smoke",
+      prompt_final: "hello smoke",
+    });
+  });
 });

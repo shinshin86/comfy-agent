@@ -151,6 +151,7 @@ or install those bundled resources.
 | `connect` | Verify and remember a ComfyUI URL. |
 | `import` | Turn API/UI workflow JSON into a local preset. |
 | `run` | Preflight, submit, wait/download, or submit with `--async`. |
+| `history` | Search and annotate creative generation history. |
 | `jobs list|show|wait|prune` | Inspect and resume persisted jobs. |
 | `doctor` | Check connection, workdirs, nodes, and models. |
 | `list` | Discover local and remote workflows. |
