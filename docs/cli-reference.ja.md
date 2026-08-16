@@ -653,8 +653,9 @@ seed role を使います。`list --json` と `preset --json` は全 metadata �
 ## JSON 出力
 
 `--json` は stdout に JSON だけを出します。対応する全コマンドは成功・失敗とも
-`{ "ok": ... }` envelope を使います。唯一の例外は `run --dry-run --json` で、ComfyUI へ
-そのまま送れる patch 後の workflow 生 JSON を返します。
+`{ "ok": ... }` envelope を使います。`run --dry-run --json` は character option が無ければ
+ComfyUI へそのまま送れる patch 後の workflow 生 JSON を返します。`--character` 付きでは
+`workflow`、`prompt_input`、`prompt_final`、character 注入詳細を含む envelope を返します。
 
 成功例:
 

@@ -670,9 +670,10 @@ the dedicated `--seed` resolution uses the seed role. `list --json` and
 ## JSON output
 
 Use `--json` to print JSON-only output. All commands that support it use an
-`{ "ok": ... }` envelope for success and failure. The sole exception is
-`run --dry-run --json`, which emits raw patched workflow JSON so it can be sent
-directly to ComfyUI.
+`{ "ok": ... }` envelope for success and failure. `run --dry-run --json` emits raw
+patched workflow JSON when no character option is present so it can be sent directly
+to ComfyUI. With `--character`, it returns an envelope containing `workflow`,
+`prompt_input`, `prompt_final`, and character injection details.
 
 Success example:
 

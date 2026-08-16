@@ -157,6 +157,7 @@ or install those bundled resources.
 | `run`          | Preflight, submit, wait/download, or submit with `--async`.            |
 | `history`      | Search and annotate creative generation history.                       |
 | `character`    | Manage reusable identity, references, LoRAs, notes, and approved work. |
+| `character sheet` | Build an identity board from human-approved gallery outputs.        |
 | `brief`        | Load character memory and preset applicability before generation.      |
 | `jobs list\|show\|wait\|prune` | Inspect and resume persisted jobs. |
 | `doctor`       | Check connection, workdirs, nodes, and models.                         |
@@ -165,9 +166,9 @@ or install those bundled resources.
 | `status`       | Show resolved runtime configuration.                                   |
 | `verify`       | Probe outputs and create review aids offline.                          |
 | `analyze`      | Evaluate an image with OpenAI image input.                             |
-| `colab catalog | suggest                                                                | kit`                                         | Inspect and resolve bundled Colab kits. |
+| `colab catalog\|suggest\|kit` | Inspect and resolve bundled Colab kits.                         |
 | `playbook`     | Read bundled agent policy documents.                                   |
-| `skill list    | install`                                                               | Install bundled skills for supported agents. |
+| `skill list\|install` | Install bundled skills for supported agents.                       |
 
 See the [complete CLI reference](./docs/cli-reference.md) for every option and payload.
 
@@ -185,7 +186,9 @@ The CLI returns only `0` (success), `2` (invalid invocation/input/local environm
 or `3` (server/executed target/artifact state differs from expectations). With
 `--json`, success is `{ "ok": true, ... }` and failure is
 `{ "ok": false, "error": { "code": "...", "message": "...", "details": ... } }`.
-The only shape exception is `run --dry-run --json`, which prints raw workflow JSON.
+`run --dry-run --json` prints raw workflow JSON when no character option is present;
+with `--character`, it returns an envelope containing the patched `workflow` and
+character injection metadata.
 See [Exit codes and errors](./docs/cli-reference.md#exit-codes).
 
 ## Documentation

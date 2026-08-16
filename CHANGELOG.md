@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.1.0 - 2026-08-16
+
+### Added
+
+- Added a queryable creative history backed by job record v2, including captured input/final prompts, full-text search and filters, notes, tags, rejection reasons, favorites, related manifests and artifacts, and compact `verify` summaries written back to matching records.
+- Added reusable character resources with canonical appearance, forms, per-kit triggers, reference images, LoRA attachments, content ratings, kit notes, privacy-safe defaults, a pending-to-human-approved gallery, and metadata-first export/import with opt-in reference and gallery files.
+- Added `run --character` with form selection, prompt-template expansion, transparent `prompt_input` / `prompt_final` reporting, reference-image injection, guarded LoRA injection, and tag-based NSFW gating.
+- Added `brief` as the single character-memory lookup before generation, returning preset applicability, prompt preview, kit notes, preferred and rejected history, approved gallery items, and recent notes.
+- Added `character sheet` to build an identity board from human-approved gallery images and extracted video frames.
+- Added `lora` and `lora_strength` preset roles and import inference for `LoraLoader` and `LoraLoaderModelOnly` inputs.
+- Added `ALIAS_SHADOWED` preset warnings when a handwritten alias collides with a reserved `run` flag.
+- Added a Flux 1 dev workflow with an empty character-LoRA slot and catalog capability metadata; this workflow is a statically validated Starter pending Colab E2E verification.
+- Added the creative-memory workflow to the agent playbook so agents brief before generation, record failures, and retain only human-approved identity references.
+
+### Changed
+
+- `run --dry-run --json` keeps the legacy raw-workflow response without character options, but returns an envelope containing `workflow` and character injection metadata when `--character` is present.
+- Character injection now occurs before required-input checks, seed resolution, dry-run output, and server preflight so every downstream stage sees the final workflow.
+
+### Fixed
+
+- Fixed required reference-image uploads being rejected before character data had a chance to satisfy them.
+
+### Compatibility
+
+- Job records are now written as version 2. Version 1 records remain readable, and `updateJob` promotes them when a patch adds version 2 fields.
+- `run.json` headers may now include additive `character` metadata; consumers should continue ignoring unknown fields.
+- `character`, `form`, `character-ref`, `character-prompt`, and `lora` are reserved `run` flags. Existing handwritten aliases with those names remain in preset files, but `preset` reports `ALIAS_SHADOWED` because the aliases are unreachable.
+- Character commands write a new `.comfy-agent/characters/` tree containing metadata, notes, references, and gallery files.
+- The content gate depends on preset tags such as `nsfw`, `adult`, or `explicit`. It is a guardrail, not a complete content classifier.
+
 ## 0.0.3 - 2026-08-16
 
 ### Added

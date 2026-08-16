@@ -24,6 +24,14 @@ AI agents using ComfyUI on Google Colab, RunPod, or a home GPU.
    workflows, while `verify` and explicit inspection keep artifact claims grounded in
    evidence.
 
+## 0.1.0 — agent-grown character memory
+
+Version 0.1.0 adds a queryable generation history and durable character resources that
+agents can grow from human feedback: canonical appearances, forms, triggers, references,
+LoRAs, notes, and an approved gallery flow into `brief`, `run --character`, and identity
+sheets while preserving the prompt before and after injection. See the
+[0.1.0 changelog](../CHANGELOG.md#010---2026-08-16) for the complete release notes.
+
 ## 0.0.3 — a distributable agent workflow
 
 Version 0.0.3 makes the full workflow available from the npm package: structured
@@ -32,17 +40,14 @@ asynchronous submission, offline artifact verification, bundled kits/playbooks/s
 and concise bilingual documentation. See the [0.0.3 changelog](../CHANGELOG.md#003---2026-08-16)
 for the complete release notes.
 
-## Planned next: character memory and a generation ledger
+## Planned next: recipes, portable archives, and scale
 
-- Character resources that an agent creates and grows over time — canonical
-  appearance text, reference images, compatible LoRA attachments, and per-kit
-  prompt learnings — injected into any preset with a single flag and reusable
-  across projects and machines without committing them to git.
-- A queryable generation ledger built on the job records and `run.json` manifests
-  every run already writes: what was generated, with which preset, prompt, seed,
-  and outputs, so an agent can start from past successes instead of from scratch.
-- Recipes distilled by the agent from successful runs and replayed as a linear
-  pipeline with matrix expansion, shell stages, and resume-from-stage support.
+- Recipes distilled from successful runs and replayed as linear pipelines with matrix
+  expansion, shell stages, and resume-from-stage support.
+- ZIP export for moving a character archive between projects or machines while keeping
+  reference and gallery inclusion explicit.
+- Character history indexing that remains fast and bounded as cross-project records,
+  notes, and approved gallery items grow.
 
 ## Planned later
 
