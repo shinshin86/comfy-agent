@@ -4,8 +4,10 @@ import YAML from "yaml";
 import { ComfyClient } from "../api/client.js";
 import { CliError } from "../io/errors.js";
 import { getSubdirPath, getWorkdirPath } from "../io/workdir.js";
-import { log, print } from "../io/output.js";
+import { log, print, printJson } from "../io/output.js";
 import { t } from "../i18n/index.js";
+import { formatPresetParameters, formatPresetUploads } from "../preset/output.js";
+import { type ParameterDef, type Preset, type UploadDef } from "../preset/schema.js";
 import {
   detectParamType,
   isLiteralValue,
@@ -20,7 +22,44 @@ export type ImportOptions = {
   force?: boolean;
   baseUrl?: string;
   global?: boolean;
+  json?: boolean;
 };
+
+export type ObjectInfoSource = "server" | "cache" | "unavailable";
+
+export const buildImportPayload = ({
+  name,
+  scope,
+  baseUrl,
+  workflowDest,
+  presetDest,
+  objectInfoSource,
+  overwritten,
+  hadSubgraphs,
+  presetTemplate,
+}: {
+  name: string;
+  scope: "local" | "global";
+  baseUrl: string;
+  workflowDest: string;
+  presetDest: string;
+  objectInfoSource: ObjectInfoSource;
+  overwritten: boolean;
+  hadSubgraphs: boolean;
+  presetTemplate: Preset;
+}) => ({
+  ok: true as const,
+  scope,
+  preset: name,
+  preset_path: presetDest,
+  workflow_path: workflowDest,
+  base_url: baseUrl,
+  object_info: objectInfoSource,
+  subgraphs_expanded: hadSubgraphs,
+  overwritten,
+  parameters: formatPresetParameters(presetTemplate.parameters),
+  uploads: formatPresetUploads(presetTemplate.uploads),
+});
 
 const sanitizeName = (name: string) => {
   if (!name || name.trim().length === 0) {
@@ -47,7 +86,18 @@ const ensureWorkdir = async (scope: "local" | "global") => {
 };
 
 const loadWorkflowFile = async (filePath: string): Promise<unknown> => {
-  const raw = await fs.readFile(filePath, "utf-8");
+  let raw: string;
+  try {
+    raw = await fs.readFile(filePath, "utf-8");
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+      throw new CliError("FILE_NOT_FOUND", t("import.workflow_not_found", { path: filePath }), 2, {
+        path: filePath,
+        kind: "workflow_source",
+      });
+    }
+    throw err;
+  }
   try {
     return JSON.parse(raw) as unknown;
   } catch (err) {
@@ -81,10 +131,7 @@ type InferredUpload = {
   description: string;
 };
 
-const inferUpload = (
-  classType: string | undefined,
-  inputName: string,
-): InferredUpload | null => {
+const inferUpload = (classType: string | undefined, inputName: string): InferredUpload | null => {
   const normalizedClass = (classType ?? "").toLowerCase();
   const normalizedInput = inputName.toLowerCase();
 
@@ -244,9 +291,9 @@ export const buildPresetTemplate = (
   workflowFile: string,
   workflow: Record<string, unknown>,
   objectInfo: ObjectInfo | null,
-) => {
-  const parameters: Record<string, unknown> = {};
-  const uploads: Record<string, unknown> = {};
+): Preset => {
+  const parameters: Record<string, ParameterDef> = {};
+  const uploads: Record<string, UploadDef> = {};
   const uploadCounts = new Map<InferredUpload["baseName"], number>();
 
   for (const [nodeId, nodeValue] of Object.entries(workflow)) {
@@ -305,8 +352,10 @@ export const buildPresetTemplate = (
 };
 
 const writeFileSafe = async (filePath: string, content: string, force?: boolean) => {
+  let overwritten = false;
   try {
     await fs.stat(filePath);
+    overwritten = true;
     if (!force) {
       throw new CliError("FILE_EXISTS", t("import.file_exists", { path: filePath }), 2, {
         path: filePath,
@@ -319,6 +368,7 @@ const writeFileSafe = async (filePath: string, content: string, force?: boolean)
   }
 
   await fs.writeFile(filePath, content, "utf-8");
+  return overwritten;
 };
 
 export const runImport = async (workflowPath: string, options: ImportOptions) => {
@@ -326,6 +376,7 @@ export const runImport = async (workflowPath: string, options: ImportOptions) =>
   await ensureWorkdir(scope);
   const name = sanitizeName(options.name);
   const parsed = await loadWorkflowFile(workflowPath);
+  const hadSubgraphs = workflowHasSubgraphs(parsed);
   const baseUrl = resolveBaseUrl(options);
 
   const workflowsDir = getSubdirPath("workflows", process.cwd(), scope);
@@ -341,22 +392,46 @@ export const runImport = async (workflowPath: string, options: ImportOptions) =>
 
   await fs.mkdir(cacheDir, { recursive: true });
   const cache = await loadObjectInfoCache(cachePath);
-  let objectInfo = cache[baseUrl] ?? null;
-  if (!objectInfo || workflowHasSubgraphs(parsed)) {
+  const cachedObjectInfo = cache[baseUrl] ?? null;
+  let objectInfo = cachedObjectInfo;
+  let objectInfoSource: ObjectInfoSource = cachedObjectInfo ? "cache" : "unavailable";
+  if (!objectInfo || hadSubgraphs) {
     const liveObjectInfo = await fetchObjectInfo(baseUrl);
     if (liveObjectInfo) {
       objectInfo = liveObjectInfo;
+      objectInfoSource = "server";
       cache[baseUrl] = liveObjectInfo;
       await saveObjectInfoCache(cachePath, cache);
     }
   }
 
   const workflow = normalizeImportedWorkflow(parsed, workflowPath, objectInfo);
-  await writeFileSafe(workflowDest, `${JSON.stringify(workflow, null, 2)}\n`, options.force);
+  const workflowOverwritten = await writeFileSafe(
+    workflowDest,
+    `${JSON.stringify(workflow, null, 2)}\n`,
+    options.force,
+  );
 
   const presetTemplate = buildPresetTemplate(name, workflowFileName, workflow, objectInfo);
   const presetYaml = YAML.stringify(presetTemplate);
-  await writeFileSafe(presetDest, presetYaml, options.force);
+  const presetOverwritten = await writeFileSafe(presetDest, presetYaml, options.force);
+
+  if (options.json) {
+    printJson(
+      buildImportPayload({
+        name,
+        scope,
+        baseUrl,
+        workflowDest,
+        presetDest,
+        objectInfoSource,
+        overwritten: workflowOverwritten || presetOverwritten,
+        hadSubgraphs,
+        presetTemplate,
+      }),
+    );
+    return;
+  }
 
   print(t("import.workflow_saved", { path: workflowDest }));
   print(t("import.preset_created", { path: presetDest }));

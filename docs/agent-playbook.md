@@ -92,13 +92,27 @@ ephemerality tax entirely.
 
 ## 3. Error contract (CLI → agent)
 
-Commands with a `--json` flag (`run`, `doctor`, `list`, `status`, `preset`,
-`connect`, `analyze`, `colab *`) emit errors in this shape (`init` and
-`import` are text-only):
+Commands with a `--json` flag (`init`, `import`, `run`, `doctor`, `list`,
+`status`, `preset`, `connect`, `analyze`, `colab *`) emit errors in this
+shape:
 
 ```json
 { "ok": false, "error": { "code": "...", "message": "...", "details": { } } }
 ```
+
+Success and failure both use an `{ "ok": ... }` envelope. The sole exception
+is `run --dry-run --json`, which emits the raw patched workflow so it can be
+sent directly to ComfyUI.
+
+The CLI returns only exit codes `0`, `2`, and `3`:
+
+- `2` — the invocation, input, or local environment is invalid; fix the command.
+- `3` — the inspected or executed target state differs from what was expected
+  (server failure or artifact mismatch); regenerate or retry.
+
+`INVALID_PARAM` is for an invalid value type or range. `INVALID_USAGE` is for
+an invalid argument structure, including Commander errors such as missing
+required options and unknown commands.
 
 One shape exception: when `doctor` itself cannot reach the server it still
 exits 0-vs-3 as usual but reports the failure **inside** its normal payload
@@ -115,6 +129,7 @@ Codes the orchestration flow relies on (Phase 1):
 | `MISSING_NODE_ON_SERVER` | 3 | Workflow references a node class the server does not have | `server`, `missing_nodes: [{node_id, class_type}]`, `missing_models` |
 | `MISSING_MODEL_ON_SERVER` | 3 | Workflow references model files absent on the server | `server`, `missing_models: [{node_id, class_type, input, value, available[], available_truncated?}]`, `missing_nodes` |
 | `WORKDIR_NOT_FOUND` | 2 | No `.comfy-agent/` — run `comfy-agent init` | — |
+| `INVALID_USAGE` | 2 | Invalid argument structure | `commander_code` for Commander errors |
 | `MISSING_REQUIRED_PARAM` | 2 | Bad invocation | `param` |
 | `API_ERROR` | 3 | Server reached but request failed (5xx, invalid response) | — |
 | `TIMEOUT` | 3 | Generation exceeded timeout | — |

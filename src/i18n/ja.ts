@@ -19,7 +19,7 @@ export const messages = {
   "cli.option.base_url": "ComfyUI base URL",
   "cli.run.description": "プリセットを実行",
   "cli.run.arg.preset": "プリセット名",
-  "cli.run.option.dry_run": "APIに送信せずworkflow JSONを出力",
+  "cli.option.dry_run": "APIに送信せずworkflow JSONを出力",
   "cli.run.option.out": "出力先ディレクトリ",
   "cli.run.option.n": "実行回数",
   "cli.run.option.seed":
@@ -84,6 +84,7 @@ export const messages = {
   "import.name_invalid": "name は英数字・_・- のみ使用できます。",
   "import.workdir_missing":
     ".comfy-agent が見つかりません。先に comfy-agent init を実行してください。",
+  "import.workflow_not_found": "{path} が見つかりません。",
   "import.invalid_workflow_json": "JSON の解析に失敗しました。",
   "import.object_info_failed": "object_info の取得に失敗しました。型推定はフォールバックします。",
   "import.file_exists": "{path} は既に存在します。",

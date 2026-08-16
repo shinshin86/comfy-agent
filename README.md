@@ -508,6 +508,9 @@ Notes:
 ## JSON Output
 
 Use `--json` to print JSON-only output.
+All commands that support `--json` use an `{ "ok": ... }` envelope for both
+success and failure. The sole exception is `run --dry-run --json`, which emits
+the raw patched workflow so it can be sent directly to ComfyUI.
 
 Success example:
 
@@ -573,9 +576,16 @@ Error example:
 
 ## Exit Codes
 
+The CLI returns only `0`, `2`, or `3`:
+
 - `0`: success
-- `2`: user input error (missing param / type mismatch)
-- `3`: API/network/server error
+- `2`: the invocation, input, or local environment is invalid; fix the command
+- `3`: the inspected or executed target state differs from what was expected,
+  such as a server failure or artifact mismatch; regenerate or retry
+
+`INVALID_PARAM` means a value has an invalid type or range (for example,
+`--n abc`). `INVALID_USAGE` means the argument structure is invalid, including
+missing required options, unknown commands, and extra positional arguments.
 
 ## Typical Errors
 

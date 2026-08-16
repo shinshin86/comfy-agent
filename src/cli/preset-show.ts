@@ -8,6 +8,7 @@ import { CliError } from "../io/errors.js";
 import { ComfyClient } from "../api/client.js";
 import { fetchRemoteTemplateByName, type RemoteTemplate } from "../preset/remote.js";
 import { resolveComfyBaseUrl } from "../utils/base-url.js";
+import { formatPresetParameters, formatPresetUploads } from "../preset/output.js";
 
 export type PresetShowOptions = {
   json?: boolean;
@@ -146,31 +147,8 @@ export const runPresetShow = async (presetName: string, options: PresetShowOptio
       preset.workflow,
     );
 
-    const parameters = Object.entries(preset.parameters ?? {}).map(([name, param]) => ({
-      name,
-      type: param.type,
-      required: param.required ?? false,
-      default: param.default,
-      target: param.target,
-      description: param.description,
-      role: param.role,
-      aliases: param.aliases,
-      min: param.min,
-      max: param.max,
-      choices: param.choices,
-      recommended: param.recommended,
-    }));
-
-    const uploads = Object.entries(preset.uploads ?? {}).map(([name, def]) => ({
-      name,
-      kind: def.kind,
-      cli_flag: def.cli_flag,
-      target: def.target,
-      description: def.description,
-      role: def.role,
-      aliases: def.aliases,
-      required: def.required ?? false,
-    }));
+    const parameters = formatPresetParameters(preset.parameters);
+    const uploads = formatPresetUploads(preset.uploads);
 
     const payload = {
       ok: true,

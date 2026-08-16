@@ -19,7 +19,7 @@ export const messages = {
   "cli.option.base_url": "ComfyUI base URL",
   "cli.run.description": "Run a preset",
   "cli.run.arg.preset": "Preset name",
-  "cli.run.option.dry_run": "Output patched workflow JSON without sending",
+  "cli.option.dry_run": "Output patched workflow JSON without sending",
   "cli.run.option.out": "Output directory",
   "cli.run.option.n": "Run count",
   "cli.run.option.seed":
@@ -81,6 +81,7 @@ export const messages = {
   "import.name_required": "--name is required.",
   "import.name_invalid": "name may contain only letters, numbers, _ and -.",
   "import.workdir_missing": ".comfy-agent not found. Run comfy-agent init first.",
+  "import.workflow_not_found": "{path} not found.",
   "import.invalid_workflow_json": "Failed to parse workflow JSON.",
   "import.object_info_failed": "Failed to fetch /object_info. Falling back to literal inference.",
   "import.file_exists": "{path} already exists.",

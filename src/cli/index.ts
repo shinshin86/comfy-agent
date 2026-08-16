@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { Command } from "commander";
+import { Command, CommanderError } from "commander";
 import { runInit } from "./init.js";
 import { runList } from "./list.js";
 import { runImport } from "./import.js";
@@ -10,7 +10,7 @@ import { runStatus } from "./status.js";
 import { runPresetShow } from "./preset-show.js";
 import { runColabCatalog, runColabSuggest } from "./colab.js";
 import { runConnect } from "./connect.js";
-import { errorPayloadFrom, exitCodeFrom, isCliError } from "../io/errors.js";
+import { CliError, errorPayloadFrom, exitCodeFrom, isCliError } from "../io/errors.js";
 import { log } from "../io/output.js";
 import { resolveLanguage, setLanguage, t } from "../i18n/index.js";
 import { assertRuntimeSupported } from "../utils/runtime.js";
@@ -18,8 +18,16 @@ import { getPackageVersion } from "../utils/version.js";
 import { extractRunPassthrough } from "./run/args.js";
 
 const program = new Command();
+const wantsJson = (argv: string[]) => argv.includes("--json");
 
 setLanguage(resolveLanguage());
+
+program.exitOverride();
+program.configureOutput({
+  writeErr: (message) => {
+    if (!wantsJson(process.argv)) process.stderr.write(message);
+  },
+});
 
 program
   .name("comfy-agent")
@@ -32,6 +40,7 @@ program.enablePositionalOptions();
 program
   .command("init")
   .description(t("cli.init.description"))
+  .option("--json", t("cli.option.json"))
   .option("--force", t("cli.option.force"))
   .option("--global", t("cli.option.global"))
   .option("--lang <lang>", t("cli.option.lang"))
@@ -39,7 +48,7 @@ program
     try {
       await runInit(options);
     } catch (err) {
-      handleError(err);
+      handleError(err, options?.json);
     }
   });
 
@@ -67,12 +76,13 @@ program
   .option("--base-url <url>", t("cli.option.base_url"))
   .option("--force", t("cli.option.force"))
   .option("--global", t("cli.option.global"))
+  .option("--json", t("cli.option.json"))
   .option("--lang <lang>", t("cli.option.lang"))
   .action(async (workflowPath, options) => {
     try {
       await runImport(workflowPath, options);
     } catch (err) {
-      handleError(err);
+      handleError(err, options?.json);
     }
   });
 
@@ -81,7 +91,7 @@ program
   .description(t("cli.run.description"))
   .argument("<preset_name>", t("cli.run.arg.preset"))
   .option("--json", t("cli.option.json"))
-  .option("--dry-run", t("cli.run.option.dry_run"))
+  .option("--dry-run", t("cli.option.dry_run"))
   .option("--out <dir>", t("cli.run.option.out"))
   .option("--n <count>", t("cli.run.option.n"))
   .option("--seed <seed>", t("cli.run.option.seed"))
@@ -238,9 +248,23 @@ const handleError = (err: unknown, jsonOutput?: boolean) => {
 try {
   assertRuntimeSupported();
 } catch (err) {
-  handleError(err, process.argv.includes("--json"));
+  handleError(err, wantsJson(process.argv));
 }
 
 program.parseAsync(process.argv).catch((err) => {
-  handleError(err);
+  if (err instanceof CommanderError) {
+    if (
+      err.code === "commander.helpDisplayed" ||
+      err.code === "commander.version" ||
+      err.code === "commander.help"
+    ) {
+      process.exit(0);
+    }
+    handleError(
+      new CliError("INVALID_USAGE", err.message.trim(), 2, { commander_code: err.code }),
+      wantsJson(process.argv),
+    );
+    return;
+  }
+  handleError(err, wantsJson(process.argv));
 });
