@@ -265,6 +265,36 @@ describe("ColabCatalogSchema", () => {
     expect(result.success).toBe(true);
   });
 
+  it("accepts LoRA as a workflow feature capability", () => {
+    const result = ColabCatalogSchema.safeParse({
+      version: 1,
+      kits: [
+        {
+          name: "flux1",
+          path: "flux1/",
+          status: "verified",
+          tasks: ["text_to_image"],
+          outputs: ["image"],
+          gpu: { minimum: "L4", recommended: "A100" },
+          summary: "Flux image generation with an optional LoRA slot.",
+          workflows: [
+            {
+              name: "flux1_dev_lora",
+              file: "flux1_dev_lora.json",
+              task: "text_to_image",
+              capabilities: ["lora"],
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.kits[0]?.workflows[0]?.capabilities).toEqual(["lora"]);
+    }
+  });
+
   it("rejects absolute or parent-traversing paths so catalog output stays portable", () => {
     const result = ColabCatalogSchema.safeParse({
       version: 1,

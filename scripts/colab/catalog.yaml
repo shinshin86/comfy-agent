@@ -207,6 +207,12 @@ kits:
         task: text_to_image
         speed: slow
         quality: high
+      - name: flux1_dev_lora
+        file: flux1_dev_lora.json
+        task: text_to_image
+        capabilities: [lora]
+        speed: slow
+        quality: high
     assets:
       - file: flux1-dev-fp8.safetensors
         dir: models/checkpoints
