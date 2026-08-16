@@ -1,0 +1,102 @@
+name: Publish
+
+# Publishes to npm via Trusted Publishing (OIDC) when a version bump lands on main.
+# No npm token is stored in this repository; npmjs.com must list this workflow file
+# as a trusted publisher for the package (Package Settings -> Trusted publisher:
+# GitHub Actions / repository owner / repository name / workflow "publish.yml").
+#
+# Flow: merge a PR that changes package.json "version" -> this job runs -> if that
+# version is not on npm yet, run the quality gates, publish with provenance, and
+# create the matching git tag + GitHub Release with the CHANGELOG section as notes.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - package.json
+
+permissions:
+  contents: write
+  id-token: write
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish to npm
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+          cache: npm
+
+      - name: Use an npm CLI that supports trusted publishing
+        run: npm install -g npm@latest && npm --version
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Detect whether this version is already published
+        id: check
+        run: |
+          set -euo pipefail
+          name=$(node -p "require('./package.json').name")
+          version=$(node -p "require('./package.json').version")
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if npm view "$name@$version" version >/dev/null 2>&1; then
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "$name@$version is already on npm; nothing to publish."
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+            echo "$name@$version is not on npm yet; will publish."
+          fi
+
+      - name: Quality gates
+        if: steps.check.outputs.publish == 'true'
+        run: |
+          npm run lint
+          npm test
+          npm run build
+          npm run test:smoke
+          npm run check-pack
+          npm run check-links
+
+      - name: Publish
+        if: steps.check.outputs.publish == 'true'
+        run: npm publish --provenance --access public
+
+      - name: Extract release notes from CHANGELOG
+        if: steps.check.outputs.publish == 'true'
+        run: |
+          set -euo pipefail
+          version="${{ steps.check.outputs.version }}"
+          awk -v v="$version" '
+            /^## / { if (found) exit; if (index($0, "## " v " ") == 1 || $0 == "## " v) { found = 1; next } }
+            found { print }
+          ' CHANGELOG.md > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "Release $version. See CHANGELOG.md." > release-notes.md
+          fi
+
+      - name: Create git tag and GitHub Release
+        if: steps.check.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          version="${{ steps.check.outputs.version }}"
+          gh release create "v$version" \
+            --title "v$version" \
+            --notes-file release-notes.md \
+            --target "$GITHUB_SHA"
