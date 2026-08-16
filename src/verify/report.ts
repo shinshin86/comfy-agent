@@ -21,6 +21,7 @@ export const summarize = (
     warnings:
       reportWarnings.length + files.reduce((count, file) => count + file.warnings.length, 0),
     verified_visually: false,
+    record_updated: false,
   };
 };
 

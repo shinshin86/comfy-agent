@@ -180,6 +180,7 @@ export const messages = {
   "verify.warning.animated_webp_no_decoder":
     "ffmpeg はこの animated WEBP をデコードできないため、フレームとシートを省略しました。",
   "verify.warning.run_incomplete": "run manifest に未完了の job があります。",
+  "verify.warning.record_not_updated": "検証要約を job record に保存できませんでした。",
   "verify.summary":
     "要約: {files} ファイル / チェック 成功 {passed}、失敗 {failed} / 警告 {warnings}",
   "verify.not_viewed_note":

@@ -596,4 +596,50 @@ describe("mock ComfyUI CLI smoke", () => {
       prompt_final: "hello smoke",
     });
   });
+
+  it("18: verify summary is available through history show", async () => {
+    const server = await startServer();
+    const workdir = await createTmpWorkdir();
+    await importSmokePreset(workdir, server);
+
+    const run = await runCli(
+      [
+        "run",
+        "smoke",
+        "--source",
+        "local",
+        "--json",
+        "--poll-interval-ms",
+        "50",
+        "--timeout-seconds",
+        "10",
+      ],
+      cliOptions(workdir, server.baseUrl),
+    );
+    const runPayload = parseJson(run);
+    const jobs = runPayload.jobs as JsonObject[];
+    const jobId = jobs[0]?.job_id as string;
+    const outputDir = runPayload.output_dir as string;
+    expect(run.code, run.stderr).toBe(0);
+
+    const verified = await runCli(
+      ["verify", outputDir, "--json", "--no-ffmpeg"],
+      cliOptions(workdir, server.baseUrl),
+    );
+    expect(verified.code, verified.stderr).toBe(0);
+    expect(parseJson(verified)).toMatchObject({
+      ok: true,
+      summary: { checks_failed: 0, record_updated: true },
+    });
+
+    const shown = await runCli(
+      ["history", "show", jobId, "--json"],
+      cliOptions(workdir, server.baseUrl),
+    );
+    expect(shown.code, shown.stderr).toBe(0);
+    expect(parseJson(shown)).toMatchObject({
+      job: { verify: { checks_failed: 0 } },
+      verify: { checks_failed: 0 },
+    });
+  });
 });

@@ -177,6 +177,7 @@ export const messages = {
   "verify.warning.animated_webp_no_decoder":
     "ffmpeg cannot decode this animated WEBP; frames and sheets were skipped.",
   "verify.warning.run_incomplete": "The run manifest contains an incomplete job.",
+  "verify.warning.record_not_updated": "The verification summary was not saved to the job record.",
   "verify.summary":
     "summary: {files} file(s) / checks {passed} passed, {failed} failed / warnings {warnings}",
   "verify.not_viewed_note":
