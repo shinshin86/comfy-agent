@@ -60,5 +60,13 @@
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "vitest": "^2.1.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shinshin86/comfy-agent.git"
+  },
+  "homepage": "https://github.com/shinshin86/comfy-agent#readme",
+  "bugs": {
+    "url": "https://github.com/shinshin86/comfy-agent/issues"
   }
 }
