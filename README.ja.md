@@ -607,6 +607,11 @@ CLI が返す終了コードは `0` / `2` / `3` のみです。
   ありません（`details.missing_models`。各項目にサーバー側の `available` 一覧つき）。
   多くの場合、サーバーが別のワークフロー/キット用にセットアップされていることを意味します。
 - `API_ERROR`: サーバーには接続できたものの応答エラーです。`base_url` を確認してください。
+- `EXECUTION_FAILED`: ComfyUI で workflow の実行に失敗しました。
+  `details.category` と `details.kind` を確認し、`oom` なら解像度または steps を下げるか
+  上位 GPU を人に提案し、`interrupted` なら1回再試行してください。
+- `NO_OUTPUTS`: 実行は完了しましたが保存ファイルがありません。workflow に適切な
+  `Save*` node を追加してください。
 - `TIMEOUT`: 完了待ちがタイムアウトしました。`--timeout-seconds` を増やしてください。
 
 `run` は送信前にサーバープリフライト検査を行います。デバッグ等で回避したい場合は

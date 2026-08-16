@@ -185,7 +185,7 @@ describe("mock ComfyUI CLI smoke", () => {
     ]);
   });
 
-  it("6: run times out after a ComfyUI execution error until execution-error detection lands", async () => {
+  it("6: run reports a ComfyUI execution error", async () => {
     const server = await startServer({
       historyDelayPolls: 0,
       executionError: { node_id: "9", exception_message: "mock execution failed" },
@@ -210,9 +210,16 @@ describe("mock ComfyUI CLI smoke", () => {
     const payload = parseJson(result);
     const error = payload.error as JsonObject;
 
-    // TODO: expect EXECUTION_FAILED once run detects ComfyUI execution errors instead of waiting for TIMEOUT.
     expect(result.code).toBe(3);
-    expect(error.code).toBe("TIMEOUT");
+    expect(error.code).toBe("EXECUTION_FAILED");
+    expect(error.details).toMatchObject({
+      node_id: "9",
+      category: "unknown",
+      kind: "error",
+      partial_outputs: 0,
+      run_index: 1,
+      output_dir: expect.any(String),
+    });
     expect(
       normalizedRequestPaths(server.requests).filter(
         (requestPath) => requestPath === "/history/:id",
@@ -378,5 +385,42 @@ describe("mock ComfyUI CLI smoke", () => {
     expect(canonicalResult.code, canonicalResult.stderr).toBe(0);
     expect(parseJson(aliasResult)).toEqual(parseJson(canonicalResult));
     expect(server.requests).toEqual([]);
+  });
+
+  it("14: run reports success without output files as NO_OUTPUTS", async () => {
+    const server = await startServer({ historyDelayPolls: 0, noOutputs: true });
+    const workdir = await createTmpWorkdir();
+    await importSmokePreset(workdir, server);
+    server.requests.length = 0;
+
+    const result = await runCli(
+      [
+        "run",
+        "smoke",
+        "--source",
+        "local",
+        "--json",
+        "--poll-interval-ms",
+        "50",
+        "--timeout-seconds",
+        "1",
+      ],
+      cliOptions(workdir, server.baseUrl),
+    );
+    const payload = parseJson(result);
+    const error = payload.error as JsonObject;
+
+    expect(result.code).toBe(2);
+    expect(error.code).toBe("NO_OUTPUTS");
+    expect(error.details).toMatchObject({
+      prompt_id: expect.any(String),
+      run_index: 1,
+      output_dir: expect.any(String),
+    });
+    expect(normalizedRequestPaths(server.requests)).toEqual([
+      "/object_info",
+      "/prompt",
+      "/history/:id",
+    ]);
   });
 });

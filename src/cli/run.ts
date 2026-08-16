@@ -2,6 +2,7 @@ import path from "node:path";
 import { promises as fs } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { ComfyClient } from "../api/client.js";
+import { judgeHistory } from "../api/history.js";
 import { CliError } from "../io/errors.js";
 import { log, print, printJson } from "../io/output.js";
 import { t } from "../i18n/index.js";
@@ -12,9 +13,9 @@ import { resolvePresetPath } from "../preset/path.js";
 import { loadLocalWorkflow } from "../workflow/load.js";
 import { applyParameters, applyUploads } from "../workflow/patch.js";
 import { assertPreflightPasses, fetchPreflightReport } from "../workflow/preflight.js";
-import { extractOutputFiles } from "../output/provider.js";
+import { extractOutputFiles, type OutputFileRef } from "../output/provider.js";
 import { resolveComfyBaseUrl } from "../utils/base-url.js";
-import { sleep } from "../utils/time.js";
+import { createPollWaker, sleep, type PollWaker } from "../utils/time.js";
 import { ComfyProgressChannel, type ProgressEventRecord } from "../api/progress.js";
 import {
   applySeedValue,
@@ -145,28 +146,47 @@ const formatTimestamp = (date: Date) => {
 
 const safeFilename = (name: string) => name.replace(/[^a-zA-Z0-9._-]/g, "_");
 
-const getHistoryEntry = (history: unknown, promptId: string) => {
-  if (!history || typeof history !== "object") return null;
-  const obj = history as Record<string, unknown>;
-  if (promptId in obj) {
-    return obj[promptId];
-  }
-  return history;
-};
-
 const waitForHistory = async (
   client: ComfyClient,
   promptId: string,
-  pollIntervalMs: number,
-  timeoutSeconds: number,
-) => {
+  options: {
+    pollIntervalMs: number;
+    timeoutSeconds: number;
+    detectLost?: boolean;
+    onRunning?: () => void;
+    waker?: PollWaker;
+  },
+): Promise<{ entry: Record<string, unknown>; outputs: OutputFileRef[] }> => {
+  const { pollIntervalMs, timeoutSeconds, waker } = options;
   const start = Date.now();
   while (true) {
     const history = await client.history(promptId);
-    const entry = getHistoryEntry(history, promptId);
-    const outputs = extractOutputFiles(entry);
-    if (outputs.length > 0) {
-      return { entry, outputs };
+    const verdict = judgeHistory(history, promptId);
+    if (verdict.state === "failed") {
+      const outputs = extractOutputFiles(verdict.entry);
+      const { failure } = verdict;
+      const message =
+        failure.kind === "interrupted"
+          ? t("run.execution_interrupted", { node: failure.node_id ?? "-" })
+          : t("run.execution_failed", {
+              node: failure.node_id ?? "-",
+              type: failure.node_type ?? "-",
+              message: failure.exception_message ?? "-",
+            });
+      throw new CliError("EXECUTION_FAILED", message, 3, {
+        prompt_id: promptId,
+        ...failure,
+        partial_outputs: outputs.length,
+      });
+    }
+    if (verdict.state === "success") {
+      const outputs = extractOutputFiles(verdict.entry);
+      if (outputs.length === 0) {
+        throw new CliError("NO_OUTPUTS", t("run.no_outputs"), 2, {
+          prompt_id: promptId,
+        });
+      }
+      return { entry: verdict.entry, outputs };
     }
 
     if (Date.now() - start > timeoutSeconds * 1000) {
@@ -174,7 +194,7 @@ const waitForHistory = async (
         prompt_id: promptId,
       });
     }
-    await sleep(pollIntervalMs);
+    await (waker ? waker.wait(pollIntervalMs) : sleep(pollIntervalMs));
   }
 };
 
@@ -426,6 +446,7 @@ export const runRun = async (presetName: string, options: RunOptions, rawArgs: s
 
     const progressEvents: ProgressEventRecord[] = [];
     const progressUi = createProgressUi(!options.json);
+    const pollWaker = createPollWaker();
     let resolveChannelReady: (() => void) | null = null;
     const channelReady = new Promise<void>((resolve) => {
       resolveChannelReady = resolve;
@@ -440,6 +461,9 @@ export const runRun = async (presetName: string, options: RunOptions, rawArgs: s
           event.kind === "channel_lost"
         ) {
           resolveChannelReady?.();
+        }
+        if (event.kind === "execution_error" || event.kind === "execution_interrupted") {
+          pollWaker.wake();
         }
         progressUi.onEvent(event);
       },
@@ -461,10 +485,26 @@ export const runRun = async (presetName: string, options: RunOptions, rawArgs: s
       progressChannel.setTargetPromptId(promptId);
     }
 
-    let outputs: Array<{ filename: string; subfolder?: string; type?: string }> = [];
+    let outputs: OutputFileRef[] = [];
     try {
-      const result = await waitForHistory(client, promptId, pollIntervalMs, timeoutSeconds);
+      const result = await waitForHistory(client, promptId, {
+        pollIntervalMs,
+        timeoutSeconds,
+        waker: pollWaker,
+      });
       outputs = result.outputs;
+    } catch (error) {
+      if (
+        error instanceof CliError &&
+        (error.code === "EXECUTION_FAILED" || error.code === "NO_OUTPUTS")
+      ) {
+        error.details = {
+          ...(error.details ?? {}),
+          run_index: runIndex,
+          output_dir: outputDir,
+        };
+      }
+      throw error;
     } finally {
       progressChannel.stop();
       progressUi.finish();

@@ -132,6 +132,8 @@ Codes the orchestration flow relies on (Phase 1):
 | `INVALID_USAGE` | 2 | Invalid argument structure | `commander_code` for Commander errors |
 | `MISSING_REQUIRED_PARAM` | 2 | Bad invocation | `param` |
 | `API_ERROR` | 3 | Server reached but request failed (5xx, invalid response) | — |
+| `EXECUTION_FAILED` | 3 | ComfyUI execution failed or was interrupted. For `category: oom`, reduce resolution/steps or ask the human about a higher GPU; for `kind: interrupted`, retry once | `prompt_id`, `run_index`, `kind`, `node_id`, `node_type`, `exception_type`, `exception_message`, `category`, `executed`, `traceback_tail`, `partial_outputs`, `output_dir` |
+| `NO_OUTPUTS` | 2 | Execution completed without output files; add an appropriate `Save*` node | `prompt_id`, `run_index`, `output_dir` |
 | `TIMEOUT` | 3 | Generation exceeded timeout | — |
 
 `run` performs the preflight automatically before submitting;
@@ -156,6 +158,9 @@ work that costs money, rights, or physical human action → the human decides.**
 | GPU below kit's `gpu.minimum` | **human (choice)** | Present: upgrade runtime (cost) vs. smaller model (quality delta). Never choose paid options silently |
 | License constraint (`license_notes`: non-commercial etc.) | **human (choice)** | Summarize the constraint, ask about intended use before generating |
 | Generation succeeded but quality is off | **agent (bounded)** | Inspect the output yourself, adjust params, retry ≤ 3 times, then report with evidence |
+| `EXECUTION_FAILED` with `category: oom` | depends | Reduce resolution or steps first; if that is insufficient, present a higher-GPU option to the human because it may cost money |
+| `EXECUTION_FAILED` with `kind: interrupted` | **agent** | Retry once; if the server interrupts it again, report the repeated interruption |
+| `NO_OUTPUTS` | **agent** | Add or fix the workflow's appropriate `Save*` output node, then rerun |
 | `TIMEOUT` | **agent** | Retry once with a raised `--timeout-seconds`; if it persists, report — the model may be too heavy for the runtime |
 
 ## 5. Reconnect flow (Colab volatility, condensed)

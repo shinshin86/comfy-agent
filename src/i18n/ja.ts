@@ -166,6 +166,10 @@ export const messages = {
   "run.file_not_found": "{path} が見つかりません。",
   "run.upload_missing_filename": "アップロード結果に filename がありません。",
   "run.timeout": "完了待ちがタイムアウトしました。",
+  "run.execution_failed": "node {node} ({type}) で実行に失敗しました: {message}",
+  "run.execution_interrupted": "サーバー上で実行が中断されました (node {node})。",
+  "run.no_outputs":
+    "実行は完了しましたが出力ファイルがありません（workflow に Save* node を追加してください）。",
   "run.n_min": "--n は1以上で指定してください。",
   "run.sending_prompt": "prompt を送信中 ({index}/{count})",
   "run.prompt_id_missing": "prompt_id が取得できませんでした。",

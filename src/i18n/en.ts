@@ -161,6 +161,10 @@ export const messages = {
   "run.file_not_found": "{path} not found.",
   "run.upload_missing_filename": "Upload response missing filename.",
   "run.timeout": "Timed out while waiting for completion.",
+  "run.execution_failed": "Execution failed at node {node} ({type}): {message}",
+  "run.execution_interrupted": "Execution was interrupted on the server (node {node}).",
+  "run.no_outputs":
+    "Execution completed but produced no output files (add a Save* node to the workflow).",
   "run.n_min": "--n must be >= 1.",
   "run.sending_prompt": "Sending prompt ({index}/{count})",
   "run.prompt_id_missing": "prompt_id not returned.",

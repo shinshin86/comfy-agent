@@ -7,6 +7,7 @@ export type MockComfyOptions = {
   objectInfo?: Record<string, unknown>;
   historyDelayPolls?: number;
   executionError?: { node_id: string; exception_message: string };
+  noOutputs?: boolean;
   forgetHistory?: boolean;
   historyFixture?: "success" | "error" | "interrupted";
 };
@@ -174,6 +175,9 @@ export const startMockComfy = async (options: MockComfyOptions = {}) => {
               },
             ],
           ];
+        }
+        if (options.noOutputs) {
+          (history[promptId] as Record<string, unknown>).outputs = {};
         }
         sendJson(response, 200, history);
         return;

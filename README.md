@@ -619,6 +619,11 @@ missing required options, unknown commands, and extra positional arguments.
   `available` list) — usually means the server was provisioned for a different
   workflow/kit
 - `API_ERROR`: server reached but the request failed; verify `base_url`
+- `EXECUTION_FAILED`: ComfyUI failed while executing the workflow. Inspect
+  `details.category` and `details.kind`; for `oom`, reduce resolution/steps or
+  ask about a higher GPU, and for `interrupted`, retry once.
+- `NO_OUTPUTS`: execution completed without saved files. Add an appropriate
+  `Save*` node to the workflow.
 - `TIMEOUT`: increase `--timeout-seconds`
 
 `run` checks the server (preflight) before submitting; skip with
