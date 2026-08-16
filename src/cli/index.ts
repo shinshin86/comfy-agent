@@ -13,6 +13,8 @@ import { runConnect } from "./connect.js";
 import { errorPayloadFrom, exitCodeFrom, isCliError } from "../io/errors.js";
 import { log } from "../io/output.js";
 import { resolveLanguage, setLanguage, t } from "../i18n/index.js";
+import { assertRuntimeSupported } from "../utils/runtime.js";
+import { getPackageVersion } from "../utils/version.js";
 
 const program = new Command();
 
@@ -22,7 +24,7 @@ program
   .name("comfy-agent")
   .description(t("cli.description"))
   .option("--lang <lang>", t("cli.option.lang"))
-  .version("0.0.2");
+  .version(getPackageVersion());
 
 program.enablePositionalOptions();
 
@@ -242,6 +244,12 @@ const handleError = (err: unknown, jsonOutput?: boolean) => {
   }
   process.exit(exitCodeFrom(err));
 };
+
+try {
+  assertRuntimeSupported();
+} catch (err) {
+  handleError(err, process.argv.includes("--json"));
+}
 
 program.parseAsync(process.argv).catch((err) => {
   handleError(err);

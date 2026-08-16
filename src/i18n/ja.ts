@@ -2,6 +2,10 @@ export const messages = {
   "scope.local": "ローカル",
   "scope.global": "グローバル",
   "cli.description": "ComfyUI HTTP API 用の決定的CLI",
+  "cli.node_version_warning":
+    "警告: Node.js {version} は対応バージョン {required} 未満です。アップグレードを推奨します。",
+  "cli.unsupported_runtime":
+    "Node.js {version} に必要なAPI ({missing}) がありません。Node.js {required} をインストールしてください。",
   "cli.option.lang": "言語 (en/ja)",
   "cli.init.description": "作業ディレクトリを初期化",
   "cli.option.force": "既存のファイル/ディレクトリを上書き",

@@ -158,7 +158,7 @@ includes local filesystem paths or environment values.
 
 ## Prerequisites
 
-- Node.js 20+
+- Node.js 22+
 - Running ComfyUI server (default: `http://127.0.0.1:8188`)
 
 ## Installation

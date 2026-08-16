@@ -2,6 +2,10 @@ export const messages = {
   "scope.local": "local",
   "scope.global": "global",
   "cli.description": "Deterministic CLI for ComfyUI HTTP API",
+  "cli.node_version_warning":
+    "Warning: Node.js {version} is below the supported version {required}. Upgrade is recommended.",
+  "cli.unsupported_runtime":
+    "Node.js {version} lacks required APIs ({missing}). Install Node.js {required}.",
   "cli.option.lang": "Language (en/ja)",
   "cli.init.description": "Initialize work directory",
   "cli.option.force": "Overwrite existing files/directories",
