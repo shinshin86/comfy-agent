@@ -24,13 +24,13 @@ AI agents using ComfyUI on Google Colab, RunPod, or a home GPU.
    workflows, while `verify` and explicit inspection keep artifact claims grounded in
    evidence.
 
-## 0.1.0 — agent-grown character memory
+## 0.0.4 — agent-grown character memory
 
-Version 0.1.0 adds a queryable generation history and durable character resources that
+Version 0.0.4 adds a queryable generation history and durable character resources that
 agents can grow from human feedback: canonical appearances, forms, triggers, references,
 LoRAs, notes, and an approved gallery flow into `brief`, `run --character`, and identity
 sheets while preserving the prompt before and after injection. See the
-[0.1.0 changelog](../CHANGELOG.md#010---2026-08-16) for the complete release notes.
+[0.0.4 changelog](../CHANGELOG.md#004---2026-08-16) for the complete release notes.
 
 ## 0.0.3 — a distributable agent workflow
 
