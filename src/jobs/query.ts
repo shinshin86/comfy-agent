@@ -1,7 +1,9 @@
+import path from "node:path";
+import { readCharacterIndex } from "../characters/store.js";
 import { t } from "../i18n/index.js";
 import { CliError } from "../io/errors.js";
-import type { WorkdirScope } from "../io/workdir.js";
-import { listJobs } from "./store.js";
+import { getCharactersDirPath, type WorkdirScope } from "../io/workdir.js";
+import { listJobs, readJob } from "./store.js";
 import type { JobRecord, JobStatus } from "./types.js";
 
 export type HistoryKind = "image" | "video" | "audio";
@@ -41,7 +43,7 @@ const resolveSince = (value: string | undefined): number | undefined => {
 const searchableText = (record: JobRecord): string[] => [
   record.prompt_final ?? "",
   record.negative_final ?? "",
-  ...((record.notes ?? []).map(({ text }) => text)),
+  ...(record.notes ?? []).map(({ text }) => text),
   record.preset,
   ...(record.tags ?? []),
 ];
@@ -52,9 +54,30 @@ export const queryHistory = async (options: QueryHistoryOptions): Promise<JobRec
   const scopes = [...new Set(options.scopes)];
   const since = resolveSince(options.since);
   const search = options.search?.toLocaleLowerCase();
-  const records = (
+  const localRecords = (
     await Promise.all(scopes.map((scope) => listJobs(options.cwd, scope)))
   ).flat();
+  const indexedRecords: JobRecord[] = [];
+  if (options.character && scopes.includes("global")) {
+    const characterDir = path.join(getCharactersDirPath(options.cwd, "global"), options.character);
+    const entries = await readCharacterIndex(characterDir);
+    for (const entry of entries) {
+      try {
+        indexedRecords.push((await readJob(entry.job_id, entry.project, "local")).record);
+      } catch (error) {
+        if (error instanceof CliError && error.code === "JOB_NOT_FOUND") continue;
+        throw error;
+      }
+    }
+  }
+  const records = [
+    ...new Map(
+      [...localRecords, ...indexedRecords].map((record) => [
+        `${record.job_id}\0${record.output_dir}`,
+        record,
+      ]),
+    ).values(),
+  ];
 
   const filtered = records
     .filter((record) => options.preset === undefined || record.preset === options.preset)
@@ -79,7 +102,7 @@ export const queryHistory = async (options: QueryHistoryOptions): Promise<JobRec
 
   const limited =
     options.limit === undefined ? filtered : filtered.slice(0, Math.max(0, options.limit));
-  const redactPrompts = scopes.length > 1 && !options.fullPrompts;
+  const redactPrompts = (scopes.length > 1 || indexedRecords.length > 0) && !options.fullPrompts;
   return limited.map((record) =>
     redactPrompts && record.prompt_final !== undefined
       ? { ...record, prompt_final: truncate(record.prompt_final, 60) }

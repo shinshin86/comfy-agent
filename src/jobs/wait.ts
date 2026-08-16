@@ -290,6 +290,8 @@ export const awaitAndDownload = async (
         params: job.params,
         uploads: job.uploads,
         character: job.character,
+        prompt_input: job.prompt_input,
+        prompt_final: job.prompt_final,
       },
       {
         index: job.batch_index,

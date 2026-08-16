@@ -21,6 +21,7 @@ import {
   runHistoryTag,
 } from "./history.js";
 import { runVerify } from "./verify.js";
+import { runBrief } from "./brief.js";
 import { CliError, errorPayloadFrom, exitCodeFrom, isCliError } from "../io/errors.js";
 import { log } from "../io/output.js";
 import { resolveLanguage, setLanguage, t } from "../i18n/index.js";
@@ -42,6 +43,7 @@ import {
   runCharacterRefRemove,
   runCharacterRemove,
   runCharacterShow,
+  runCharacterSheet,
   runCharacterUpdate,
 } from "./character.js";
 
@@ -130,6 +132,11 @@ program
   .option("--no-preflight", t("cli.run.option.no_preflight"))
   .option("--base-url <url>", t("cli.option.base_url"))
   .option("--source <local|remote|remote-catalog>", t("cli.run.option.source"))
+  .option("--character <name>", t("cli.run.option.character"))
+  .option("--form <id>", t("cli.run.option.form"))
+  .option("--character-ref <index|file>", t("cli.run.option.character_ref"))
+  .option("--character-prompt <replace|prefix|off>", t("cli.run.option.character_prompt"))
+  .option("--lora <file>", t("cli.run.option.lora"))
   .option("--global", t("cli.option.global"))
   .option("--lang <lang>", t("cli.option.lang"))
   .allowUnknownOption(true)
@@ -239,15 +246,15 @@ history.action(async (options) => {
   }
 });
 
-withHistoryListOptions(history.command("list").description(t("cli.history.list.description"))).action(
-  async (options) => {
-    try {
-      await runHistoryList(options);
-    } catch (err) {
-      handleError(err, options?.json);
-    }
-  },
-);
+withHistoryListOptions(
+  history.command("list").description(t("cli.history.list.description")),
+).action(async (options) => {
+  try {
+    await runHistoryList(options);
+  } catch (err) {
+    handleError(err, options?.json);
+  }
+});
 
 history
   .command("show")
@@ -308,6 +315,22 @@ history
   .action(async (jobId, options) => {
     try {
       await runHistoryOpen(jobId, options);
+    } catch (err) {
+      handleError(err, options?.json);
+    }
+  });
+
+program
+  .command("brief")
+  .description(t("cli.brief.description"))
+  .argument("<character>", t("cli.brief.arg.character"))
+  .option("--preset <name>", t("cli.brief.option.preset"))
+  .option("--form <id>", t("cli.brief.option.form"))
+  .option("--json", t("cli.option.json"))
+  .option("--lang <lang>", t("cli.option.lang"))
+  .action(async (name, options) => {
+    try {
+      await runBrief(name, options);
     } catch (err) {
       handleError(err, options?.json);
     }
@@ -540,6 +563,23 @@ characterGallery
   .action(async (name, id, options) => {
     try {
       await runCharacterGalleryRemove(name, id, options);
+    } catch (err) {
+      handleError(err, options?.json);
+    }
+  });
+
+character
+  .command("sheet")
+  .description(t("cli.character.sheet.description"))
+  .argument("<name>", t("cli.character.arg.name"))
+  .option("--form <id>", t("cli.character.option.form"))
+  .option("--out <png>", t("cli.character.sheet.option.out"))
+  .option("--global", t("cli.option.global"))
+  .option("--json", t("cli.option.json"))
+  .option("--lang <lang>", t("cli.option.lang"))
+  .action(async (name, options) => {
+    try {
+      await runCharacterSheet(name, options);
     } catch (err) {
       handleError(err, options?.json);
     }

@@ -134,7 +134,7 @@ export const CharacterIndexEntrySchema = z.object({
   project: z.string().min(1),
   preset: z.string().min(1),
   output_dir: z.string().min(1),
-  kind: z.string().min(1),
+  kind: z.string().min(1).optional(),
   prompt_final: z.string().optional(),
   favorite: z.boolean().optional(),
 });

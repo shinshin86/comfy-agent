@@ -29,6 +29,8 @@ import {
 } from "../characters/store.js";
 import type { Character } from "../characters/schema.js";
 import type { UploadRole } from "../preset/schema.js";
+import { FFMPEG_INSTALL_HINT, contactSheet, detectTools, extractFrames } from "../verify/ffmpeg.js";
+import { probeFile } from "../verify/probe.js";
 
 type CommonOptions = {
   global?: boolean;
@@ -75,6 +77,7 @@ export type CharacterExportOptions = CommonOptions & {
 };
 export type CharacterImportOptions = CommonOptions & { name?: string; force?: boolean };
 export type CharacterRemoveOptions = CommonOptions & { force?: boolean };
+export type CharacterSheetOptions = CommonOptions & { form?: string; out?: string };
 
 const requestedScope = (options: CommonOptions): WorkdirScope =>
   options.global ? "global" : "local";
@@ -343,6 +346,84 @@ export const runCharacterGalleryRemove = async (
   const resolved = await resolveCharacter(name, resolveOptions(options));
   await removeGalleryItem(resolved.path, id);
   outputResolved(resolved, options, { gallery: (await readGallery(resolved.path)).items });
+};
+
+const missingFfmpeg = () =>
+  new CliError(
+    "MISSING_TOOL",
+    t("verify.missing_tool", { tool: "ffmpeg", hint: FFMPEG_INSTALL_HINT }),
+    2,
+    {
+      tool: "ffmpeg",
+      hint: FFMPEG_INSTALL_HINT,
+      env: "COMFY_AGENT_FFMPEG",
+    },
+  );
+
+const galleryEmpty = (name: string, form?: string) =>
+  new CliError("GALLERY_EMPTY", t("character.gallery_empty", { name }), 2, {
+    character: name,
+    ...(form ? { form } : {}),
+    approved: "human",
+  });
+
+export const runCharacterSheet = async (name: string, options: CharacterSheetOptions) => {
+  const resolved = await resolveCharacter(name, resolveOptions(options));
+  const selected = (await readGallery(resolved.path)).items.filter(
+    (item) =>
+      item.approved === "human" &&
+      (options.form === undefined ||
+        item.form === options.form ||
+        (options.form === "default" && item.form === undefined)),
+  );
+  if (selected.length === 0) throw galleryEmpty(name, options.form);
+
+  const tools = await detectTools();
+  if (!tools.ffmpeg.available) throw missingFfmpeg();
+  const temporary = await fs.mkdtemp(path.join(resolved.path, ".sheet-"));
+  const inputs: string[] = [];
+  try {
+    for (const item of selected) {
+      const filePath = path.join(resolved.path, ...item.file.split("/"));
+      const metadata = await probeFile(filePath);
+      if (metadata.kind === "image") {
+        inputs.push(filePath);
+      } else if (metadata.kind === "video") {
+        const frames = await extractFrames(
+          filePath,
+          path.join(temporary, item.id),
+          1,
+          {
+            frameCount: 1,
+            duration: null,
+            fps: null,
+          },
+          tools.ffmpeg.path!,
+        );
+        if (frames[0]) inputs.push(frames[0].path);
+      }
+    }
+    if (inputs.length === 0) throw galleryEmpty(name, options.form);
+    const outputPath = path.resolve(options.out ?? path.join(resolved.path, "sheet.png"));
+    await contactSheet(inputs, outputPath, {
+      ffmpegPath: tools.ffmpeg.path!,
+      thumbSize: 320,
+    });
+    if (options.json) {
+      printJson({
+        ok: true,
+        character: resolved.character.name,
+        scope: resolved.scope,
+        form: options.form ?? null,
+        sheet: outputPath,
+        items: selected.map(({ id, file }) => ({ id, file })),
+      });
+      return;
+    }
+    print(t("character.sheet_saved", { path: outputPath }));
+  } finally {
+    await fs.rm(temporary, { recursive: true, force: true });
+  }
 };
 
 export const runCharacterExport = async (name: string, options: CharacterExportOptions) => {

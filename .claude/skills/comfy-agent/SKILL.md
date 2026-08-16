@@ -72,3 +72,12 @@ exists; animated WEBP gets frame count/duration only. Then view the
 sheet/frames (or `analyze` a frame) and report deviations honestly; `verify`
 alone is not "inspected" — never claim success for an output you have not
 looked at.
+
+## Creative memory
+
+- Before generating a known character, call `comfy-agent brief <name> --preset <preset> --json` once.
+- Reuse `appearance` verbatim; follow `applicable`/`next_action`, avoid `avoid`, and start from `top_jobs`.
+- Run with `--character <name>` and keep its reported `prompt_input`/`prompt_final` transparent.
+- After `verify`, add only human-selected work to the gallery, then approve only on human confirmation.
+- Tag failures `reject --reason`; store kit-specific learning with `character note --kit`.
+- Ask the human to place missing LoRAs in `models/loras/`; export only when requested.

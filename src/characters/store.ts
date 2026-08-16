@@ -492,3 +492,13 @@ export const readCharacterIndex = async (dir: string): Promise<CharacterIndexEnt
     throw invalidCharacter({ path: filePath }, error);
   }
 };
+
+export const appendCharacterIndex = async (
+  dir: string,
+  value: CharacterIndexEntry,
+): Promise<CharacterIndexEntry> => {
+  const entry = CharacterIndexEntrySchema.parse(value);
+  await fs.mkdir(dir, { recursive: true });
+  await fs.appendFile(path.join(dir, "index.jsonl"), `${JSON.stringify(entry)}\n`, "utf-8");
+  return entry;
+};

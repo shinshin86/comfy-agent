@@ -57,6 +57,10 @@ Other supported targets are `cursor`, `gemini`, and `openclaw`; use
 [AGENTS.md](./AGENTS.md). Prefer `--json`, branch on structured error codes, and use
 only exit codes `0`, `2`, and `3`; the [CLI reference](./docs/cli-reference.md) is canonical.
 
+For a reusable character, start every generation with `brief <name> --preset <preset> --json`.
+Use `run <preset> --character <name>` to inject its canonical prompt/reference/LoRA data.
+Keep only human-approved outputs in its gallery; record rejects and kit notes for the next session.
+
 ## Run on Google Colab
 
 No local GPU? The bundled kits run ComfyUI on a Colab GPU and expose it to the local
@@ -70,44 +74,44 @@ comfy-agent import <workflow path printed above> --name z_image_turbo
 comfy-agent run z_image_turbo --prompt "a cat riding a bicycle"
 ```
 
-| Media | Kit / model | Status | Minimum GPU | Capability |
-| --- | --- | --- | --- | --- |
-| Image | [`z_image/`](./scripts/colab/z_image/) | Verified | T4 | Z-Image Turbo text-to-image |
-| Image | [`sdxl/`](./scripts/colab/sdxl/) | Verified | T4 | Stable Diffusion XL Base text-to-image |
-| Image | [`sdxl_turbo/`](./scripts/colab/sdxl_turbo/) | Verified | T4 | SDXL Turbo one-step text-to-image |
-| Image | [`anima/`](./scripts/colab/anima/) | Verified | T4 | Anima Base v1.0 anime text-to-image |
-| Image | [`ooo_anima/`](./scripts/colab/ooo_anima/) | Verified | T4 | OOO_Anima v10 anime text-to-image |
-| Image | [`anima_pencil/`](./scripts/colab/anima_pencil/) | Verified | T4 | anima_pencil v2 anime text-to-image |
-| Image | [`z_anime/`](./scripts/colab/z_anime/) | Partial | T4 | Z-Anime base / distilled text-to-image |
-| Image | [`qwen_image/`](./scripts/colab/qwen_image/) | Starter | L4 | Qwen-Image text-to-image |
-| Image | [`qwen_image_edit/`](./scripts/colab/qwen_image_edit/) | Starter | L4 | Qwen-Image-Edit instruction-based editing |
-| Image | [`boogu/`](./scripts/colab/boogu/) | Verified | L4 | Boogu-Image Turbo text-to-image |
-| Image | [`krea2/`](./scripts/colab/krea2/) | Verified | L4 | Krea 2 Turbo text-to-image |
-| Image | [`flux1/`](./scripts/colab/flux1/) | Verified | L4 | Flux 1 dev text-to-image |
-| Image | [`flux2/`](./scripts/colab/flux2/) | Verified | A100 | Flux 2 dev text-to-image |
-| Image | [`hidream_i1/`](./scripts/colab/hidream_i1/) | Verified | L4 | HiDream-I1 Fast / Dev / Full text-to-image |
-| Image | [`hidream_o1/`](./scripts/colab/hidream_o1/) | Verified | A100 | HiDream-O1 Dev reasoning-oriented 2K text-to-image |
-| Image | [`ideogram4/`](./scripts/colab/ideogram4/) | Verified | L4 | Ideogram 4.0 text-to-image with strong text rendering |
-| Image | [`sd35/`](./scripts/colab/sd35/) | Verified | L4 | Stable Diffusion 3.5 Large text-to-image |
-| Image | [`birefnet/`](./scripts/colab/birefnet/) | Verified | T4 | BiRefNet background removal / transparent PNG |
-| Image | [`seedvr2/`](./scripts/colab/seedvr2/) | Verified | L4 | SeedVR2 image upscaling and restoration |
-| Video | [`wan21/`](./scripts/colab/wan21/) | Partial | T4 | Wan 2.1 1.3B / 14B text-to-video |
-| Video | [`wan22/`](./scripts/colab/wan22/) | Partial | A100 | Wan 2.2 TI2V 5B / T2V 14B |
-| Video | [`wan22_s2v/`](./scripts/colab/wan22_s2v/) | Verified | A100 | Wan 2.2 S2V reference-image + audio-to-video |
-| Video | [`animegen_t2v/`](./scripts/colab/animegen_t2v/) | Verified | A100 | AnimeGen-T2V anime text-to-video |
-| Video | [`hunyuan_video/`](./scripts/colab/hunyuan_video/) | Verified | L4 | Hunyuan Video text-to-video |
-| Video | [`ltx23/`](./scripts/colab/ltx23/) | Starter | A100 | LTX-2.3 image / image+audio-to-video |
-| Video | [`ltx23_t2v/`](./scripts/colab/ltx23_t2v/) | Verified | A100 | LTX-2.3 text-to-video with generated audio |
-| Video | [`ltx25/`](./scripts/colab/ltx25/) | Verified | A100 | LTX-2.5 T2V / I2V / first-last-frame video with audio |
-| Video | [`minimax_h3/`](./scripts/colab/minimax_h3/) | Verified | A100 | MiniMax H3 T2V / I2V with native stereo audio |
-| Video | [`sulphur2/`](./scripts/colab/sulphur2/) | Verified | A100 | Sulphur-2 T2V / I2V |
-| Video | [`10eros/`](./scripts/colab/10eros/) | Partial | A100 | 10Eros T2V / I2V |
-| Audio | [`ace_step_1_5/`](./scripts/colab/ace_step_1_5/) | Partial | T4 | ACE-Step 1.5 full songs with lyrics and vocals |
-| Audio | [`minimax_music3/`](./scripts/colab/minimax_music3/) | Verified | L4 | MiniMax Music 3 songs with lyrics and vocals |
-| Audio | [`stable_audio3_small_music/`](./scripts/colab/stable_audio3_small_music/) | Partial | T4 | Stable Audio 3 Small Music instrumental / BGM |
-| Audio | [`stable_audio3/`](./scripts/colab/stable_audio3/) | Verified | L4 | Stable Audio 3 Medium music and sound effects |
-| Audio | [`moss_soundeffect_v2/`](./scripts/colab/moss_soundeffect_v2/) | Verified | A100 | MOSS-SoundEffect v2 48 kHz sound effects |
-| Combo | [`music_video/`](./scripts/colab/music_video/) | Verified | A100 | Song + keyframes + video clips music-video recipe |
+| Media | Kit / model                                                                | Status   | Minimum GPU | Capability                                            |
+| ----- | -------------------------------------------------------------------------- | -------- | ----------- | ----------------------------------------------------- |
+| Image | [`z_image/`](./scripts/colab/z_image/)                                     | Verified | T4          | Z-Image Turbo text-to-image                           |
+| Image | [`sdxl/`](./scripts/colab/sdxl/)                                           | Verified | T4          | Stable Diffusion XL Base text-to-image                |
+| Image | [`sdxl_turbo/`](./scripts/colab/sdxl_turbo/)                               | Verified | T4          | SDXL Turbo one-step text-to-image                     |
+| Image | [`anima/`](./scripts/colab/anima/)                                         | Verified | T4          | Anima Base v1.0 anime text-to-image                   |
+| Image | [`ooo_anima/`](./scripts/colab/ooo_anima/)                                 | Verified | T4          | OOO_Anima v10 anime text-to-image                     |
+| Image | [`anima_pencil/`](./scripts/colab/anima_pencil/)                           | Verified | T4          | anima_pencil v2 anime text-to-image                   |
+| Image | [`z_anime/`](./scripts/colab/z_anime/)                                     | Partial  | T4          | Z-Anime base / distilled text-to-image                |
+| Image | [`qwen_image/`](./scripts/colab/qwen_image/)                               | Starter  | L4          | Qwen-Image text-to-image                              |
+| Image | [`qwen_image_edit/`](./scripts/colab/qwen_image_edit/)                     | Starter  | L4          | Qwen-Image-Edit instruction-based editing             |
+| Image | [`boogu/`](./scripts/colab/boogu/)                                         | Verified | L4          | Boogu-Image Turbo text-to-image                       |
+| Image | [`krea2/`](./scripts/colab/krea2/)                                         | Verified | L4          | Krea 2 Turbo text-to-image                            |
+| Image | [`flux1/`](./scripts/colab/flux1/)                                         | Verified | L4          | Flux 1 dev text-to-image                              |
+| Image | [`flux2/`](./scripts/colab/flux2/)                                         | Verified | A100        | Flux 2 dev text-to-image                              |
+| Image | [`hidream_i1/`](./scripts/colab/hidream_i1/)                               | Verified | L4          | HiDream-I1 Fast / Dev / Full text-to-image            |
+| Image | [`hidream_o1/`](./scripts/colab/hidream_o1/)                               | Verified | A100        | HiDream-O1 Dev reasoning-oriented 2K text-to-image    |
+| Image | [`ideogram4/`](./scripts/colab/ideogram4/)                                 | Verified | L4          | Ideogram 4.0 text-to-image with strong text rendering |
+| Image | [`sd35/`](./scripts/colab/sd35/)                                           | Verified | L4          | Stable Diffusion 3.5 Large text-to-image              |
+| Image | [`birefnet/`](./scripts/colab/birefnet/)                                   | Verified | T4          | BiRefNet background removal / transparent PNG         |
+| Image | [`seedvr2/`](./scripts/colab/seedvr2/)                                     | Verified | L4          | SeedVR2 image upscaling and restoration               |
+| Video | [`wan21/`](./scripts/colab/wan21/)                                         | Partial  | T4          | Wan 2.1 1.3B / 14B text-to-video                      |
+| Video | [`wan22/`](./scripts/colab/wan22/)                                         | Partial  | A100        | Wan 2.2 TI2V 5B / T2V 14B                             |
+| Video | [`wan22_s2v/`](./scripts/colab/wan22_s2v/)                                 | Verified | A100        | Wan 2.2 S2V reference-image + audio-to-video          |
+| Video | [`animegen_t2v/`](./scripts/colab/animegen_t2v/)                           | Verified | A100        | AnimeGen-T2V anime text-to-video                      |
+| Video | [`hunyuan_video/`](./scripts/colab/hunyuan_video/)                         | Verified | L4          | Hunyuan Video text-to-video                           |
+| Video | [`ltx23/`](./scripts/colab/ltx23/)                                         | Starter  | A100        | LTX-2.3 image / image+audio-to-video                  |
+| Video | [`ltx23_t2v/`](./scripts/colab/ltx23_t2v/)                                 | Verified | A100        | LTX-2.3 text-to-video with generated audio            |
+| Video | [`ltx25/`](./scripts/colab/ltx25/)                                         | Verified | A100        | LTX-2.5 T2V / I2V / first-last-frame video with audio |
+| Video | [`minimax_h3/`](./scripts/colab/minimax_h3/)                               | Verified | A100        | MiniMax H3 T2V / I2V with native stereo audio         |
+| Video | [`sulphur2/`](./scripts/colab/sulphur2/)                                   | Verified | A100        | Sulphur-2 T2V / I2V                                   |
+| Video | [`10eros/`](./scripts/colab/10eros/)                                       | Partial  | A100        | 10Eros T2V / I2V                                      |
+| Audio | [`ace_step_1_5/`](./scripts/colab/ace_step_1_5/)                           | Partial  | T4          | ACE-Step 1.5 full songs with lyrics and vocals        |
+| Audio | [`minimax_music3/`](./scripts/colab/minimax_music3/)                       | Verified | L4          | MiniMax Music 3 songs with lyrics and vocals          |
+| Audio | [`stable_audio3_small_music/`](./scripts/colab/stable_audio3_small_music/) | Partial  | T4          | Stable Audio 3 Small Music instrumental / BGM         |
+| Audio | [`stable_audio3/`](./scripts/colab/stable_audio3/)                         | Verified | L4          | Stable Audio 3 Medium music and sound effects         |
+| Audio | [`moss_soundeffect_v2/`](./scripts/colab/moss_soundeffect_v2/)             | Verified | A100        | MOSS-SoundEffect v2 48 kHz sound effects              |
+| Combo | [`music_video/`](./scripts/colab/music_video/)                             | Verified | A100        | Song + keyframes + video clips music-video recipe     |
 
 Statuses are evidence levels, not model quality: **Verified** passed the complete
 Colab-to-local flow, **Partial** passed only some GPUs or workflow variants, and
@@ -145,23 +149,25 @@ or install those bundled resources.
 
 ## Commands at a glance
 
-| Command | Purpose |
-|---|---|
-| `init` | Create a local or global work directory. |
-| `connect` | Verify and remember a ComfyUI URL. |
-| `import` | Turn API/UI workflow JSON into a local preset. |
-| `run` | Preflight, submit, wait/download, or submit with `--async`. |
-| `history` | Search and annotate creative generation history. |
-| `jobs list|show|wait|prune` | Inspect and resume persisted jobs. |
-| `doctor` | Check connection, workdirs, nodes, and models. |
-| `list` | Discover local and remote workflows. |
-| `preset` | Show parameters, aliases, uploads, and metadata. |
-| `status` | Show resolved runtime configuration. |
-| `verify` | Probe outputs and create review aids offline. |
-| `analyze` | Evaluate an image with OpenAI image input. |
-| `colab catalog|suggest|kit` | Inspect and resolve bundled Colab kits. |
-| `playbook` | Read bundled agent policy documents. |
-| `skill list|install` | Install bundled skills for supported agents. |
+| Command        | Purpose                                                                |
+| -------------- | ---------------------------------------------------------------------- |
+| `init`         | Create a local or global work directory.                               |
+| `connect`      | Verify and remember a ComfyUI URL.                                     |
+| `import`       | Turn API/UI workflow JSON into a local preset.                         |
+| `run`          | Preflight, submit, wait/download, or submit with `--async`.            |
+| `history`      | Search and annotate creative generation history.                       |
+| `character`    | Manage reusable identity, references, LoRAs, notes, and approved work. |
+| `brief`        | Load character memory and preset applicability before generation.      |
+| `jobs list\|show\|wait\|prune` | Inspect and resume persisted jobs. |
+| `doctor`       | Check connection, workdirs, nodes, and models.                         |
+| `list`         | Discover local and remote workflows.                                   |
+| `preset`       | Show parameters, aliases, uploads, and metadata.                       |
+| `status`       | Show resolved runtime configuration.                                   |
+| `verify`       | Probe outputs and create review aids offline.                          |
+| `analyze`      | Evaluate an image with OpenAI image input.                             |
+| `colab catalog | suggest                                                                | kit`                                         | Inspect and resolve bundled Colab kits. |
+| `playbook`     | Read bundled agent policy documents.                                   |
+| `skill list    | install`                                                               | Install bundled skills for supported agents. |
 
 See the [complete CLI reference](./docs/cli-reference.md) for every option and payload.
 

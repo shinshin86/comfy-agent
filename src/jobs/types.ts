@@ -117,6 +117,8 @@ export const RunManifestSchema = z.object({
   params: z.record(z.unknown()),
   uploads: z.record(z.string()),
   character: JobCharacterSchema.optional(),
+  prompt_input: z.string().optional(),
+  prompt_final: z.string().optional(),
   runs: z.array(RunManifestEntrySchema),
 });
 
@@ -132,5 +134,13 @@ export type RunManifestEntry = z.infer<typeof RunManifestEntrySchema>;
 export type RunManifest = z.infer<typeof RunManifestSchema>;
 export type RunManifestHeader = Pick<
   RunManifest,
-  "preset" | "source" | "base_url" | "scope" | "params" | "uploads" | "character"
+  | "preset"
+  | "source"
+  | "base_url"
+  | "scope"
+  | "params"
+  | "uploads"
+  | "character"
+  | "prompt_input"
+  | "prompt_final"
 >;
