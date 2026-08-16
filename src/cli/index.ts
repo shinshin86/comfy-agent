@@ -11,6 +11,7 @@ import { runPresetShow } from "./preset-show.js";
 import { runColabCatalog, runColabSuggest } from "./colab.js";
 import { runConnect } from "./connect.js";
 import { runJobsList, runJobsPrune, runJobsShow, runJobsWait } from "./jobs.js";
+import { runVerify } from "./verify.js";
 import { CliError, errorPayloadFrom, exitCodeFrom, isCliError } from "../io/errors.js";
 import { log } from "../io/output.js";
 import { resolveLanguage, setLanguage, t } from "../i18n/index.js";
@@ -226,6 +227,36 @@ program
   .action(async (presetName, options) => {
     try {
       await runPresetShow(presetName, options);
+    } catch (err) {
+      handleError(err, options?.json);
+    }
+  });
+
+program
+  .command("verify")
+  .description(t("cli.verify.description"))
+  .argument("<path>", t("cli.verify.arg.path"))
+  .option("--json", t("cli.option.json"))
+  .option("--frames <n>", t("cli.verify.option.frames"))
+  .option("--sheet <file.png>", t("cli.verify.option.sheet"))
+  .option("--no-sheet", t("cli.verify.option.no_sheet"))
+  .option("--no-ffmpeg", t("cli.verify.option.no_ffmpeg"))
+  .option("--out <dir>", t("cli.run.option.out"))
+  .option("--expect-kind <kind>", t("cli.verify.option.expect_kind"))
+  .option("--expect-count <n>", t("cli.verify.option.expect_count"))
+  .option("--expect-size <WxH>", t("cli.verify.option.expect_size"))
+  .option("--min-duration <sec>", t("cli.verify.option.min_duration"))
+  .option("--max-duration <sec>", t("cli.verify.option.max_duration"))
+  .option("--hash", t("cli.verify.option.hash"))
+  .option("--lang <lang>", t("cli.option.lang"))
+  .action(async (target, options) => {
+    try {
+      await runVerify(target, {
+        ...options,
+        sheet: typeof options.sheet === "string" ? options.sheet : undefined,
+        noSheet: options.sheet === false,
+        noFfmpeg: options.ffmpeg === false,
+      });
     } catch (err) {
       handleError(err, options?.json);
     }

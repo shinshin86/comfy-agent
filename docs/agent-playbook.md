@@ -93,8 +93,8 @@ ephemerality tax entirely.
 ## 3. Error contract (CLI → agent)
 
 Commands with a `--json` flag (`init`, `import`, `run`, `jobs *`, `doctor`,
-`list`, `status`, `preset`, `connect`, `analyze`, `colab *`) emit errors in this
-shape:
+`list`, `status`, `preset`, `connect`, `verify`, `analyze`, `colab *`) emit
+errors in this shape:
 
 ```json
 { "ok": false, "error": { "code": "...", "message": "...", "details": { } } }
@@ -136,6 +136,9 @@ Codes the orchestration flow relies on (Phase 1):
 | `NO_OUTPUTS` | 2 | Execution completed without output files; add an appropriate `Save*` node | `prompt_id`, `run_index`, `output_dir` |
 | `TIMEOUT` | 3 | Generation exceeded timeout | — |
 | `JOB_LOST` | 3 | The submitted job is absent from both ComfyUI history and queue | `job_id`, `prompt_id`, `base_url`, `recorded_base_url`, `hint` |
+| `MISSING_TOOL` | 2 | An explicitly requested verify artifact needs ffmpeg | `tool`, `hint`, `env` |
+| `UNSUPPORTED_FORMAT` | 2 | A single verify target cannot be parsed | `path`, `magic`, `ext`, `supported` |
+| `VERIFY_CHECKS_FAILED` | 3 | Artifact metadata failed one or more requested checks | `failed`, `report` |
 
 `run` performs the preflight automatically before submitting;
 `doctor --preset <name>` runs the same check standalone;
@@ -181,16 +184,31 @@ Total human cost per Colab session: open notebook, Run All, paste one line.
 
 ## 6. Verification duty
 
-Before reporting success, verify the artifact yourself:
+Before reporting success, verify the artifact yourself. Start with
+`comfy-agent verify <run-dir> --json` — it needs no API key and works
+offline. It reports per-file kind / dimensions / duration / frame count
+(pure-JS, including the animated WEBP that Wan-family kits emit), and when
+`ffmpeg` is on PATH it also writes `<run-dir>/verify/sheet.png` (contact
+sheet), `verify/<name>/frame_NN_*.png` (first, evenly spaced, last frames),
+and `verify/<name>_wave.png` for audio. Add `--expect-kind`,
+`--expect-count`, or `--min-duration` to turn the request into machine-checked
+assertions (exit 3 on failure — regenerate or fix the artifact).
 
-- **Images** — view the file; compare against the request.
-- **Video** — extract frames (`ffmpeg -i out.mp4 -vf fps=1 f_%02d.png`) and
-  view them; check duration and motion plausibility.
-- **Audio** — check duration/waveform (`ffprobe`); play it back when possible.
+Then **look**: open the sheet/frames (or pass them to `analyze` when an
+OpenAI key is available) and compare against the request — subject, style,
+motion, count. `verify` never looks at content; its
+`summary.verified_visually` is always `false` on purpose.
+
+- **Images** — `verify` sheet → view; compare against the request.
+- **Video** — `verify` frames (first/middle/last are always included) → view;
+  check duration and motion plausibility. Animated WEBP: `verify` gives frame
+  count/duration but cannot extract frames — use the PIL one-liner from its
+  warning hint before viewing.
+- **Audio** — `verify` duration/waveform; play it back when possible.
 
 Report differences from the request honestly. Never say "done" for an
-output you have not inspected; if verification is impossible, say so
-explicitly and mark the result unverified.
+output you have not inspected; if verification is impossible (no ffmpeg or
+viewer), say so explicitly and mark the result unverified.
 
 ## 7. Worked example
 
@@ -205,5 +223,6 @@ Human: "アニメ調で10秒くらいの動画プロトタイプを作りたい"
 5. Human picks `animegen_t2v`, runs the notebook, pastes
    `comfy-agent connect https://….trycloudflare.com`.
 6. Agent: `import` the kit workflow → `run` with designed prompt →
-   `MISSING_MODEL_ON_SERVER`? (mismatched kit → §4) → frames check →
-   deliver with a summary of what was verified.
+   `MISSING_MODEL_ON_SERVER`? (mismatched kit → §4) →
+   `comfy-agent verify <run-dir> --expect-kind video --min-duration 8` →
+   view the frames → deliver with a summary of what was verified.

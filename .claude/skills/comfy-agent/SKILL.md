@@ -60,10 +60,15 @@ Model-specific prompting: for MiniMax H3 runs (`minimax_h3_t2v` /
   `comfy-agent colab catalog --json`. Local server: download it yourself
   (confirm if > a few GB). Colab: give the human that kit's `01_setup.py`
   cell (additive only if the added kit is `composable: true`).
-- Exit codes: 0 ok / 2 your invocation is wrong / 3 server-side state.
+- Exit codes: 0 ok / 2 your invocation or local environment is wrong /
+  3 server-side or artifact state.
 
 ## Verify before reporting
 
-View generated images; extract frames from videos (`ffmpeg`); check audio
-duration (`ffprobe`). Report deviations honestly; never claim success for
-an output you have not inspected.
+Run `comfy-agent verify <run-dir> --json` (no API key; add
+`--expect-kind`/`--expect-count`/`--min-duration` for hard assertions, exit 3
+on failure). It writes `verify/sheet.png` and per-video frames when `ffmpeg`
+exists; animated WEBP gets frame count/duration only. Then view the
+sheet/frames (or `analyze` a frame) and report deviations honestly; `verify`
+alone is not "inspected" — never claim success for an output you have not
+looked at.

@@ -420,6 +420,31 @@ comfy-agent preset text2img_v1 --source local
 comfy-agent preset text2img_v1 --source remote --base-url http://127.0.0.1:8188
 ```
 
+### `verify`
+
+Inspect generated artifact metadata offline and create files that make visual
+or audio review easier. Directories use `run.json` when present; otherwise
+their immediate output files are scanned. No API key is required.
+
+```bash
+comfy-agent verify .comfy-agent/outputs/text2img_v1/<timestamp> --json
+comfy-agent verify ./clip.mp4 --expect-kind video --min-duration 4
+comfy-agent verify ./images --expect-kind image --expect-count 4 --expect-size 1280x704
+comfy-agent verify ./audio.flac --hash --no-ffmpeg
+```
+
+The pure-JS probe reports format, dimensions, duration, frame count, and audio
+metadata for common image/video/audio formats, including animated WEBP. When
+`ffmpeg` is available, verify also writes video frames, contact sheets, and
+audio waveforms under `<run-dir>/verify/`. First and last video frames are
+always included. Animated WEBP metadata is available without ffmpeg, but frame
+extraction requires the Pillow fallback shown in the warning.
+
+Expectation failures return `VERIFY_CHECKS_FAILED` with exit code 3 and save
+the complete report to `verify/verify.json`. `summary.verified_visually` is
+always `false`: open the generated sheet/frames or pass an image to `analyze`
+before claiming that the content was inspected.
+
 ### `analyze`
 
 Analyze whether a generated image matches the instruction by using OpenAI image input.
@@ -436,7 +461,9 @@ comfy-agent analyze ./output.png --prompt "A cat" --out ./analysis.json
 - Dynamic parameters use `--param value` (must match preset `parameters` names)
 - Upload flags are defined in `uploads.*.cli_flag` (example: `--init-image`)
 - `--dry-run` prints patched workflow JSON without calling API
-- Default output path: `.comfy-agent/outputs/<preset>/<YYYYmmdd_HHMMSS>/`
+- Default output path: `.comfy-agent/outputs/<preset>/<YYYYmmdd_HHMMSS>/`;
+  completed runs project metadata to `run.json`, and `verify` writes inspection
+  aids and `verify.json` under its `verify/` subdirectory
 - `run` logs the resolved output directory before execution and each saved file path
 - `run` uses WebSocket progress by default; if the progress channel is lost, it automatically falls back to polling and continues monitoring
 - Iteration uses `--n`; seed uses `--seed random` or `--seed <int> --seed-step <int>`
@@ -658,6 +685,12 @@ missing required options, unknown commands, and extra positional arguments.
 - `JOB_NOT_FOUND`: the requested local job record does not exist
 - `JOB_LOST`: the server no longer has the job in history or its queue; run
   the same preset again
+- `MISSING_TOOL`: an explicitly requested verify artifact needs ffmpeg; install
+  it or remove the explicit `--frames` / `--sheet` request
+- `UNSUPPORTED_FORMAT`: a single verify target cannot be parsed by the built-in
+  probe or ffprobe
+- `VERIFY_CHECKS_FAILED`: artifact metadata did not meet one or more explicit
+  expectations; inspect `details.report`, then regenerate or fix the artifact
 - `SERVER_UNREACHABLE`: could not reach the server at all; check `base_url`,
   or reconnect an expired tunnel with `comfy-agent connect <url>`
 - `MISSING_NODE_ON_SERVER`: the workflow references a node class the connected

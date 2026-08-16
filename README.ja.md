@@ -408,6 +408,29 @@ comfy-agent preset text2img_v1 --source local
 comfy-agent preset text2img_v1 --source remote --base-url http://127.0.0.1:8188
 ```
 
+### verify
+
+生成物のメタデータをオフラインで検査し、目視・音声確認を補助する成果物を作ります。
+ディレクトリでは `run.json` があればそれを使い、なければ直下の出力ファイルを走査します。
+API キーは不要です。
+
+```bash
+comfy-agent verify .comfy-agent/outputs/text2img_v1/<timestamp> --json
+comfy-agent verify ./clip.mp4 --expect-kind video --min-duration 4
+comfy-agent verify ./images --expect-kind image --expect-count 4 --expect-size 1280x704
+comfy-agent verify ./audio.flac --hash --no-ffmpeg
+```
+
+pure-JS probe は主要な画像・動画・音声について形式、寸法、尺、フレーム数、音声情報を返し、
+animated WEBP にも対応します。`ffmpeg` が利用可能なら `<run-dir>/verify/` に動画フレーム、
+コンタクトシート、音声波形も作ります。動画は必ず先頭・末尾フレームを含みます。
+animated WEBP のメタデータは ffmpeg なしでも取得できますが、フレーム抽出には warning に
+表示される Pillow fallback が必要です。
+
+期待値に合わない場合は `VERIFY_CHECKS_FAILED`（exit 3）となり、完全な report を
+`verify/verify.json` に保存します。`summary.verified_visually` は常に `false` です。
+内容を確認済みと報告する前に、生成された sheet/frames を開くか画像を `analyze` してください。
+
 ### analyze
 
 生成画像が指示に合っているかを OpenAI の画像入力で評価します。
@@ -424,7 +447,9 @@ comfy-agent analyze ./output.png --prompt "A cat" --out ./analysis.json
 - パラメータ指定は `--param value`（プリセットの `parameters` 名と一致）
 - uploads はプリセットの `uploads.*.cli_flag` で指定（例: `--init-image`）
 - `--dry-run` は API を呼ばずに上書き後の workflow JSON を出力
-- 出力先は既定で `.comfy-agent/outputs/<preset>/<YYYYmmdd_HHMMSS>/`
+- 出力先は既定で `.comfy-agent/outputs/<preset>/<YYYYmmdd_HHMMSS>/`。
+  完了した run のメタデータは `run.json` に投影され、`verify` の確認用成果物と
+  `verify.json` はその `verify/` サブディレクトリに保存されます
 - `run` 実行時に解決された出力ディレクトリと保存ファイルパスをログ表示
 - `run` はデフォルトで WebSocket の進捗表示を使用し、進捗チャネルが切断された場合は自動的にポーリングへフォールバックして監視を継続
 - 反復実行は `--n`、seed は `--seed random` または `--seed <int> --seed-step <int>`
@@ -646,6 +671,12 @@ CLI が返す終了コードは `0` / `2` / `3` のみです。
 - `JOB_NOT_FOUND`: 指定したローカル job record がありません。
 - `JOB_LOST`: サーバーの history と queue に job がありません。同じ preset を
   再実行してください。
+- `MISSING_TOOL`: 明示要求した verify 成果物の作成に ffmpeg が必要です。ffmpeg を
+  インストールするか、明示した `--frames` / `--sheet` を外してください。
+- `UNSUPPORTED_FORMAT`: 単一の verify 対象を built-in probe と ffprobe のどちらでも
+  解釈できません。
+- `VERIFY_CHECKS_FAILED`: 生成物が明示した期待値を満たしていません。
+  `details.report` を確認し、修正または再生成してください。
 - `SERVER_UNREACHABLE`: サーバーに接続できません。`base_url` を確認するか、
   トンネル切れの場合は `comfy-agent connect <url>` で再接続してください。
 - `MISSING_NODE_ON_SERVER`: ワークフローが参照するノードクラスが接続先サーバーに
