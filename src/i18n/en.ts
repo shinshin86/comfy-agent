@@ -133,6 +133,8 @@ export const messages = {
   "workflow.subgraph_invalid": "The ComfyUI subgraph definition is invalid or incomplete.",
   "run.workdir_missing": ".comfy-agent not found. Run comfy-agent init first.",
   "run.invalid_workflow_json": "Failed to parse workflow JSON.",
+  "run.workflow_not_found":
+    "Workflow file {file} for preset {preset} was not found in {scope} scope.",
   "run.remote_workflow_not_found": "Failed to resolve remote workflow JSON.",
   "run.preset_not_found": "Preset not found.",
   "run.ambiguous_source":

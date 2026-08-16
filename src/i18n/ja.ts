@@ -137,6 +137,8 @@ export const messages = {
   "run.workdir_missing":
     ".comfy-agent が見つかりません。先に comfy-agent init を実行してください。",
   "run.invalid_workflow_json": "workflow JSON の解析に失敗しました。",
+  "run.workflow_not_found":
+    "preset {preset} の workflow ファイル {file} が {scope} スコープに見つかりません。",
   "run.remote_workflow_not_found": "remote workflow JSON を解決できませんでした。",
   "run.preset_not_found": "プリセットが見つかりません。",
   "run.ambiguous_source":

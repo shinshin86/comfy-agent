@@ -273,4 +273,58 @@ describe("mock ComfyUI CLI smoke", () => {
     });
     expect(server.requests).toEqual([]);
   });
+
+  it("11: run --global reads the workflow from the global workdir", async () => {
+    const server = await startServer();
+    const workdir = await createTmpWorkdir();
+    const options = cliOptions(workdir, server.baseUrl);
+
+    const initResult = await runCli(["init", "--global", "--force"], options);
+    expect(initResult.code, initResult.stderr).toBe(0);
+    const importResult = await runCli(
+      ["import", WORKFLOW_FIXTURE, "--name", "smoke-global", "--global"],
+      options,
+    );
+    expect(importResult.code, importResult.stderr).toBe(0);
+
+    const globalWorkflowPath = path.join(
+      workdir.home,
+      ".config",
+      ".comfy-agent",
+      "workflows",
+      "smoke-global.json",
+    );
+    const localWorkflowPath = path.join(workdir.workdir, "workflows", "smoke-global.json");
+    expect((await fs.stat(globalWorkflowPath)).isFile()).toBe(true);
+    await expect(fs.stat(localWorkflowPath)).rejects.toMatchObject({ code: "ENOENT" });
+    server.requests.length = 0;
+
+    const result = await runCli(
+      [
+        "run",
+        "smoke-global",
+        "--global",
+        "--source",
+        "local",
+        "--json",
+        "--poll-interval-ms",
+        "50",
+        "--timeout-seconds",
+        "10",
+      ],
+      options,
+    );
+    const payload = parseJson(result);
+    const runs = payload.runs as JsonObject[];
+
+    expect(result.code, result.stderr).toBe(0);
+    expect(runs).toHaveLength(1);
+    expect(normalizedRequestPaths(server.requests)).toEqual([
+      "/object_info",
+      "/prompt",
+      "/history/:id",
+      "/history/:id",
+      "/view",
+    ]);
+  });
 });

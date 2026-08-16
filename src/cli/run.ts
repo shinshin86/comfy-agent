@@ -9,11 +9,7 @@ import { getSubdirPath, getWorkdirPath } from "../io/workdir.js";
 import { loadPresetFile } from "../preset/loader.js";
 import type { Preset } from "../preset/schema.js";
 import { resolvePresetPath } from "../preset/path.js";
-import {
-  normalizeWorkflow,
-  workflowHasSubgraphs,
-  type WorkflowObjectInfo,
-} from "../workflow/normalize.js";
+import { loadLocalWorkflow } from "../workflow/load.js";
 import { applyParameters, applyUploads } from "../workflow/patch.js";
 import { assertPreflightPasses, fetchPreflightReport } from "../workflow/preflight.js";
 import { extractOutputFiles } from "../output/provider.js";
@@ -65,29 +61,6 @@ const ensureWorkdir = async (scope: "local" | "global") => {
   }
 };
 
-const loadWorkflow = async (preset: Preset, client: ComfyClient) => {
-  const workflowPath = path.join(getSubdirPath("workflows"), preset.workflow);
-  const raw = await fs.readFile(workflowPath, "utf-8");
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch (err) {
-    throw new CliError("INVALID_WORKFLOW", t("run.invalid_workflow_json"), 2, {
-      file: workflowPath,
-      cause: String(err),
-    });
-  }
-
-  const objectInfo = workflowHasSubgraphs(parsed)
-    ? await client.objectInfo<WorkflowObjectInfo>()
-    : null;
-  try {
-    return normalizeWorkflow(parsed, { objectInfo });
-  } catch (err) {
-    throw new CliError("INVALID_WORKFLOW", (err as Error).message, 2, { file: workflowPath });
-  }
-};
-
 const tryLoadLocalRunTarget = async (
   presetName: string,
   scope: "local" | "global",
@@ -96,7 +69,7 @@ const tryLoadLocalRunTarget = async (
   try {
     const presetPath = await resolvePresetPath(presetName, scope);
     const preset = await loadPresetFile(presetPath);
-    const workflow = await loadWorkflow(preset, client);
+    const { workflow } = await loadLocalWorkflow(preset, scope, client);
     return { source: "local" as const, preset, workflow };
   } catch (err) {
     if (err instanceof CliError && err.code === "PRESET_NOT_FOUND") return null;
