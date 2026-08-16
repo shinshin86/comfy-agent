@@ -31,6 +31,7 @@
     "lint": "eslint .",
     "fmt": "prettier -w .",
     "test": "vitest run",
+    "test:smoke": "vitest run -c vitest.smoke.config.ts",
     "prepublishOnly": "npm run clean && npm run build"
   },
   "dependencies": {

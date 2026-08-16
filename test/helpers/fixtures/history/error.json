@@ -1,0 +1,20 @@
+{
+  "prompt-id": {
+    "prompt": [0, "prompt-id", {}, {}, ["9"]],
+    "outputs": {},
+    "status": {
+      "status_str": "error",
+      "completed": false,
+      "messages": [
+        [
+          "execution_error",
+          {
+            "prompt_id": "prompt-id",
+            "node_id": "9",
+            "exception_message": "mock execution failed"
+          }
+        ]
+      ]
+    }
+  }
+}
