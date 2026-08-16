@@ -7,12 +7,13 @@ import { RESOURCES, readResource } from "../src/io/resources.js";
 afterEach(() => vi.restoreAllMocks());
 
 describe("playbook sections", () => {
-  it("parses the seven numbered agent playbook sections", async () => {
+  it("parses the eight numbered agent playbook sections", async () => {
     const sections = parsePlaybookSections(await readResource(RESOURCES.playbook));
-    expect(sections).toHaveLength(7);
+    expect(sections).toHaveLength(8);
     expect(sections[0]).toMatchObject({ index: 1, slug: "blueprint-protocol" });
     expect(findPlaybookSection(sections, "3")?.slug).toBe("error-contract");
     expect(findPlaybookSection(sections, "error-contract")?.index).toBe(3);
+    expect(findPlaybookSection(sections, "8")?.slug).toBe("creative-memory");
   });
 
   it("returns JSON content and selected section metadata", async () => {
@@ -32,8 +33,9 @@ describe("playbook sections", () => {
   it("lists sections and prints the resolved path", async () => {
     const stdout = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
     await runPlaybook(undefined, { list: true });
-    expect(stdout.mock.calls.map(([value]) => String(value)).join(""))
-      .toContain("1\tblueprint-protocol");
+    expect(stdout.mock.calls.map(([value]) => String(value)).join("")).toContain(
+      "1\tblueprint-protocol",
+    );
     stdout.mockClear();
     const payload = await runPlaybook("minimax-h3-prompting", { path: true });
     await expect(fs.stat(payload.path)).resolves.toBeDefined();
