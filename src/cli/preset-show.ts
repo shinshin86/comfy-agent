@@ -114,6 +114,11 @@ const normalizeRemoteUploads = (template: RemoteTemplate) => {
   });
 };
 
+const formatAliases = (aliases?: string[]) =>
+  aliases && aliases.length > 0
+    ? ` ${t("preset_show.aliases", { aliases: aliases.map((alias) => `--${alias}`).join(",") })}`
+    : "";
+
 export const runPresetShow = async (presetName: string, options: PresetShowOptions) => {
   const scope = options.global ? "global" : "local";
   const scopeLabel = t(scope === "global" ? "scope.global" : "scope.local");
@@ -187,8 +192,9 @@ export const runPresetShow = async (presetName: string, options: PresetShowOptio
         const required = param.required ? t("preset_show.required") : t("preset_show.optional");
         const defaultValue =
           param.default !== undefined ? ` default=${JSON.stringify(param.default)}` : "";
+        const aliases = formatAliases(param.aliases);
         print(
-          `- ${param.name}: ${param.type} (${required}) target=${String(param.target.node_id)}.${param.target.input}${defaultValue}`,
+          `- ${param.name}: ${param.type} (${required}) target=${String(param.target.node_id)}.${param.target.input}${defaultValue}${aliases}`,
         );
       }
     }
@@ -260,8 +266,9 @@ export const runPresetShow = async (presetName: string, options: PresetShowOptio
       const required = param.required ? t("preset_show.required") : t("preset_show.optional");
       const defaultValue =
         param.default !== undefined ? ` default=${JSON.stringify(param.default)}` : "";
+      const aliases = formatAliases(param.aliases);
       print(
-        `- ${param.name}: ${param.type} (${required})${param.target ? ` target=${String(param.target.node_id)}.${param.target.input}` : ""}${defaultValue}`,
+        `- ${param.name}: ${param.type} (${required})${param.target ? ` target=${String(param.target.node_id)}.${param.target.input}` : ""}${defaultValue}${aliases}`,
       );
     }
   }

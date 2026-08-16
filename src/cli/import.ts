@@ -6,6 +6,8 @@ import { CliError } from "../io/errors.js";
 import { getSubdirPath, getWorkdirPath } from "../io/workdir.js";
 import { log, print, printJson } from "../io/output.js";
 import { t } from "../i18n/index.js";
+import { applyAliasAssignments, inferAliases, type AliasAssignment } from "../preset/aliases.js";
+import { loadPresetFile } from "../preset/loader.js";
 import { formatPresetParameters, formatPresetUploads } from "../preset/output.js";
 import { type ParameterDef, type Preset, type UploadDef } from "../preset/schema.js";
 import {
@@ -37,6 +39,7 @@ export const buildImportPayload = ({
   overwritten,
   hadSubgraphs,
   presetTemplate,
+  aliasAssignments,
 }: {
   name: string;
   scope: "local" | "global";
@@ -47,6 +50,7 @@ export const buildImportPayload = ({
   overwritten: boolean;
   hadSubgraphs: boolean;
   presetTemplate: Preset;
+  aliasAssignments?: AliasAssignment[];
 }) => ({
   ok: true as const,
   scope,
@@ -59,6 +63,17 @@ export const buildImportPayload = ({
   overwritten,
   parameters: formatPresetParameters(presetTemplate.parameters),
   uploads: formatPresetUploads(presetTemplate.uploads),
+  ...(aliasAssignments
+    ? {
+        aliases: aliasAssignments.map((assignment) => ({
+          alias: assignment.alias,
+          param: `${assignment.target.node_id}_${assignment.target.input}`,
+          node_id: assignment.target.node_id,
+          input: assignment.target.input,
+          via: assignment.via,
+        })),
+      }
+    : {}),
 });
 
 const sanitizeName = (name: string) => {
@@ -235,6 +250,7 @@ const inferParameterRole = (classType: string | undefined, inputName: string) =>
 
 const describeParameter = (role: string | undefined, inputName: string) => {
   if (role === "prompt") return "Text prompt passed to the workflow.";
+  if (role === "negative_prompt") return "Negative prompt (what to avoid).";
   if (role === "seed") return "Random seed for reproducible generation.";
   if (role === "steps") return "Number of sampling steps.";
   if (role === "guidance") return "Guidance scale controlling prompt adherence.";
@@ -286,12 +302,13 @@ const fetchObjectInfo = async (baseUrl: string) => {
   }
 };
 
-export const buildPresetTemplate = (
+const buildPresetTemplateResult = (
   name: string,
   workflowFile: string,
   workflow: Record<string, unknown>,
   objectInfo: ObjectInfo | null,
-): Preset => {
+  options?: { existingPreset?: Preset | null },
+): { presetTemplate: Preset; aliasAssignments: AliasAssignment[] } => {
   const parameters: Record<string, ParameterDef> = {};
   const uploads: Record<string, UploadDef> = {};
   const uploadCounts = new Map<InferredUpload["baseName"], number>();
@@ -342,14 +359,61 @@ export const buildPresetTemplate = (
     }
   }
 
+  const reservedFlags = [
+    ...Object.keys(parameters),
+    ...Object.values(uploads).flatMap((upload) => [
+      upload.cli_flag.replace(/^--/, ""),
+      ...(upload.aliases ?? []).map((alias) => alias.replace(/^--/, "")),
+    ]),
+  ];
+  const inferredAssignments = inferAliases(workflow, { reservedFlags });
+  const aliasedParameters = applyAliasAssignments(
+    parameters,
+    inferredAssignments,
+    options?.existingPreset?.parameters,
+  );
+  const aliasAssignments = inferredAssignments.filter((assignment) => {
+    const paramName = `${assignment.target.node_id}_${assignment.target.input}`;
+    return aliasedParameters[paramName]?.aliases?.includes(assignment.alias);
+  });
+
   return {
-    version: 1,
-    name,
-    workflow: workflowFile,
-    parameters: Object.keys(parameters).length > 0 ? parameters : undefined,
-    uploads: Object.keys(uploads).length > 0 ? uploads : undefined,
+    presetTemplate: {
+      version: 1,
+      name,
+      workflow: workflowFile,
+      parameters: Object.keys(aliasedParameters).length > 0 ? aliasedParameters : undefined,
+      uploads: Object.keys(uploads).length > 0 ? uploads : undefined,
+    },
+    aliasAssignments,
   };
 };
+
+export const buildPresetTemplate = (
+  name: string,
+  workflowFile: string,
+  workflow: Record<string, unknown>,
+  objectInfo: ObjectInfo | null,
+  options?: { existingPreset?: Preset | null },
+): Preset =>
+  buildPresetTemplateResult(name, workflowFile, workflow, objectInfo, options).presetTemplate;
+
+const loadExistingPreset = async (presetPath: string, force?: boolean) => {
+  if (!force) return null;
+  try {
+    return await loadPresetFile(presetPath);
+  } catch {
+    return null;
+  }
+};
+
+const formatAliasList = (assignments: AliasAssignment[]) =>
+  assignments
+    .map(
+      (assignment) =>
+        `--${assignment.alias} -> ${assignment.target.node_id}_${assignment.target.input}`,
+    )
+    .join(", ");
 
 const writeFileSafe = async (filePath: string, content: string, force?: boolean) => {
   let overwritten = false;
@@ -412,7 +476,14 @@ export const runImport = async (workflowPath: string, options: ImportOptions) =>
     options.force,
   );
 
-  const presetTemplate = buildPresetTemplate(name, workflowFileName, workflow, objectInfo);
+  const existingPreset = await loadExistingPreset(presetDest, options.force);
+  const { presetTemplate, aliasAssignments } = buildPresetTemplateResult(
+    name,
+    workflowFileName,
+    workflow,
+    objectInfo,
+    { existingPreset },
+  );
   const presetYaml = YAML.stringify(presetTemplate);
   const presetOverwritten = await writeFileSafe(presetDest, presetYaml, options.force);
 
@@ -428,6 +499,7 @@ export const runImport = async (workflowPath: string, options: ImportOptions) =>
         overwritten: workflowOverwritten || presetOverwritten,
         hadSubgraphs,
         presetTemplate,
+        aliasAssignments,
       }),
     );
     return;
@@ -435,4 +507,9 @@ export const runImport = async (workflowPath: string, options: ImportOptions) =>
 
   print(t("import.workflow_saved", { path: workflowDest }));
   print(t("import.preset_created", { path: presetDest }));
+  print(
+    aliasAssignments.length > 0
+      ? t("import.aliases_generated", { list: formatAliasList(aliasAssignments) })
+      : t("import.aliases_none"),
+  );
 };

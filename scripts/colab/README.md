@@ -76,12 +76,15 @@ named in the kit's verification record.
    ```bash
    comfy-agent import ./scripts/colab/<kit>/<workflow>.json --name <preset>
    export COMFY_AGENT_BASE_URL=https://<id>.trycloudflare.com
-   comfy-agent run <preset> --<node_id>_<input> "value" ...
+   comfy-agent run <preset> --prompt "value" --seed 42 ...
    ```
 
-   Parameter flags follow `--<node_id>_<input>` matching the
-   auto-generated preset. Rename keys in the generated YAML if you prefer
-   friendlier flags like `--prompt`.
+   `import` generates common parameter flags such as `--prompt`, `--negative`,
+   `--steps`, `--cfg`, `--width`, and `--height`; video/audio presets may also
+   expose `--length`, `--fps`, `--seconds`, and `--lyrics`. `--seed` updates
+   every generated `role: seed` target. Use `comfy-agent preset <name>` to see
+   the actual aliases and fall back to `--<node_id>_<input>` for detailed or
+   additional linked inputs.
 
 ## Catalog metadata for agents
 

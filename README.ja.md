@@ -116,7 +116,7 @@ GPUの目安、ライセンス上の注意を確認できます。
    comfy-agent import ./scripts/colab/z_image/z_image_turbo.json --name z_image_turbo
    comfy-agent connect https://<id>.trycloudflare.com
    comfy-agent doctor --preset z_image_turbo
-   comfy-agent run z_image_turbo --4_text "a cat riding a bicycle"
+   comfy-agent run z_image_turbo --prompt "a cat riding a bicycle"
    ```
 
 補足:
@@ -236,6 +236,7 @@ ComfyUI の workflow API JSON を取り込み、プリセット雛形を生成�
 comfy-agent import ./workflow_api.json --name text2img_v1
 comfy-agent import ./workflow_api.json --name text2img_v1 --base-url http://127.0.0.1:8188
 comfy-agent import ./workflow_api.json --name text2img_v1 --global
+comfy-agent import ./workflow_api.json --name text2img_v1 --force
 ```
 
 補足: こちらを行う場合は ComfyUI 側で workflow API JSON をエクスポートしてください。現在開いている編集状態からの直接取り込みには未対応です。
@@ -247,6 +248,15 @@ comfy-agent import ./workflow_api.json --name text2img_v1 --global
 - すべてのパラメータに `description` を付与します。
 - ノードのクラスと入力名から判別できる場合は `role`（例: `prompt`、`seed`、`steps`、`guidance`、`width`、`height`、`sampler`、`scheduler`、`denoise`、`strength`）を推論します。判別できない入力には `role` は付きません。
 - 既知の role には数値ヒントを付与します（`steps`/`width`/`height` に `min: 1`、`guidance` に `min: 0`、`denoise`/`strength` に `min: 0` / `max: 1`）。
+- 判別できた入力には `--prompt`、`--negative`、`--steps`、`--cfg`、
+  `--width`、`--height` などの安定した alias を付与します。動画・音声では
+  `--length`、`--fps`、`--seconds`、`--lyrics` が付く場合もあります。
+
+既存 preset に生成 alias を追加するには `--force` で再 import してください。
+parameter の target が同じなら手書き alias は保持されますが、それ以外の手書き編集は
+従来どおり上書きされます。生成 alias が操作する target は1つだけです。2段目の sampler、
+scheduler、duration、dimension に同じ値が必要な workflow では、追加 target を
+`--<node_id>_<input>` で個別指定してください。
 
 これらは説明用のメタデータで、ワークフローの実行内容は変えません。対応フィールドの一覧は [プリセット定義](#プリセット定義) を参照してください。
 
@@ -288,7 +298,10 @@ comfy-agent run inpaint_v1 --prompt "fix" --init-image ./in.png --mask ./mask.pn
 comfy-agent run talking_v1 --image ./portrait.png --audio ./voice.mp3
 ```
 
-プリセットのパラメータや upload に `aliases` を定義すると、正式なフラグの代わりにエイリアスでも指定できます。例えば `prompt` パラメータに `aliases: [positive]` を付けると、`--positive "A cat"` は `--prompt "A cat"` と同じ意味になります。エイリアスはオプトインで、`import` では自動生成しません。フラグを使いやすくしたい場合はプリセットに手で追記してください。
+プリセットの parameter や upload に `aliases` がある場合、正式なフラグの代わりに
+alias を使用できます。`import` は判別できた一般的な入力の alias を自動生成し、手書きで
+追加することもできます。正式な `--<node_id>_<input>` も引き続き使用でき、両方を
+指定した場合は後に指定した値が優先されます。
 
 remote ソースについて:
 
@@ -493,7 +506,9 @@ upload の項目:
 
 補足:
 
-- `import` は `description` を付与し、判別できる入力には `role` と数値ヒントも付けます。`aliases` は自動生成されないため、必要なら手で追記します。
+- `import` は `description` を付与し、判別できる入力には `role`、数値ヒント、
+  一般的な parameter alias も付けます。alias はグラフ構造を優先して推論し、
+  `seed` alias は生成しません。`--seed` は前述の seed role 解決を使用します。
 - `list --json` と `preset --json` はこれらの項目を出力に含めるため、AI エージェントは YAML を開かずにプリセットの意図を読み取れます。
 - `aliases`（`run` が追加フラグとして解釈）を除き、これらは説明用で、実行時に値を検証・制約することはありません。
 

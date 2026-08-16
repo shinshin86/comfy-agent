@@ -358,4 +358,25 @@ describe("mock ComfyUI CLI smoke", () => {
     expect(explicitInputs.seed).toBe(5);
     expect(server.requests).toEqual([]);
   });
+
+  it("13: generated --prompt matches the canonical imported parameter", async () => {
+    const server = await startServer();
+    const workdir = await createTmpWorkdir();
+    await importSmokePreset(workdir, server);
+    server.requests.length = 0;
+
+    const aliasResult = await runCli(
+      ["run", "smoke", "--source", "local", "--dry-run", "--json", "--prompt", "hello"],
+      cliOptions(workdir, server.baseUrl),
+    );
+    const canonicalResult = await runCli(
+      ["run", "smoke", "--source", "local", "--dry-run", "--json", "--6_text", "hello"],
+      cliOptions(workdir, server.baseUrl),
+    );
+
+    expect(aliasResult.code, aliasResult.stderr).toBe(0);
+    expect(canonicalResult.code, canonicalResult.stderr).toBe(0);
+    expect(parseJson(aliasResult)).toEqual(parseJson(canonicalResult));
+    expect(server.requests).toEqual([]);
+  });
 });

@@ -117,7 +117,7 @@ Flow (same for every kit):
    comfy-agent import ./scripts/colab/z_image/z_image_turbo.json --name z_image_turbo
    comfy-agent connect https://<id>.trycloudflare.com
    comfy-agent doctor --preset z_image_turbo
-   comfy-agent run z_image_turbo --4_text "a cat riding a bicycle"
+   comfy-agent run z_image_turbo --prompt "a cat riding a bicycle"
    ```
 
 Notes:
@@ -238,6 +238,7 @@ template.
 comfy-agent import ./workflow_api.json --name text2img_v1
 comfy-agent import ./workflow_api.json --name text2img_v1 --base-url http://127.0.0.1:8188
 comfy-agent import ./workflow_api.json --name text2img_v1 --global
+comfy-agent import ./workflow_api.json --name text2img_v1 --force
 ```
 
 UI workflows containing `definitions.subgraphs` require a reachable target
@@ -255,6 +256,16 @@ Generated presets are annotated automatically to make them easier for humans and
 - A `description` is added to every parameter.
 - A `role` (for example `prompt`, `seed`, `steps`, `guidance`, `width`, `height`, `sampler`, `scheduler`, `denoise`, `strength`) is inferred from the node class and input name when recognizable. Inputs that are not recognized are left without a `role`.
 - Numeric hints are added for known roles: `min: 1` for `steps`/`width`/`height`, `min: 0` for `guidance`, and `min: 0` / `max: 1` for `denoise`/`strength`.
+- Recognized inputs receive stable aliases such as `--prompt`, `--negative`,
+  `--steps`, `--cfg`, `--width`, and `--height`. Video/audio workflows may
+  also receive `--length`, `--fps`, `--seconds`, or `--lyrics`.
+
+Existing presets gain generated aliases after re-importing with `--force`.
+Handwritten aliases are retained when the parameter target is unchanged;
+other handwritten preset edits are overwritten as before. Each generated
+alias controls one target only. Workflows that require equal values on a
+second sampler, scheduler, duration, or dimension input still require that
+input's canonical `--<node_id>_<input>` flag.
 
 These fields are advisory metadata only — they do not change how the workflow runs. See [Preset Definition](#preset-definition) for the full list of supported fields.
 
@@ -296,7 +307,11 @@ comfy-agent run inpaint_v1 --prompt "fix" --init-image ./in.png --mask ./mask.pn
 comfy-agent run talking_v1 --image ./portrait.png --audio ./voice.mp3
 ```
 
-If a preset parameter or upload defines `aliases`, any alias can be used in place of its canonical flag. For example, with `aliases: [positive]` on the `prompt` parameter, `--positive "A cat"` is equivalent to `--prompt "A cat"`. Aliases are opt-in: `import` does not generate them, so add them by hand in the preset when you want friendlier flags.
+If a preset parameter or upload defines `aliases`, any alias can be used in
+place of its canonical flag. `import` generates aliases for recognized common
+inputs, while aliases can also be added by hand. Canonical
+`--<node_id>_<input>` flags remain available, and when both forms are present
+the later value wins.
 
 Remote source notes:
 
@@ -501,7 +516,10 @@ Upload fields:
 
 Notes:
 
-- `import` fills in `description`, and—where it can recognize the input—`role` and numeric hints. `aliases` are never generated; add them by hand.
+- `import` fills in `description` and, where it recognizes the input, `role`,
+  numeric hints, and common parameter aliases. Alias inference uses graph
+  structure first and does not generate a `seed` alias; `--seed` uses the
+  dedicated seed-role resolution described above.
 - `list --json` and `preset --json` include these fields in their output, so AI agents can read a preset's intent without opening the YAML.
 - Apart from `aliases` (which `run` honors as extra flags), these fields are advisory: they document intent and do not constrain or validate values at run time.
 
