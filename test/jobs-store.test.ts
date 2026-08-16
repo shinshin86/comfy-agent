@@ -91,10 +91,42 @@ describe("job store", () => {
       "local",
     );
     expect(result.record).toMatchObject({
+      version: 1,
       job_id: job.job_id,
       status: "running",
       started_at: "2026-08-16T00:00:01.000Z",
     });
+  });
+
+  it("promotes a v1 record when patching a v2 field", async () => {
+    const tmp = await createTmpWorkdir();
+    const { readJob, updateJob, writeJob } = await loadStore();
+    const job = makeJob(tmp.cwd, "promote-job");
+    await writeJob(job, tmp.cwd, "local");
+    const verify = {
+      at: "2026-08-16T00:00:01.000Z",
+      files: 1,
+      kind: "image",
+      width: 1024,
+      height: 1024,
+      checks_failed: 0,
+    };
+
+    const result = await updateJob(job.job_id, { verify }, tmp.cwd, "local");
+    expect(result.record).toMatchObject({ version: 2, verify });
+    await expect(readJob(job.job_id, tmp.cwd, "local")).resolves.toMatchObject({
+      record: { version: 2, verify },
+    });
+  });
+
+  it("preserves the version when patching without v2 fields", async () => {
+    const tmp = await createTmpWorkdir();
+    const { updateJob, writeJob } = await loadStore();
+    const job = makeJob(tmp.cwd, "preserve-version-job", { version: 2 });
+    await writeJob(job, tmp.cwd, "local");
+
+    const result = await updateJob(job.job_id, { status: "running" }, tmp.cwd, "local");
+    expect(result.record.version).toBe(2);
   });
 
   it("lists records newest-first and supports filters and limits", async () => {

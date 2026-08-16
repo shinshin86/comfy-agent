@@ -306,7 +306,7 @@ export const runRun = async (presetName: string, options: RunOptions, rawArgs: s
     });
     batchId ??= promptId;
     const job: JobRecord = {
-      version: 1,
+      version: 2,
       job_id: promptId,
       prompt_id: promptId,
       client_id: clientId,
@@ -358,6 +358,7 @@ export const runRun = async (presetName: string, options: RunOptions, rawArgs: s
           scope,
           params: runParams,
           uploads: resolvedUploads,
+          character: job.character,
         },
         {
           index: runIndex,

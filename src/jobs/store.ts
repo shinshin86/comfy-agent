@@ -22,6 +22,19 @@ export type PruneJobsOptions = {
 
 export type JobPatch = Partial<Omit<JobRecord, "version" | "job_id">>;
 
+const V2_JOB_KEYS = new Set<keyof JobPatch>([
+  "prompt_input",
+  "prompt_final",
+  "prompt_source",
+  "negative_final",
+  "character",
+  "tags",
+  "notes",
+  "reject_reason",
+  "verify",
+  "favorite",
+]);
+
 type StoredJob = {
   path: string;
   record: JobRecord;
@@ -174,11 +187,14 @@ export const updateJob = async (
   scope: WorkdirScope,
 ): Promise<ResolvedJob> => {
   const resolved = await readJob(jobId, cwd, scope);
+  const version = Object.keys(patch).some((key) => V2_JOB_KEYS.has(key as keyof JobPatch))
+    ? 2
+    : resolved.record.version;
   const record = parseRecord(
     {
       ...resolved.record,
       ...patch,
-      version: resolved.record.version,
+      version,
       job_id: resolved.record.job_id,
       scope: resolved.scope,
     },

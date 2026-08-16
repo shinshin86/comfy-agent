@@ -289,6 +289,7 @@ export const awaitAndDownload = async (
         scope: job.scope,
         params: job.params,
         uploads: job.uploads,
+        character: job.character,
       },
       {
         index: job.batch_index,
