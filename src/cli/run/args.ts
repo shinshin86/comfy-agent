@@ -1,7 +1,19 @@
 import { CliError } from "../../io/errors.js";
 import { t } from "../../i18n/index.js";
 import type { Preset } from "../../preset/schema.js";
+import { KNOWN_RUN_FLAGS } from "./flags.js";
 import type { RunOptions } from "./types.js";
+
+export { KNOWN_RUN_FLAGS } from "./flags.js";
+
+export const extractRunPassthrough = (presetName: string, commandArgs: string[]): string[] => {
+  if (presetName.startsWith("--")) {
+    throw new CliError("INVALID_USAGE", t("run.preset_name_first"), 2, {
+      received: presetName,
+    });
+  }
+  return commandArgs[0] === presetName ? commandArgs.slice(1) : commandArgs;
+};
 
 export const parseNumeric = (value: string, name: string, integer = false) => {
   const num = Number(value);
@@ -47,11 +59,15 @@ const coerceParamValue = (type: string, rawValue: string | boolean) => {
   return rawValue;
 };
 
-const parseArgv = (argv: string[]) => {
+export const parseArgv = (argv: string[]) => {
   const map: Record<string, string | boolean> = {};
+  const positionals: string[] = [];
   for (let i = 0; i < argv.length; i += 1) {
     const token = argv[i];
-    if (!token.startsWith("--")) continue;
+    if (!token.startsWith("--")) {
+      positionals.push(token);
+      continue;
+    }
     const trimmed = token.slice(2);
     if (trimmed.length === 0) continue;
 
@@ -73,31 +89,22 @@ const parseArgv = (argv: string[]) => {
     map[name] = next;
     i += 1;
   }
-  return map;
+  return { map, positionals };
 };
-
-const KNOWN_RUN_FLAGS = new Set([
-  "json",
-  "dry-run",
-  "out",
-  "n",
-  "seed",
-  "seed-step",
-  "poll-interval-ms",
-  "timeout-seconds",
-  "no-preflight",
-  "preflight",
-  "base-url",
-  "source",
-  "global",
-  "lang",
-]);
 
 export const resolveDynamicArgs = (
   rawArgs: string[],
   preset: Preset,
 ): { params: Record<string, unknown>; uploads: Record<string, string> } => {
-  const parsed = parseArgv(rawArgs);
+  const { map: parsed, positionals } = parseArgv(rawArgs);
+  if (positionals.length > 0) {
+    throw new CliError(
+      "INVALID_USAGE",
+      t("run.unexpected_argument", { value: positionals[0] }),
+      2,
+      { unexpected: positionals },
+    );
+  }
   const params: Record<string, unknown> = {};
   const uploads: Record<string, string> = {};
 
@@ -159,12 +166,10 @@ export const resolveDynamicArgs = (
 
   for (const [name, def] of Object.entries(uploadsDef)) {
     if (uploads[name] !== undefined || !def.required) continue;
-    throw new CliError(
-      "MISSING_REQUIRED_UPLOAD",
-      t("param.required", { param: def.cli_flag }),
-      2,
-      { upload: name, flag: def.cli_flag },
-    );
+    throw new CliError("MISSING_REQUIRED_UPLOAD", t("param.required", { param: def.cli_flag }), 2, {
+      upload: name,
+      flag: def.cli_flag,
+    });
   }
 
   return { params, uploads };

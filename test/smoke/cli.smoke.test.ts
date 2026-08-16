@@ -255,4 +255,22 @@ describe("mock ComfyUI CLI smoke", () => {
     expect(result.code).toBe(3);
     expect(error.code).toBe("SERVER_UNREACHABLE");
   });
+
+  it("10: run rejects a stray positional before resolving the preset", async () => {
+    const server = await startServer();
+    const workdir = await createTmpWorkdir();
+
+    const result = await runCli(
+      ["run", "missing", "extra", "--json"],
+      cliOptions(workdir, server.baseUrl),
+    );
+    const payload = parseJson(result);
+
+    expect(result.code).toBe(2);
+    expect(payload.error).toMatchObject({
+      code: "INVALID_USAGE",
+      details: { unexpected: ["extra"] },
+    });
+    expect(server.requests).toEqual([]);
+  });
 });

@@ -142,6 +142,10 @@ export const messages = {
   "run.ambiguous_source":
     "同名のプリセットが local と remote の両方に存在します。--source local または --source remote を指定してください。",
   "run.invalid_source": "source は local/remote/remote-catalog のいずれかを指定してください。",
+  "run.unexpected_argument":
+    "予期しない引数です: {value}。workflow 入力は --<param> <value> の形式で渡してください。",
+  "run.preset_name_first":
+    "プリセット名を先に指定してください: comfy-agent run <preset> [--param value ...]",
   "run.invalid_number": "{name} は数値で指定してください。",
   "run.invalid_integer": "{name} は整数で指定してください。",
   "run.invalid_bool": "bool は true/false で指定してください。",

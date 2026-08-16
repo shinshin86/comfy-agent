@@ -15,6 +15,7 @@ import { log } from "../io/output.js";
 import { resolveLanguage, setLanguage, t } from "../i18n/index.js";
 import { assertRuntimeSupported } from "../utils/runtime.js";
 import { getPackageVersion } from "../utils/version.js";
+import { extractRunPassthrough } from "./run/args.js";
 
 const program = new Command();
 
@@ -95,7 +96,7 @@ program
   .allowUnknownOption(true)
   .action(async (presetName, options, command) => {
     try {
-      const rawArgs = collectRunArgs(presetName, command.args);
+      const rawArgs = extractRunPassthrough(presetName, command.args);
       await runRun(presetName, options, rawArgs);
     } catch (err) {
       handleError(err, options?.json);
@@ -221,17 +222,6 @@ colab
       handleError(err, options?.json);
     }
   });
-
-const collectRunArgs = (presetName: string, passthroughArgs: string[]) => {
-  if (passthroughArgs.length > 0) return passthroughArgs;
-  const argv = process.argv.slice(2);
-  const runIndex = argv.indexOf("run");
-  if (runIndex === -1) return [];
-  const afterRun = argv.slice(runIndex + 1);
-  const presetIndex = afterRun.indexOf(presetName);
-  if (presetIndex === -1) return afterRun.slice(1);
-  return afterRun.slice(presetIndex + 1);
-};
 
 const handleError = (err: unknown, jsonOutput?: boolean) => {
   if (jsonOutput) {

@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { CliError } from "../src/io/errors.js";
-import { parseNumeric, resolveDynamicArgs, resolveSeedValues } from "../src/cli/run/args.js";
+import {
+  extractRunPassthrough,
+  parseNumeric,
+  resolveDynamicArgs,
+  resolveSeedValues,
+} from "../src/cli/run/args.js";
 import type { Preset } from "../src/preset/schema.js";
 
 const presetBase: Preset = {
@@ -48,6 +53,26 @@ const presetBase: Preset = {
   },
 };
 
+describe("extractRunPassthrough", () => {
+  it("drops the leading preset name", () => {
+    expect(extractRunPassthrough("demo", ["demo", "--prompt", "cat"])).toEqual(["--prompt", "cat"]);
+  });
+
+  it("throws INVALID_USAGE when the preset name looks like an option", () => {
+    try {
+      extractRunPassthrough("--prompt", ["--prompt", "cat", "demo"]);
+      expect.unreachable();
+    } catch (err) {
+      expect(err).toBeInstanceOf(CliError);
+      expect(err).toMatchObject({
+        code: "INVALID_USAGE",
+        exitCode: 2,
+        details: { received: "--prompt" },
+      });
+    }
+  });
+});
+
 describe("parseNumeric", () => {
   it("parses valid numbers", () => {
     expect(parseNumeric("10", "n", true)).toBe(10);
@@ -61,6 +86,26 @@ describe("parseNumeric", () => {
 });
 
 describe("resolveDynamicArgs", () => {
+  it("throws INVALID_USAGE on stray positional arguments", () => {
+    try {
+      resolveDynamicArgs(["extra", "--prompt", "cat", "another"], presetBase);
+      expect.unreachable();
+    } catch (err) {
+      expect(err).toBeInstanceOf(CliError);
+      expect(err).toMatchObject({
+        code: "INVALID_USAGE",
+        exitCode: 2,
+        details: { unexpected: ["extra", "another"] },
+      });
+    }
+  });
+
+  it("still accepts negative numbers and values containing spaces", () => {
+    const { params } = resolveDynamicArgs(["--prompt", "a cat", "--steps", "-1"], presetBase);
+    expect(params.prompt).toBe("a cat");
+    expect(params.steps).toBe(-1);
+  });
+
   it("parses inline values including '=' in value", () => {
     const { params } = resolveDynamicArgs(
       ["--prompt=a=b=c", "--steps=30", '--config={"a":1}'],

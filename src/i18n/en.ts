@@ -138,6 +138,10 @@ export const messages = {
   "run.ambiguous_source":
     "Preset exists in both local and remote. Please specify --source local or --source remote.",
   "run.invalid_source": "source must be local/remote/remote-catalog.",
+  "run.unexpected_argument":
+    "Unexpected argument: {value}. Pass workflow inputs as --<param> <value>.",
+  "run.preset_name_first":
+    "Preset name must come first: comfy-agent run <preset> [--param value ...]",
   "run.invalid_number": "{name} must be a number.",
   "run.invalid_integer": "{name} must be an integer.",
   "run.invalid_bool": "bool must be true/false.",

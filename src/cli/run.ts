@@ -20,7 +20,7 @@ import { extractOutputFiles } from "../output/provider.js";
 import { resolveComfyBaseUrl } from "../utils/base-url.js";
 import { sleep } from "../utils/time.js";
 import { ComfyProgressChannel, type ProgressEventRecord } from "../api/progress.js";
-import { parseNumeric, resolveDynamicArgs, resolveSeedValues } from "./run/args.js";
+import { parseArgv, parseNumeric, resolveDynamicArgs, resolveSeedValues } from "./run/args.js";
 import { tryLoadRemoteCatalogRunTarget, tryLoadRemoteUserdataRunTarget } from "./run/remote.js";
 import { resolveRunSource, resolveSelectedRunSource } from "./run/source.js";
 import type { RunOptions } from "./run/types.js";
@@ -314,6 +314,16 @@ const createProgressUi = (enabled: boolean): ProgressUi => {
 };
 
 export const runRun = async (presetName: string, options: RunOptions, rawArgs: string[]) => {
+  const { positionals } = parseArgv(rawArgs);
+  if (positionals.length > 0) {
+    throw new CliError(
+      "INVALID_USAGE",
+      t("run.unexpected_argument", { value: positionals[0] }),
+      2,
+      { unexpected: positionals },
+    );
+  }
+
   const scope = options.global ? "global" : "local";
   const scopeLabel = t(scope === "global" ? "scope.global" : "scope.local");
   await ensureWorkdir(scope);
