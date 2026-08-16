@@ -124,7 +124,7 @@ When `/object_info` is available, inference is enhanced and cached at
 
 - a `description` for every parameter;
 - a recognized `role`, such as `prompt`, `seed`, `steps`, `guidance`, `width`,
-  `height`, `sampler`, `scheduler`, `denoise`, or `strength`;
+  `height`, `sampler`, `scheduler`, `lora`, `lora_strength`, `denoise`, or `strength`;
 - numeric hints for known roles;
 - stable aliases such as `--prompt`, `--negative`, `--steps`, `--cfg`, `--width`,
   and `--height`, plus applicable video/audio aliases such as `--length`, `--fps`,
@@ -531,7 +531,7 @@ Parameter fields, in addition to `type`, `target`, `required`, and `default`:
 | Field | Type | Meaning |
 |---|---|---|
 | `description` | string | Human/agent-readable explanation. |
-| `role` | enum | `prompt`, `negative_prompt`, `seed`, `steps`, `guidance`, `width`, `height`, `sampler`, `scheduler`, `model`, `strength`, `denoise`, `advanced`, or `custom`. |
+| `role` | enum | `prompt`, `negative_prompt`, `seed`, `steps`, `guidance`, `width`, `height`, `sampler`, `scheduler`, `model`, `lora`, `lora_strength`, `strength`, `denoise`, `advanced`, or `custom`. |
 | `aliases` | string[] | Alternate CLI flags accepted by `run`. |
 | `min` / `max` | number | Advisory numeric bounds. |
 | `choices` | array | Advisory list of allowed values. |

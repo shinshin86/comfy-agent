@@ -125,7 +125,7 @@ download してください。
 
 - 各 parameter の `description`。
 - 判別できた `role`。例: `prompt`、`seed`、`steps`、`guidance`、`width`、`height`、
-  `sampler`、`scheduler`、`denoise`、`strength`。
+  `sampler`、`scheduler`、`lora`、`lora_strength`、`denoise`、`strength`。
 - 既知 role の数値ヒント。
 - `--prompt`、`--negative`、`--steps`、`--cfg`、`--width`、`--height` などの安定した
   alias。動画・音声では `--length`、`--fps`、`--seconds`、`--lyrics` が付く場合もあります。
@@ -520,7 +520,7 @@ preset 直下の項目:
 | 項目 | 型 | 意味 |
 |---|---|---|
 | `description` | string | 人間/agent 向けの説明。 |
-| `role` | enum | `prompt`、`negative_prompt`、`seed`、`steps`、`guidance`、`width`、`height`、`sampler`、`scheduler`、`model`、`strength`、`denoise`、`advanced`、`custom`。 |
+| `role` | enum | `prompt`、`negative_prompt`、`seed`、`steps`、`guidance`、`width`、`height`、`sampler`、`scheduler`、`model`、`lora`、`lora_strength`、`strength`、`denoise`、`advanced`、`custom`。 |
 | `aliases` | string[] | `run` が受け付ける別名 CLI flag。 |
 | `min` / `max` | number | 参考用の数値範囲。 |
 | `choices` | array | 参考用の許容値一覧。 |

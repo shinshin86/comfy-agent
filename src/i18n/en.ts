@@ -333,6 +333,7 @@ export const messages = {
   "preset_show.required": "required",
   "preset_show.optional": "optional",
   "preset_show.aliases": "aliases={aliases}",
+  "preset_show.alias_shadowed": 'warning: alias "--{alias}" is shadowed by a run flag',
   "doctor.connection_failed": "Connection failed.",
   "doctor.result_header": "doctor result:",
   "doctor.base_url": "base_url: {base} ({source})",

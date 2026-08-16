@@ -32,6 +32,8 @@ const ParameterRoleSchema = z.enum([
   "sampler",
   "scheduler",
   "model",
+  "lora",
+  "lora_strength",
   "strength",
   "denoise",
   "advanced",

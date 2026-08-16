@@ -14,4 +14,9 @@ export const KNOWN_RUN_FLAGS = new Set([
   "source",
   "global",
   "lang",
+  "lora",
+  "character",
+  "form",
+  "character-ref",
+  "character-prompt",
 ]);

@@ -241,6 +241,11 @@ const inferParameterRole = (classType: string | undefined, inputName: string) =>
   if (lowerInput === "height") return "height";
   if (lowerInput.includes("sampler")) return "sampler";
   if (lowerInput.includes("scheduler")) return "scheduler";
+  if (lowerClass.includes("loraloader")) {
+    if (lowerInput === "lora_name") return "lora";
+    if (lowerInput === "strength_model") return "lora_strength";
+    if (lowerInput === "strength_clip") return "advanced";
+  }
   if (lowerInput.includes("denoise")) return "denoise";
   if (lowerInput.includes("strength")) return "strength";
   if (lowerInput.includes("model")) return "model";
@@ -258,6 +263,8 @@ const describeParameter = (role: string | undefined, inputName: string) => {
   if (role === "height") return "Output height in pixels.";
   if (role === "sampler") return "Sampler selection.";
   if (role === "scheduler") return "Scheduler selection.";
+  if (role === "lora") return "LoRA file name (models/loras)";
+  if (role === "lora_strength") return "LoRA strength for the model";
   if (role === "denoise") return "Denoise amount.";
   if (role === "strength") return "Conditioning strength.";
   if (role === "model") return "Model or checkpoint selection.";

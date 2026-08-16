@@ -337,6 +337,7 @@ export const messages = {
   "preset_show.required": "必須",
   "preset_show.optional": "任意",
   "preset_show.aliases": "aliases={aliases}",
+  "preset_show.alias_shadowed": 'warning: alias "--{alias}" は run flag と衝突しています',
   "doctor.connection_failed": "接続に失敗しました。",
   "doctor.result_header": "doctor 結果:",
   "doctor.base_url": "base_url: {base} ({source})",
