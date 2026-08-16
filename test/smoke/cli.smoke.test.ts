@@ -518,4 +518,42 @@ describe("mock ComfyUI CLI smoke", () => {
     expect(payload.error).toMatchObject({ code: "WORKDIR_NOT_WRITABLE" });
     expect(normalizedRequestPaths(server.requests)).toEqual(["/object_info"]);
   });
+
+  it("16: QuickStart works from connect without an explicit init", async () => {
+    const server = await startServer();
+    const workdir = await createTmpWorkdir();
+    await fs.rm(workdir.workdir, { recursive: true, force: true });
+    await expect(fs.stat(workdir.workdir)).rejects.toMatchObject({ code: "ENOENT" });
+    const options = {
+      cwd: workdir.cwd,
+      env: { HOME: workdir.home, USERPROFILE: workdir.home },
+    };
+
+    const connected = await runCli(["connect", server.baseUrl, "--json"], options);
+    expect(connected.code, connected.stderr).toBe(0);
+    expect(parseJson(connected)).toMatchObject({
+      ok: true,
+      base_url: server.baseUrl,
+      connection: "OK",
+      scope: "local",
+    });
+
+    const imported = await runCli(
+      ["import", WORKFLOW_FIXTURE, "--name", "q", "--json"],
+      options,
+    );
+    expect(imported.code, imported.stderr).toBe(0);
+    expect(parseJson(imported)).toMatchObject({ ok: true, preset: "q" });
+
+    const result = await runCli(
+      ["run", "q", "--source", "local", "--json", "--poll-interval-ms", "50"],
+      options,
+    );
+    const payload = parseJson(result);
+    const runs = payload.runs as JsonObject[];
+
+    expect(result.code, result.stderr).toBe(0);
+    expect(payload).toMatchObject({ ok: true, preset: "q", source: "local" });
+    expect(runs).toHaveLength(1);
+  });
 });

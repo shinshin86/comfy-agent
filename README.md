@@ -2,54 +2,73 @@
 
 ![Logo](https://github.com/shinshin86/comfy-agent/raw/main/assets/comfy-agent-logo.png)
 
-Comfy Agent is a tool to use ComfyUI from the CLI.  
-It is suitable for both direct CLI usage and AI-agent-driven automation.
+[![npm version](https://img.shields.io/npm/v/comfy-agent.svg)](https://www.npmjs.com/package/comfy-agent)
+[![CI](https://github.com/shinshin86/comfy-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/shinshin86/comfy-agent/actions/workflows/ci.yml)
+
+Comfy Agent is a CLI for GPU-less individual creators to delegate image, video,
+and music generation to AI agents across any ComfyUI server—Google Colab,
+RunPod, or a home GPU.
 
 Japanese documentation: [README.ja.md](./README.ja.md)
 
-## QuickStart
-
-The fastest way to try with local ComfyUI (`http://127.0.0.1:8188`) is below.
-
-1. Install CLI
+## QuickStart (3 lines)
 
 ```bash
 npm install -g comfy-agent
-comfy-agent --help
+comfy-agent connect http://127.0.0.1:8188            # or a Colab tunnel URL: https://<id>.trycloudflare.com
+comfy-agent run default --source remote --prompt "a cat riding a bicycle"
 ```
 
-2. Save ComfyUI `default` once in the browser UI
+`connect` verifies the server once and remembers the URL (re-run it when a Colab
+tunnel changes — presets and outputs stay local). `run` submits the workflow, waits,
+and saves files under `./.comfy-agent/outputs/<preset>/<timestamp>/`. `default` is
+any workflow saved in the ComfyUI UI; to run your own JSON, `comfy-agent import <file> --name <preset>`.
 
-![Quick Start - 1](https://github.com/shinshin86/comfy-agent/raw/main/assets/quick-start_1.png)
+No GPU? Jump to [Run on Google Colab](#run-on-google-colab). Driving this from an AI
+agent? See [For AI agents](#for-ai-agents).
 
-- Open ComfyUI in your browser (for example `http://127.0.0.1:8188`)
-- Load the built-in `default` workflow and click **Save** once
-- This makes it available as `default [remote]` from CLI
+## Why comfy-agent
 
-**Note: You need to save the workflow once in ComfyUI, otherwise `comfy-agent` cannot discover it.**
+- **Verified environment catalog** — [36 kits](./scripts/colab/README.md) expose
+  GPU, download size, setup time, license, and E2E evidence as machine-readable data.
+- **Artifacts and instructions stay local** — presets, outputs, recipes, and jobs
+  survive server resets; [`connect`](./docs/cli-reference.md#connect) absorbs volatile URLs.
+- **Facts and policy stay separate** — the CLI returns a structured
+  [error contract](./docs/agent-playbook.md#3-error-contract-cli--agent), while the
+  [playbook](./docs/agent-playbook.md) defines agent-independent recovery policy.
+- **Production recipes and verification** — reusable
+  [recipes](./recipes/music-video/RECIPE.md) combine generation with `verify` and
+  evidence-based artifact review.
 
-3. List and run it from CLI
+<a id="for-ai-agents"></a>
+
+## For AI agents (Claude Code, Codex, Cursor, Gemini CLI, OpenClaw)
+
+Install the bundled skill for your agent and read the live policy:
 
 ```bash
-comfy-agent list --source remote --base-url http://127.0.0.1:8188
-comfy-agent run default --source remote --base-url http://127.0.0.1:8188 --prompt "A cat"
+comfy-agent skill install --agent claude
+comfy-agent skill install --agent codex
+comfy-agent playbook
 ```
 
-Generated files are saved under `.comfy-agent/outputs/<preset>/<timestamp>/` by default.
-
-If you want to use your own workflow JSON instead, see the `import` section below.
-
-If you use ComfyUI running on Google Colab, you can run it by specifying the URL with `--base-url`.
+Other supported targets are `cursor`, `gemini`, and `openclaw`; use
+`comfy-agent skill list` to see bundled skills. Repository agents should also follow
+[AGENTS.md](./AGENTS.md). Prefer `--json`, branch on structured error codes, and use
+only exit codes `0`, `2`, and `3`; the [CLI reference](./docs/cli-reference.md) is canonical.
 
 ## Run on Google Colab
 
-No local GPU? Run ComfyUI on a Colab GPU runtime and drive it from
-`comfy-agent` on your laptop over a cloudflared tunnel.
+No local GPU? The bundled kits run ComfyUI on a Colab GPU and expose it to the local
+CLI through a cloudflared tunnel. Start with this five-step flow:
 
-There are currently **36 ready-to-paste kits** under
-[`scripts/colab/`](./scripts/colab/). The table below mirrors the implemented
-kit catalog; each link includes its setup script, workflows, parameters, GPU
-notes, and license cautions.
+```bash
+comfy-agent colab kit z_image      # prints installed paths: 01_setup.py / 02_start_comfyui.py / workflows
+# paste setup + launcher into Colab, copy the tunnel URL
+comfy-agent connect https://<id>.trycloudflare.com
+comfy-agent import <workflow path printed above> --name z_image_turbo
+comfy-agent run z_image_turbo --prompt "a cat riding a bicycle"
+```
 
 | Media | Kit / model | Status | Minimum GPU | Capability |
 | --- | --- | --- | --- | --- |
@@ -90,622 +109,92 @@ notes, and license cautions.
 | Audio | [`moss_soundeffect_v2/`](./scripts/colab/moss_soundeffect_v2/) | Verified | A100 | MOSS-SoundEffect v2 48 kHz sound effects |
 | Combo | [`music_video/`](./scripts/colab/music_video/) | Verified | A100 | Song + keyframes + video clips music-video recipe |
 
-Statuses describe verification evidence, not model quality: **Verified** has
-passed the complete Colab-to-local CLI flow; **Partial** has verified only
-some GPUs or workflow variants; **Starter** is statically validated but still
-awaits recorded end-to-end verification. Some kits have gated,
-non-commercial, territory, or acceptable-use restrictions—review the linked
-kit README before downloading models or choosing a paid GPU runtime.
+Statuses are evidence levels, not model quality: **Verified** passed the complete
+Colab-to-local flow, **Partial** passed only some GPUs or workflow variants, and
+**Starter** is statically validated but awaits recorded E2E verification. Review each
+kit README for gated, non-commercial, territory, acceptable-use, and paid-GPU cautions.
 
-Flow (same for every kit):
-
-1. Open a Colab notebook, pick the recommended GPU runtime.
-2. Paste the kit's `01_setup.py` into a cell and run — installs ComfyUI,
-   downloads model weights and cloudflared.
-3. Paste [`scripts/colab/02_start_comfyui.py`](./scripts/colab/02_start_comfyui.py)
-   into the next cell and run — ComfyUI and the tunnel start in background.
-4. Read the public URL:
-
-   ```python
-   !cat /content/comfy_url.txt
-   ```
-
-5. Back on your machine, import the bundled workflow once, connect the current
-   tunnel URL, preflight the preset, and run it:
-
-   ```bash
-   comfy-agent import ./scripts/colab/z_image/z_image_turbo.json --name z_image_turbo
-   comfy-agent connect https://<id>.trycloudflare.com
-   comfy-agent doctor --preset z_image_turbo
-   comfy-agent run z_image_turbo --prompt "a cat riding a bicycle"
-   ```
-
-Notes:
-
-- Presets, workflows, and outputs stay local under `.comfy-agent/`. After a
-  Colab reset, rerun the kit cells to restore ComfyUI and its models, then run
-  `comfy-agent connect <new-url>` and resume without importing again.
-- See each kit's `README.md` for model-specific parameter flags and
-  VRAM/runtime expectations.
-
-Agent-readable kit metadata is available via the `colab` helper command:
+Use the catalog before choosing a runtime:
 
 ```bash
 comfy-agent colab catalog --json
 comfy-agent colab suggest "fast image generation on a T4" --json
-comfy-agent doctor --json
-comfy-agent doctor --preset <preset> --json
+comfy-agent colab kit z_image --json
 ```
 
-`colab suggest` filters out incompatible media, audio capabilities, and GPU
-requirements first, then ranks compatible workflows by goal fit and reliability
-(`verified` > `partial` > `starter`). If nothing is compatible, `--json`
-returns alternatives together with their unmet requirements.
-The optional `gpu.verified` list records GPUs exercised in E2E tests; it is
-separate from the declared `gpu.minimum` compatibility floor.
+Presets and outputs survive Colab resets. Rerun the two printed scripts, then
+`connect` the new tunnel URL; do not re-import the preset. Full setup and license notes
+are in the [Colab kit guide](./scripts/colab/README.md).
 
-The catalog also exposes model assets, estimated download size/setup time,
-composability, and license notes. `doctor --preset` checks whether the current
-server has every required model and node, while `run` performs the same
-preflight automatically. See the [Agent Playbook](./docs/agent-playbook.md)
-for the complete blueprint, recovery, and artifact-verification flow.
+## Install & requirements
 
-Note: `colab` is a repository-side helper. It reads
-`scripts/colab/catalog.yaml`, which is **not** bundled in the npm package, so
-run it from a checkout of this repository. The catalog is intentionally
-portable — paths are relative to `scripts/colab/` and the JSON output never
-includes local filesystem paths or environment values.
-
-## Prerequisites
-
-- Node.js 22+
-- Running ComfyUI server (default: `http://127.0.0.1:8188`)
-
-## Installation
-
-From npm (recommended):
+- Node.js 22 or newer.
+- A reachable ComfyUI server for connection and generation commands.
 
 ```bash
 npm install -g comfy-agent
 comfy-agent --help
 ```
 
-From source (for contributors):
-
-```bash
-npm install
-npm run build
-npm run dev -- init
-npm run dev -- list
-```
-
-## Work Directory
-
-`comfy-agent init` creates `.comfy-agent/`:
-
-```text
-.comfy-agent/
-  workflows/
-  presets/
-  outputs/
-  cache/
-```
-
-### Global Scope
-
-Use `--global` to switch to `~/.config/.comfy-agent`.
-
-```bash
-comfy-agent init --global
-comfy-agent list --global
-comfy-agent run text2img_v1 --global --prompt "A cat"
-```
-
-## ComfyUI Integration Flow
-
-- POST `/prompt` with workflow JSON to enqueue
-- Poll GET `/history/{prompt_id}` until done
-- Read output `filename/subfolder/type` from history, then download via GET `/view`
-- Upload input files to POST `/upload/image` or `/upload/mask` when needed
-  (audio/file uploads also use ComfyUI's input upload path and can target
-  nodes such as `LoadAudio`)
-- During `import`, GET `/object_info` (if available) to improve type inference
-  and to expand ComfyUI subgraph templates safely
-
-## `base_url` Precedence
-
-1. `--base-url`
-2. `COMFY_AGENT_BASE_URL`
-3. `base_url` in `.comfy-agent/config.yaml` (written by `comfy-agent connect`;
-   the command's scope is checked first, then the other scope)
-4. default `http://127.0.0.1:8188`
-
-## Commands
-
-### `init`
-
-```bash
-comfy-agent init
-comfy-agent init --global
-```
-
-### `import`
-
-Import a ComfyUI API JSON or saved UI workflow JSON and generate a preset
-template.
-
-```bash
-comfy-agent import ./workflow_api.json --name text2img_v1
-comfy-agent import ./workflow_api.json --name text2img_v1 --base-url http://127.0.0.1:8188
-comfy-agent import ./workflow_api.json --name text2img_v1 --global
-comfy-agent import ./workflow_api.json --name text2img_v1 --force
-```
-
-UI workflows containing `definitions.subgraphs` require a reachable target
-ComfyUI server. `comfy-agent` uses its live `/object_info` input order to
-flatten active subgraph nodes into API nodes before saving locally. It stops
-with a concrete error when a node schema is unavailable or when a muted/bypass
-execution mode cannot be represented safely; it does not save the subgraph
-UUID as a node class. Direct import from unsaved in-memory editor state is not
-supported—save or download the workflow JSON first.
-
-If `/object_info` is available, inference is enhanced and cached at `.comfy-agent/cache/object_info.json`.
-
-Generated presets are annotated automatically to make them easier for humans and AI agents to read:
-
-- A `description` is added to every parameter.
-- A `role` (for example `prompt`, `seed`, `steps`, `guidance`, `width`, `height`, `sampler`, `scheduler`, `denoise`, `strength`) is inferred from the node class and input name when recognizable. Inputs that are not recognized are left without a `role`.
-- Numeric hints are added for known roles: `min: 1` for `steps`/`width`/`height`, `min: 0` for `guidance`, and `min: 0` / `max: 1` for `denoise`/`strength`.
-- Recognized inputs receive stable aliases such as `--prompt`, `--negative`,
-  `--steps`, `--cfg`, `--width`, and `--height`. Video/audio workflows may
-  also receive `--length`, `--fps`, `--seconds`, or `--lyrics`.
-
-Existing presets gain generated aliases after re-importing with `--force`.
-Handwritten aliases are retained when the parameter target is unchanged;
-other handwritten preset edits are overwritten as before. Each generated
-alias controls one target only. Workflows that require equal values on a
-second sampler, scheduler, duration, or dimension input still require that
-input's canonical `--<node_id>_<input>` flag.
-
-These fields are advisory metadata only — they do not change how the workflow runs. See [Preset Definition](#preset-definition) for the full list of supported fields.
-
-### `list`
-
-```bash
-comfy-agent list
-comfy-agent list --json
-comfy-agent list --global
-comfy-agent list --source all
-comfy-agent list --source remote --base-url http://127.0.0.1:8188
-comfy-agent list --source remote-catalog --base-url http://127.0.0.1:8188
-```
-
-- `--source all`: `local + remote` (saved userdata workflows)
-- `--source remote-catalog`: show catalog entries only when explicitly requested
-
-Note: `remote-catalog` means templates already available in ComfyUI. Some of them cannot be executed directly via API, so save them once in ComfyUI and use them as remote saved workflows.
-
-### `run`
-
-```bash
-comfy-agent run text2img_v1 --prompt "A cat" --steps 30
-comfy-agent run text2img_v1 --prompt "A cat" --json
-comfy-agent run text2img_v1 --prompt "A cat" --dry-run
-comfy-agent run text2img_v1 --prompt "A cat" --n 3 --seed 42 --seed-step 1
-comfy-agent run text2img_v1 --global --prompt "A cat"
-comfy-agent run image_z_image_turbo --source remote-catalog --prompt "A cat" --base-url http://127.0.0.1:8188
-```
-
-- `--seed` targets the first matching category: parameter name `seed`, then alias `seed`, then `role: seed`.
-- If that category has multiple targets, the same value is applied to all of them; `--seed-step` advances them together.
-- An explicit parameter flag such as `--12_noise_seed 5` takes priority over `--seed` for that target.
-
-With uploads:
-
-```bash
-comfy-agent run inpaint_v1 --prompt "fix" --init-image ./in.png --mask ./mask.png
-comfy-agent run talking_v1 --image ./portrait.png --audio ./voice.mp3
-```
-
-If a preset parameter or upload defines `aliases`, any alias can be used in
-place of its canonical flag. `import` generates aliases for recognized common
-inputs, while aliases can also be added by hand. Canonical
-`--<node_id>_<input>` flags remain available, and when both forms are present
-the later value wins.
-
-Remote source notes:
-
-- `--source remote` targets saved ComfyUI workflows from `userdata/workflows` (runnable path).
-- `--source remote-catalog` targets template catalog entries (advanced/explicit use).
-- Save workflows under ComfyUI `userdata/workflows` so they can be discovered by `list --source remote`.
-- If the saved file is in ComfyUI UI format (`nodes`/`links`), it is converted to API prompt format automatically.
-- Some UI-only nodes (for example notes) are ignored during conversion.
-- For some catalog entries, workflow JSON may not be directly downloadable from API endpoints.
-- If validation still fails for complex/custom graphs, export API JSON from ComfyUI and import it as a local preset.
-
-### `jobs`
-
-`run --async` submits the prompt(s) and returns immediately with job IDs.
-`jobs wait <id>` reconnects to the current server, shows progress, and downloads
-outputs into the directory recorded at submission. Every synchronous and
-asynchronous run writes a record under `.comfy-agent/jobs/`, so an interrupted
-run can be resumed from another terminal.
-
-```bash
-comfy-agent run text2img_v1 --prompt "A cat" --n 2 --async
-comfy-agent jobs list
-comfy-agent jobs show <job_id>
-comfy-agent jobs wait <job_id> --poll-interval-ms 1000
-comfy-agent jobs prune --older-than-days 30 --dry-run
-```
-
-`jobs list` and `jobs show` only read local records and do not contact the
-server. Completed jobs are safe to wait for again. Use `--global` for the
-global workdir; a specific job lookup also falls back to the other scope.
-
-```json
-{
-  "ok": true,
-  "async": true,
-  "preset": "text2img_v1",
-  "source": "local",
-  "base_url": "http://127.0.0.1:8188",
-  "scope": "local",
-  "output_dir": "/path/to/.comfy-agent/outputs/text2img_v1/20260816_101500",
-  "jobs": [
-    {
-      "job_id": "<job_id>",
-      "prompt_id": "<job_id>",
-      "batch_index": 1,
-      "seed": null,
-      "status": "submitted",
-      "job_file": "/path/to/.comfy-agent/jobs/<job_id>.json"
-    }
-  ]
-}
-```
-
-ComfyUI keeps history in memory. If the server process or Colab runtime
-restarts, `jobs wait` reports `JOB_LOST`; run the same preset again.
-
-### `connect`
-
-Verify a ComfyUI base URL and persist it to `.comfy-agent/config.yaml`, so
-later commands need no `--base-url` / env var. Designed for ephemeral servers
-(e.g. Colab + trycloudflare, where the URL changes every session): re-running
-`connect` with the new URL is the only step needed after a runtime restart.
-
-```bash
-comfy-agent connect https://xxxx.trycloudflare.com
-comfy-agent connect https://xxxx.trycloudflare.com --json
-comfy-agent connect http://127.0.0.1:8188 --global
-comfy-agent connect https://xxxx.trycloudflare.com --force   # save even if unreachable
-```
-
-### `doctor`
-
-```bash
-comfy-agent doctor
-comfy-agent doctor --json
-comfy-agent doctor --global
-comfy-agent doctor --all-scopes
-comfy-agent doctor --preset text2img_v1        # also check server has the models/nodes
-comfy-agent doctor --preset text2img_v1 --json
-```
-
-With `--preset`, doctor additionally fetches `/object_info` and reports
-whether the connected server has every node class and model file the preset's
-workflow references (`preflight` section in `--json`; exit code 3 when
-something is missing).
-
-### `status`
-
-Show currently resolved runtime settings (scope, base URL source, workdir state, preset count).
-
-```bash
-comfy-agent status
-comfy-agent status --json
-comfy-agent status --global
-```
-
-### `preset`
-
-Show a user-friendly view of a preset definition.
-
-```bash
-comfy-agent preset text2img_v1
-comfy-agent preset text2img_v1 --json
-comfy-agent preset text2img_v1 --global
-comfy-agent preset text2img_v1 --source local
-comfy-agent preset text2img_v1 --source remote --base-url http://127.0.0.1:8188
-```
-
-### `verify`
-
-Inspect generated artifact metadata offline and create files that make visual
-or audio review easier. Directories use `run.json` when present; otherwise
-their immediate output files are scanned. No API key is required.
-
-```bash
-comfy-agent verify .comfy-agent/outputs/text2img_v1/<timestamp> --json
-comfy-agent verify ./clip.mp4 --expect-kind video --min-duration 4
-comfy-agent verify ./images --expect-kind image --expect-count 4 --expect-size 1280x704
-comfy-agent verify ./audio.flac --hash --no-ffmpeg
-```
-
-The pure-JS probe reports format, dimensions, duration, frame count, and audio
-metadata for common image/video/audio formats, including animated WEBP. When
-`ffmpeg` is available, verify also writes video frames, contact sheets, and
-audio waveforms under `<run-dir>/verify/`. First and last video frames are
-always included. Animated WEBP metadata is available without ffmpeg, but frame
-extraction requires the Pillow fallback shown in the warning.
-
-Expectation failures return `VERIFY_CHECKS_FAILED` with exit code 3 and save
-the complete report to `verify/verify.json`. `summary.verified_visually` is
-always `false`: open the generated sheet/frames or pass an image to `analyze`
-before claiming that the content was inspected.
-
-### `analyze`
-
-Analyze whether a generated image matches the instruction by using OpenAI image input.
-
-```bash
-export OPENAI_API_KEY=...
-comfy-agent analyze ./output.png --prompt "A cat on a sofa"
-comfy-agent analyze ./output.png --prompt "A cat" --json
-comfy-agent analyze ./output.png --prompt "A cat" --out ./analysis.json
-```
-
-## Usage Notes
-
-- Dynamic parameters use `--param value` (must match preset `parameters` names)
-- Upload flags are defined in `uploads.*.cli_flag` (example: `--init-image`)
-- `--dry-run` prints patched workflow JSON without calling API
-- Default output path: `.comfy-agent/outputs/<preset>/<YYYYmmdd_HHMMSS>/`;
-  completed runs project metadata to `run.json`, and `verify` writes inspection
-  aids and `verify.json` under its `verify/` subdirectory
-- `run` logs the resolved output directory before execution and each saved file path
-- `run` uses WebSocket progress by default; if the progress channel is lost, it automatically falls back to polling and continues monitoring
-- Iteration uses `--n`; seed uses `--seed random` or `--seed <int> --seed-step <int>`
-- Keep base URL out of presets and switch with `--base-url` or `COMFY_AGENT_BASE_URL`
-- For multiple servers, use separate work directories
-- Video outputs are saved according to `/history` output metadata
-- `analyze` requires `OPENAI_API_KEY`
-- Language can be switched with `--lang ja` or `COMFY_AGENT_LANG=ja` (default `en`)
-- Remote workflow quick guide (English, user-facing): `docs/remote-workflow-resolution-quick.md`
-- Remote workflow quick guide (Japanese, user-facing): `docs/remote-workflow-resolution-quick-ja.md`
-- Remote workflow detailed spec (developer-facing): `docs/remote-workflow-resolution.md`
-
-## Generate -> Analyze -> Adjust (Example)
-
-1. Generate
-
-```bash
-comfy-agent run text2img_v1 --prompt "A cat on a sofa" --steps 30
-```
-
-2. Analyze
-
-```bash
-export OPENAI_API_KEY=...
-comfy-agent analyze .comfy-agent/outputs/text2img_v1/20260203_120000/00001_123_1.png \
-  --prompt "A cat on a sofa" --json
-```
-
-3. Adjust and regenerate
-
-```bash
-comfy-agent run text2img_v1 --prompt "A fluffy orange cat on a sofa" --steps 35
-```
-
-## Analyze Limits
-
-- Supported image types: PNG/JPEG/WEBP/GIF (non-animated)
-- Images larger than 8 MiB are rejected by the API path used here
-- `--detail low` is cheaper but may reduce accuracy
-- Video analysis is not supported yet (future: frame extraction)
-
-## Preset Definition
-
-```yaml
-version: 1
-name: text2img_v1
-workflow: text2img_v1.json
-parameters:
-  prompt:
-    type: string
-    target:
-      node_id: 12
-      input: text
-    required: true
-  negative:
-    type: string
-    target:
-      node_id: 13
-      input: text
-    default: ""
-  steps:
-    type: int
-    target:
-      node_id: 5
-      input: steps
-    default: 30
-uploads:
-  init_image:
-    kind: image
-    cli_flag: --init-image
-    target:
-      node_id: 21
-      input: image
-  mask:
-    kind: mask
-    cli_flag: --mask
-    target:
-      node_id: 22
-      input: mask
-  audio:
-    kind: audio
-    cli_flag: --audio
-    target:
-      node_id: 23
-      input: audio
-```
-
-### Metadata fields
-
-A preset can carry optional metadata that describes itself to humans and AI agents. **Every field below is optional** — existing presets without them remain valid, and (apart from `aliases`) the metadata never changes how a workflow runs.
-
-Preset-level fields:
-
-| Field | Type | Meaning |
-|---|---|---|
-| `description` | string | What the preset does. |
-| `task` | enum | One of `text_to_image`, `image_to_image`, `image_edit`, `remove_background`, `inpaint`, `upscale`, `text_to_audio`, `audio_to_audio`, `audio_inpaint`, `text_to_video`, `image_to_video`, `video_to_video`, `custom`. |
-| `tags` | string[] | Free-form labels for discovery. |
-
-Parameter fields (in addition to `type`, `target`, `required`, `default`):
-
-| Field | Type | Meaning |
-|---|---|---|
-| `description` | string | Human/agent-readable explanation. |
-| `role` | enum | One of `prompt`, `negative_prompt`, `seed`, `steps`, `guidance`, `width`, `height`, `sampler`, `scheduler`, `model`, `strength`, `denoise`, `advanced`, `custom`. |
-| `aliases` | string[] | Alternate CLI flag names accepted by `run`. |
-| `min` / `max` | number | Advisory numeric bounds. |
-| `choices` | array | Advisory list of allowed values. |
-| `recommended` | any | Advisory suggested value. |
-
-Upload fields:
-
-| Field | Type | Meaning |
-|---|---|---|
-| `kind` | enum | One of `image`, `mask`, `audio`, `file`. |
-| `cli_flag` | string | CLI flag accepted by `run`, such as `--image` or `--audio`. |
-| `target` | object | Workflow node input to receive the uploaded filename. |
-| `description` | string | Human/agent-readable explanation. |
-| `role` | enum | One of `init_image`, `mask`, `reference_image`, `control_image`, `input_image`, `input_audio`, `reference_audio`, `input_file`, `custom`. |
-| `aliases` | string[] | Alternate CLI flag names accepted by `run`. |
-| `required` | boolean | Whether the upload must be provided. |
-
-Notes:
-
-- `import` fills in `description` and, where it recognizes the input, `role`,
-  numeric hints, and common parameter aliases. Alias inference uses graph
-  structure first and does not generate a `seed` alias; `--seed` uses the
-  dedicated seed-role resolution described above.
-- `list --json` and `preset --json` include these fields in their output, so AI agents can read a preset's intent without opening the YAML.
-- Apart from `aliases` (which `run` honors as extra flags), these fields are advisory: they document intent and do not constrain or validate values at run time.
-
-## JSON Output
-
-Use `--json` to print JSON-only output.
-All commands that support `--json` use an `{ "ok": ... }` envelope for both
-success and failure. The sole exception is `run --dry-run --json`, which emits
-the raw patched workflow so it can be sent directly to ComfyUI.
-
-Success example:
-
-```json
-{
-  "ok": true,
-  "preset": "text2img_v1",
-  "source": "local",
-  "base_url": "http://127.0.0.1:8188",
-  "scope": "local",
-  "output_dir": ".comfy-agent/outputs/text2img_v1/20260203_120000",
-  "runs": [
-    {
-      "index": 1,
-      "prompt_id": "xxxxxxxx",
-      "seed": 123,
-      "outputs": [
-        {
-          "filename": "00001.png",
-          "subfolder": "",
-          "type": "output",
-          "saved_to": ".comfy-agent/outputs/text2img_v1/20260203_120000/00001_123_1.png"
-        }
-      ],
-      "duration_ms": 12345,
-      "progress_events": [
-        {
-          "kind": "channel_connected",
-          "timestamp": 1738900000000
-        },
-        {
-          "kind": "execution_start",
-          "timestamp": 1738900000100
-        },
-        {
-          "kind": "progress",
-          "timestamp": 1738900000200,
-          "node": "3",
-          "value": 5,
-          "max": 20,
-          "percent": 25
-        }
-      ]
-    }
-  ]
-}
-```
-
-Error example:
-
-```json
-{
-  "ok": false,
-  "error": {
-    "code": "MISSING_REQUIRED_PARAM",
-    "message": "prompt is required",
-    "details": {
-      "param": "prompt"
-    }
-  }
-}
-```
-
-## Exit Codes
-
-The CLI returns only `0`, `2`, or `3`:
-
-- `0`: success
-- `2`: the invocation, input, or local environment is invalid; fix the command
-- `3`: the inspected or executed target state differs from what was expected,
-  such as a server failure or artifact mismatch; regenerate or retry
-
-`INVALID_PARAM` means a value has an invalid type or range (for example,
-`--n abc`). `INVALID_USAGE` means the argument structure is invalid, including
-missing required options, unknown commands, and extra positional arguments.
-
-## Typical Errors
-
-- `WORKDIR_NOT_FOUND`: run `comfy-agent init` first
-- `INVALID_PRESET`: invalid YAML structure (`version/name/workflow`)
-- `MISSING_REQUIRED_PARAM`: missing required parameter
-- `JOB_NOT_FOUND`: the requested local job record does not exist
-- `JOB_LOST`: the server no longer has the job in history or its queue; run
-  the same preset again
-- `MISSING_TOOL`: an explicitly requested verify artifact needs ffmpeg; install
-  it or remove the explicit `--frames` / `--sheet` request
-- `UNSUPPORTED_FORMAT`: a single verify target cannot be parsed by the built-in
-  probe or ffprobe
-- `VERIFY_CHECKS_FAILED`: artifact metadata did not meet one or more explicit
-  expectations; inspect `details.report`, then regenerate or fix the artifact
-- `SERVER_UNREACHABLE`: could not reach the server at all; check `base_url`,
-  or reconnect an expired tunnel with `comfy-agent connect <url>`
-- `MISSING_NODE_ON_SERVER`: the workflow references a node class the connected
-  server does not have (`details.missing_nodes`)
-- `MISSING_MODEL_ON_SERVER`: the workflow references model files absent on the
-  connected server (`details.missing_models`, each with the server's
-  `available` list) — usually means the server was provisioned for a different
-  workflow/kit
-- `API_ERROR`: server reached but the request failed; verify `base_url`
-- `EXECUTION_FAILED`: ComfyUI failed while executing the workflow. Inspect
-  `details.category` and `details.kind`; for `oom`, reduce resolution/steps or
-  ask about a higher GPU, and for `interrupted`, retry once.
-- `NO_OUTPUTS`: execution completed without saved files. Add an appropriate
-  `Save*` node to the workflow.
-- `TIMEOUT`: increase `--timeout-seconds`
-
-`run` checks the server (preflight) before submitting; skip with
-`--no-preflight` if you need to bypass it for debugging.
+Contributors can use `npm install`, `npm run build`, and `npm run dev -- <command>`.
+On Windows, use PowerShell and quote file paths containing spaces.
+
+The npm package includes the playbooks, skills, recipes, catalog, setup scripts, and
+workflow JSON used by the commands above. No repository checkout is required to read
+or install those bundled resources.
+
+## Commands at a glance
+
+| Command | Purpose |
+|---|---|
+| `init` | Create a local or global work directory. |
+| `connect` | Verify and remember a ComfyUI URL. |
+| `import` | Turn API/UI workflow JSON into a local preset. |
+| `run` | Preflight, submit, wait/download, or submit with `--async`. |
+| `jobs list|show|wait|prune` | Inspect and resume persisted jobs. |
+| `doctor` | Check connection, workdirs, nodes, and models. |
+| `list` | Discover local and remote workflows. |
+| `preset` | Show parameters, aliases, uploads, and metadata. |
+| `status` | Show resolved runtime configuration. |
+| `verify` | Probe outputs and create review aids offline. |
+| `analyze` | Evaluate an image with OpenAI image input. |
+| `colab catalog|suggest|kit` | Inspect and resolve bundled Colab kits. |
+| `playbook` | Read bundled agent policy documents. |
+| `skill list|install` | Install bundled skills for supported agents. |
+
+See the [complete CLI reference](./docs/cli-reference.md) for every option and payload.
+
+## Outputs & work directory
+
+`connect` or `init` creates `.comfy-agent/` with `workflows/`, `presets/`, `outputs/`,
+`jobs/`, and `cache/`; the remembered URL is in `config.yaml`. Use `--global` for
+`~/.config/.comfy-agent`. Generated files default to
+`.comfy-agent/outputs/<preset>/<timestamp>/`, alongside `run.json`; `verify` writes
+review aids below `<run-dir>/verify/`.
+
+## Exit codes & JSON
+
+The CLI returns only `0` (success), `2` (invalid invocation/input/local environment),
+or `3` (server/executed target/artifact state differs from expectations). With
+`--json`, success is `{ "ok": true, ... }` and failure is
+`{ "ok": false, "error": { "code": "...", "message": "...", "details": ... } }`.
+The only shape exception is `run --dry-run --json`, which prints raw workflow JSON.
+See [Exit codes and errors](./docs/cli-reference.md#exit-codes).
+
+## Documentation
+
+- [Agent Playbook](./docs/agent-playbook.md) — blueprint, recovery, and verification policy.
+- [CLI reference](./docs/cli-reference.md) — commands, presets, JSON, and errors.
+- [MiniMax H3 prompting](./docs/minimax-h3-prompting.md) — H3 video/audio prompt format.
+- [Music-video recipe](./recipes/music-video/RECIPE.md) — multi-stage production workflow.
+- [Colab kit guide](./scripts/colab/README.md) — all kits and their setup details.
+- [CHANGELOG](./CHANGELOG.md) — release history.
+
+## Contributing / License
+
+Contributors must follow the E2E verification discipline in [CLAUDE.md](./CLAUDE.md).
+Comfy Agent is available under the [MIT License](./LICENSE).
+
+## Command reference
+
+For complete command documentation, see [docs/cli-reference.md](./docs/cli-reference.md).

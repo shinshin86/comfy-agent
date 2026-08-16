@@ -3,7 +3,7 @@ import { CliError } from "../io/errors.js";
 import { log, print, printJson } from "../io/output.js";
 import { t } from "../i18n/index.js";
 import { writeConfig } from "../io/config.js";
-import type { WorkdirScope } from "../io/workdir.js";
+import { initWorkdir, type WorkdirScope } from "../io/workdir.js";
 
 export type ConnectOptions = {
   json?: boolean;
@@ -49,6 +49,7 @@ export const runConnect = async (rawUrl: string, options: ConnectOptions) => {
     });
   }
 
+  await initWorkdir({ scope });
   const savedTo = await writeConfig({ version: 1, base_url: baseUrl }, process.cwd(), scope);
 
   if (options.json) {
