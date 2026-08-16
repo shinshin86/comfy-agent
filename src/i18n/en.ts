@@ -179,7 +179,7 @@ export const messages = {
   "colab.suggest_alternatives": "Alternatives with unmet requirements:",
   "colab.gpu_unverified": "Note: GPU {gpu} is declared compatible but not yet E2E verified.",
   "colab.catalog_unavailable":
-    "The Colab catalog is missing from this installation (expected at {path}); reinstall comfy-agent >= 0.1.0.",
+    "The Colab catalog is missing from this installation (expected at {path}); reinstall comfy-agent >= 0.0.3.",
   "colab.catalog_read_failed": "Failed to read Colab catalog.",
   "colab.catalog_invalid": "Invalid Colab catalog format.",
   "colab.invalid_task": "task must be a supported Colab catalog task.",

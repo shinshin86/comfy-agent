@@ -182,7 +182,7 @@ export const messages = {
   "colab.suggest_alternatives": "未充足条件のある代替候補:",
   "colab.gpu_unverified": "注意: GPU {gpu} は互換宣言済みですが、E2Eは未検証です。",
   "colab.catalog_unavailable":
-    "このインストールに Colab catalog がありません（想定 path: {path}）。comfy-agent 0.1.0 以上を再インストールしてください。",
+    "このインストールに Colab catalog がありません（想定 path: {path}）。comfy-agent 0.0.3 以上を再インストールしてください。",
   "colab.catalog_read_failed": "Colab catalog の読み込みに失敗しました。",
   "colab.catalog_invalid": "Colab catalog の形式が不正です。",
   "colab.invalid_task": "task は対応している Colab catalog task を指定してください。",

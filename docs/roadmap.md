@@ -24,32 +24,37 @@ AI agents using ComfyUI on Google Colab, RunPod, or a home GPU.
    workflows, while `verify` and explicit inspection keep artifact claims grounded in
    evidence.
 
-## 0.1.0 — a distributable agent workflow
+## 0.0.3 — a distributable agent workflow
 
-Version 0.1.0 makes the full workflow available from the npm package: structured
+Version 0.0.3 makes the full workflow available from the npm package: structured
 preflight and execution errors, generated parameter aliases, resumable jobs and
 asynchronous submission, offline artifact verification, bundled kits/playbooks/skills,
-and concise bilingual documentation. See the [0.1.0 changelog](../CHANGELOG.md#010---2026-08-16)
+and concise bilingual documentation. See the [0.0.3 changelog](../CHANGELOG.md#003---2026-08-16)
 for the complete release notes.
 
-## Planned 0.2.0 milestone
+## Planned next: character memory and a generation ledger
 
-- A linear pipeline runner with matrix expansion, shell stages, persisted stage
-  results, and resume-from-stage support for production recipes.
+- Character resources that an agent creates and grows over time — canonical
+  appearance text, reference images, compatible LoRA attachments, and per-kit
+  prompt learnings — injected into any preset with a single flag and reusable
+  across projects and machines without committing them to git.
+- A queryable generation ledger built on the job records and `run.json` manifests
+  every run already writes: what was generated, with which preset, prompt, seed,
+  and outputs, so an agent can start from past successes instead of from scratch.
+- Recipes distilled by the agent from successful runs and replayed as a linear
+  pipeline with matrix expansion, shell stages, and resume-from-stage support.
+
+## Planned later
+
 - Reproducible environment locks for ComfyUI revisions, custom nodes, and model
   checksums, with `doctor` reporting drift.
 - Shared and time-bounded preflight caching to avoid repeated `/object_info` work.
-- Broader automated coverage for connection handling, WebSocket-to-polling fallback,
-  installed-package flows, and recipe execution.
-
-## Planned 0.3.0 milestone
-
 - Job cancellation, server-side interruption, and bounded WebSocket reconnection.
-- Character resources for consistent prompt text, reference images, and compatible
-  LoRA attachment across recipe stages.
 - Runtime and cost estimates based on measured GPU time and selected providers.
 - A verified RunPod template to demonstrate the same local-artifact workflow beyond
   Colab.
+- Broader automated coverage for connection handling, WebSocket-to-polling fallback,
+  installed-package flows, and recipe execution.
 
 ## Non-goals
 

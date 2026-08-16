@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0 - 2026-08-16
+## 0.0.3 - 2026-08-16
 
 ### Added
 
@@ -24,7 +24,7 @@
 
 ### Changed
 
-- `--version` is read from `package.json`; the package and CLI version are now `0.1.0`.
+- `--version` is read from `package.json`; the package and CLI version are now `0.0.3`.
 - Node.js 22 or newer is required. The CLI fails with `UNSUPPORTED_RUNTIME` when required runtime globals are missing and CI also tests Node.js 24.
 - `run` parses passthrough flags independently of repeated argument values and rejects stray positional arguments before resolving the workdir, preset, or server.
 - `import --force` preserves handwritten aliases when their targets are unchanged, while `list`, `preset`, and import JSON output expose generated metadata and alias assignments.

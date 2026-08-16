@@ -28,7 +28,7 @@ Produce a **blueprint** first, in this order:
    - "10-second anime video" → `text_to_video` (anime style)
    - "music video" → `text_to_audio` (song) + `text_to_image` (keyframes)
      + `image_to_video` (clips) + local ffmpeg assembly
-2. **Find kits per capability** (available from `npm i -g comfy-agent` since 0.1.0):
+2. **Find kits per capability** (available from `npm i -g comfy-agent` since 0.0.3):
    ```bash
    comfy-agent colab suggest "<capability + style + constraints>" --json
    ```

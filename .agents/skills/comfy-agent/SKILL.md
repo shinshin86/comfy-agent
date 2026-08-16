@@ -37,7 +37,7 @@ For a new creative goal (e.g. "make a music video", "10-second anime clip"):
 
 1. Decompose into capabilities (image / video / audio stages).
 2. `comfy-agent colab suggest "<requirement>" --json` per capability
-   (works from `npm i -g comfy-agent` since 0.1.0; note `download_gb`, `setup_minutes`,
+   (works from `npm i -g comfy-agent` since 0.0.3; note `download_gb`, `setup_minutes`,
    `composable`, `status`, `gpu`).
 3. `comfy-agent doctor --json` (+ `--preset <name>` when a preset exists).
 4. Present: pipeline stages, chosen kit + alternatives, GPU/cost implication,
