@@ -72,6 +72,10 @@ export const getJobsDirPath = (cwd: string, scope: WorkdirScope) => {
   return path.join(getWorkdirPath(cwd, scope), "jobs");
 };
 
+export const getCharactersDirPath = (cwd: string, scope: WorkdirScope) => {
+  return path.join(getWorkdirPath(cwd, scope), "characters");
+};
+
 export const initWorkdir = async (options?: {
   cwd?: string;
   force?: boolean;

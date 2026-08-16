@@ -244,6 +244,76 @@ unless `--full-prompts` is set.
 present, and absolute output paths. Full job IDs and unique prefixes are accepted.
 `history open` only prints the output directory and never opens a GUI.
 
+### `character`
+
+Character resources live independently under `.comfy-agent/characters/<name>/` (or the
+global work directory with `--global`). A character directory contains `character.yaml`,
+append-only `notes.md`, `gallery.json`, copied reference images under `refs/`, and copied
+gallery artifacts under `gallery/`. A lookup without `--global` prefers local and then
+falls back to global.
+
+```yaml
+version: 1
+name: miko
+display_name: Miko
+appearance: dark bob hair, small red hairpin, brown eyes
+triggers:
+  default: m1ko
+style: anime, soft lighting
+negative: extra fingers, text
+prompt_template: "{trigger} {appearance}, {prompt}, {style}"
+forms:
+  - id: default
+  - id: casual
+    appearance: dark bob hair, red hairpin, casual hoodie
+references:
+  - file: refs/front.png
+    role: reference_image
+    forms: [default]
+loras:
+  - file: miko_flux.safetensors
+    strength: 1
+    base: flux1
+content_rating:
+  age_depicted: teen
+  allow_nsfw: false
+privacy:
+  export_refs: false
+  export_gallery: false
+```
+
+The `default` form is mandatory and is added by `create` when omitted. Safe defaults
+include an empty default trigger, `allow_nsfw: false`, and metadata-only exports.
+Gallery additions copy job outputs into the character directory as `pending`; only
+`gallery approve` marks them `human` and sets the corresponding job record's
+`favorite` field.
+
+```bash
+comfy-agent character list [--global] [--json]
+comfy-agent character create <name> [--display-name <text>] [--appearance <text>|--appearance-file <path>] [--trigger <text>] [--style <text>] [--negative <text>] [--age <age>] [--allow-nsfw] [--tag <tags...>] [--global] [--json]
+comfy-agent character show <name> [--notes] [--gallery] [--full] [--global] [--json]
+comfy-agent character update <name> [the create metadata options] [--global] [--json]
+comfy-agent character note <name> <text> [--kit <preset-or-kit>] [--global] [--json]
+comfy-agent character ref add <name> <path> [--role <role>] [--form <id>] [--note <text>] [--global] [--json]
+comfy-agent character ref rm <name> <file> [--global] [--json]
+comfy-agent character form add <name> <id> --appearance <text> [--ref <paths...>] [--global] [--json]
+comfy-agent character lora add <name> <file> [--strength <n>] [--base <tag>] [--global] [--json]
+comfy-agent character gallery add <name> <job_id> [--output <n>] [--caption <text>] [--tag <tags...>] [--form <id>] [--global] [--json]
+comfy-agent character gallery approve <name> <gallery_ids...> [--global] [--json]
+comfy-agent character gallery rm <name> <gallery_id> [--global] [--json]
+comfy-agent character export <name> [--out <dir>] [--with-refs] [--with-gallery] [--global] [--json]
+comfy-agent character import <dir> [--name <override>] [--global] [--force] [--json]
+comfy-agent character rm <name> --force [--global] [--json]
+```
+
+`show --notes` returns the last 4,000 characters unless `--full` is present.
+Exports always contain `character.yaml`, `notes.md`, and metadata-only `gallery.json`;
+the two `--with-*` flags opt into copied binaries. Stored metadata paths remain relative.
+Character commands return exit 2 errors such as `CHARACTER_NOT_FOUND`,
+`CHARACTER_EXISTS`, `INVALID_CHARACTER`, `CHARACTER_REF_NOT_FOUND`,
+`CHARACTER_FORM_NOT_FOUND`, `GALLERY_JOB_NOT_FOUND`, `GALLERY_ITEM_NOT_FOUND`, and
+`CHARACTER_IMPORT_CONFLICT`.
+
 ### `jobs`
 
 Inspect, resume, and prune local job records.

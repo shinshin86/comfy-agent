@@ -242,6 +242,75 @@ comfy-agent history open <job_id>
 出力ファイルの絶対パスを返します。完全な job ID と一意な prefix を使用できます。
 `history open` は GUI を開かず、出力ディレクトリだけを表示します。
 
+### `character`
+
+character 資源は `.comfy-agent/characters/<name>/` に独立して保存されます。`--global`
+では global workdir を使います。各 directory は `character.yaml`、追記専用の
+`notes.md`、`gallery.json`、`refs/` にコピーした参照画像、`gallery/` にコピーした
+採用候補を持ちます。`--global` を指定しない検索は local を優先し、無ければ global に
+フォールバックします。
+
+```yaml
+version: 1
+name: miko
+display_name: ミコ
+appearance: dark bob hair, small red hairpin, brown eyes
+triggers:
+  default: m1ko
+style: anime, soft lighting
+negative: extra fingers, text
+prompt_template: "{trigger} {appearance}, {prompt}, {style}"
+forms:
+  - id: default
+  - id: casual
+    appearance: dark bob hair, red hairpin, casual hoodie
+references:
+  - file: refs/front.png
+    role: reference_image
+    forms: [default]
+loras:
+  - file: miko_flux.safetensors
+    strength: 1
+    base: flux1
+content_rating:
+  age_depicted: teen
+  allow_nsfw: false
+privacy:
+  export_refs: false
+  export_gallery: false
+```
+
+`default` form は必須で、`create` 時に省略されていれば自動追加されます。default trigger
+は空文字、`allow_nsfw` は false、export はメタデータのみが安全側の既定です。
+gallery への追加は job 出力を character directory にコピーし、`pending` にします。
+`gallery approve` だけが `human` 承認へ変更し、対応 job record の `favorite` を true にします。
+
+```bash
+comfy-agent character list [--global] [--json]
+comfy-agent character create <name> [--display-name <text>] [--appearance <text>|--appearance-file <path>] [--trigger <text>] [--style <text>] [--negative <text>] [--age <age>] [--allow-nsfw] [--tag <tags...>] [--global] [--json]
+comfy-agent character show <name> [--notes] [--gallery] [--full] [--global] [--json]
+comfy-agent character update <name> [create と同じ metadata option] [--global] [--json]
+comfy-agent character note <name> <text> [--kit <preset-or-kit>] [--global] [--json]
+comfy-agent character ref add <name> <path> [--role <role>] [--form <id>] [--note <text>] [--global] [--json]
+comfy-agent character ref rm <name> <file> [--global] [--json]
+comfy-agent character form add <name> <id> --appearance <text> [--ref <paths...>] [--global] [--json]
+comfy-agent character lora add <name> <file> [--strength <n>] [--base <tag>] [--global] [--json]
+comfy-agent character gallery add <name> <job_id> [--output <n>] [--caption <text>] [--tag <tags...>] [--form <id>] [--global] [--json]
+comfy-agent character gallery approve <name> <gallery_ids...> [--global] [--json]
+comfy-agent character gallery rm <name> <gallery_id> [--global] [--json]
+comfy-agent character export <name> [--out <dir>] [--with-refs] [--with-gallery] [--global] [--json]
+comfy-agent character import <dir> [--name <override>] [--global] [--force] [--json]
+comfy-agent character rm <name> --force [--global] [--json]
+```
+
+`show --notes` は `--full` が無ければ末尾4,000文字を返します。export は常に
+`character.yaml`、`notes.md`、メタデータだけの `gallery.json` を含み、2つの
+`--with-*` flag で実ファイルを明示的に追加します。metadata の path は相対のままです。
+character command は `CHARACTER_NOT_FOUND`、`CHARACTER_EXISTS`、
+`INVALID_CHARACTER`、`CHARACTER_REF_NOT_FOUND`、`CHARACTER_FORM_NOT_FOUND`、
+`GALLERY_JOB_NOT_FOUND`、`GALLERY_ITEM_NOT_FOUND`、`CHARACTER_IMPORT_CONFLICT` などを
+exit 2 で返します。
+
 ### `jobs`
 
 local job record の確認、再開、整理を行います。

@@ -40,7 +40,7 @@ const ParameterRoleSchema = z.enum([
   "custom",
 ]);
 
-const UploadRoleSchema = z.enum([
+export const UploadRoleSchema = z.enum([
   "init_image",
   "mask",
   "reference_image",
