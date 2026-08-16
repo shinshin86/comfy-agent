@@ -285,6 +285,10 @@ comfy-agent run text2img_v1 --global --prompt "A cat"
 comfy-agent run image_z_image_turbo --source remote-catalog --prompt "A cat" --base-url http://127.0.0.1:8188
 ```
 
+- `--seed` targets the first matching category: parameter name `seed`, then alias `seed`, then `role: seed`.
+- If that category has multiple targets, the same value is applied to all of them; `--seed-step` advances them together.
+- An explicit parameter flag such as `--12_noise_seed 5` takes priority over `--seed` for that target.
+
 With uploads:
 
 ```bash

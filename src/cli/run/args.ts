@@ -6,6 +6,41 @@ import type { RunOptions } from "./types.js";
 
 export { KNOWN_RUN_FLAGS } from "./flags.js";
 
+export type SeedTarget = {
+  param: string;
+  matched_by: "name" | "alias" | "role";
+};
+
+export const resolveSeedTargets = (preset: Preset): SeedTarget[] => {
+  const parameters = preset.parameters ?? {};
+  if (parameters.seed) {
+    return [{ param: "seed", matched_by: "name" }];
+  }
+
+  const aliasTargets = Object.entries(parameters)
+    .filter(([, def]) => def.aliases?.includes("seed"))
+    .map(([param]) => ({ param, matched_by: "alias" as const }));
+  if (aliasTargets.length > 0) return aliasTargets;
+
+  return Object.entries(parameters)
+    .filter(([, def]) => def.role === "seed")
+    .map(([param]) => ({ param, matched_by: "role" as const }));
+};
+
+export const applySeedValue = (
+  params: Record<string, unknown>,
+  targets: SeedTarget[],
+  seed: number,
+): Record<string, unknown> => {
+  const seeded = { ...params };
+  for (const target of targets) {
+    if (!Object.hasOwn(seeded, target.param)) {
+      seeded[target.param] = seed;
+    }
+  }
+  return seeded;
+};
+
 export const extractRunPassthrough = (presetName: string, commandArgs: string[]): string[] => {
   if (presetName.startsWith("--")) {
     throw new CliError("INVALID_USAGE", t("run.preset_name_first"), 2, {
@@ -95,7 +130,11 @@ export const parseArgv = (argv: string[]) => {
 export const resolveDynamicArgs = (
   rawArgs: string[],
   preset: Preset,
-): { params: Record<string, unknown>; uploads: Record<string, string> } => {
+): {
+  params: Record<string, unknown>;
+  uploads: Record<string, string>;
+  explicitParams: Set<string>;
+} => {
   const { map: parsed, positionals } = parseArgv(rawArgs);
   if (positionals.length > 0) {
     throw new CliError(
@@ -107,6 +146,7 @@ export const resolveDynamicArgs = (
   }
   const params: Record<string, unknown> = {};
   const uploads: Record<string, string> = {};
+  const explicitParams = new Set<string>();
 
   const parameters = preset.parameters ?? {};
   const uploadsDef = preset.uploads ?? {};
@@ -149,6 +189,7 @@ export const resolveDynamicArgs = (
       throw new CliError("INVALID_PARAM", t("run.value_required", { key }), 2, { param: key });
     }
     params[paramName] = coerceParamValue(def.type, value);
+    explicitParams.add(paramName);
   }
 
   for (const [name, def] of Object.entries(parameters)) {
@@ -172,7 +213,7 @@ export const resolveDynamicArgs = (
     });
   }
 
-  return { params, uploads };
+  return { params, uploads, explicitParams };
 };
 
 const randomSeed = () => Math.floor(Math.random() * 2 ** 31);
@@ -190,9 +231,10 @@ export const resolveSeedValues = (
     return Array.from({ length: runCount }, () => null);
   }
 
-  const hasSeedParam = preset.parameters && "seed" in preset.parameters;
-  if (!hasSeedParam) {
-    throw new CliError("MISSING_SEED_TARGET", t("run.missing_seed_target"), 2);
+  if (resolveSeedTargets(preset).length === 0) {
+    throw new CliError("MISSING_SEED_TARGET", t("run.missing_seed_target"), 2, {
+      hint: "add role: seed (or aliases: [seed]) to the seed parameter",
+    });
   }
 
   if (!seedOption && seedStepOption) {

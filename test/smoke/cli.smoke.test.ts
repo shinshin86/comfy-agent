@@ -165,6 +165,7 @@ describe("mock ComfyUI CLI smoke", () => {
     const progressEvents = runs[0]?.progress_events as JsonObject[];
 
     expect(result.code, result.stderr).toBe(0);
+    expect(payload.seed_targets).toEqual([{ param: "3_seed", matched_by: "role" }]);
     const [realSavedTo, realCwd] = await Promise.all([
       fs.realpath(savedTo),
       fs.realpath(workdir.cwd),
@@ -326,5 +327,35 @@ describe("mock ComfyUI CLI smoke", () => {
       "/history/:id",
       "/view",
     ]);
+  });
+
+  it("12: dry-run applies --seed to an imported preset seed parameter", async () => {
+    const server = await startServer();
+    const workdir = await createTmpWorkdir();
+    await importSmokePreset(workdir, server);
+    server.requests.length = 0;
+
+    const result = await runCli(
+      ["run", "smoke", "--source", "local", "--json", "--dry-run", "--seed", "42"],
+      cliOptions(workdir, server.baseUrl),
+    );
+    const workflow = parseJson(result);
+    const sampler = workflow["3"] as JsonObject;
+    const inputs = sampler.inputs as JsonObject;
+
+    expect(result.code, result.stderr).toBe(0);
+    expect(inputs.seed).toBe(42);
+
+    const explicitResult = await runCli(
+      ["run", "smoke", "--source", "local", "--json", "--dry-run", "--seed", "42", "--3_seed", "5"],
+      cliOptions(workdir, server.baseUrl),
+    );
+    const explicitWorkflow = parseJson(explicitResult);
+    const explicitSampler = explicitWorkflow["3"] as JsonObject;
+    const explicitInputs = explicitSampler.inputs as JsonObject;
+
+    expect(explicitResult.code, explicitResult.stderr).toBe(0);
+    expect(explicitInputs.seed).toBe(5);
+    expect(server.requests).toEqual([]);
   });
 });

@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { CliError } from "../src/io/errors.js";
 import {
+  applySeedValue,
   extractRunPassthrough,
   parseNumeric,
   resolveDynamicArgs,
+  resolveSeedTargets,
   resolveSeedValues,
 } from "../src/cli/run/args.js";
 import type { Preset } from "../src/preset/schema.js";
@@ -209,10 +211,131 @@ describe("resolveSeedValues", () => {
         prompt: presetBase.parameters!.prompt,
       },
     };
-    expect(() => resolveSeedValues(noSeedPreset, {}, { seed: "1" }, 1)).toThrow(CliError);
+    try {
+      resolveSeedValues(noSeedPreset, {}, { seed: "1" }, 1);
+      expect.unreachable();
+    } catch (err) {
+      expect(err).toBeInstanceOf(CliError);
+      expect(err).toMatchObject({
+        code: "MISSING_SEED_TARGET",
+        details: {
+          hint: "add role: seed (or aliases: [seed]) to the seed parameter",
+        },
+      });
+    }
+  });
+
+  it("accepts an imported-style parameter with role seed", () => {
+    const importedPreset: Preset = {
+      ...presetBase,
+      parameters: {
+        "7_seed": {
+          type: "int",
+          target: { node_id: "7", input: "seed" },
+          role: "seed",
+          default: 1,
+        },
+      },
+    };
+
+    expect(resolveSeedValues(importedPreset, {}, { seed: "10" }, 1)).toEqual([10]);
   });
 
   it("throws when seed-step is provided without seed", () => {
     expect(() => resolveSeedValues(presetBase, {}, { seedStep: "1" }, 1)).toThrow(CliError);
+  });
+});
+
+describe("resolveSeedTargets", () => {
+  it("prefers literal seed over role", () => {
+    const preset: Preset = {
+      ...presetBase,
+      parameters: {
+        ...presetBase.parameters,
+        "7_seed": {
+          type: "int",
+          target: { node_id: "7", input: "seed" },
+          role: "seed",
+        },
+      },
+    };
+
+    expect(resolveSeedTargets(preset)).toEqual([{ param: "seed", matched_by: "name" }]);
+  });
+
+  it("falls back to alias seed", () => {
+    const preset: Preset = {
+      ...presetBase,
+      parameters: {
+        manual_seed: {
+          type: "int",
+          target: { node_id: "7", input: "seed" },
+          aliases: ["seed"],
+        },
+        role_seed: {
+          type: "int",
+          target: { node_id: "8", input: "seed" },
+          role: "seed",
+        },
+      },
+    };
+
+    expect(resolveSeedTargets(preset)).toEqual([{ param: "manual_seed", matched_by: "alias" }]);
+  });
+
+  it("falls back to role seed and returns all matches", () => {
+    const preset: Preset = {
+      ...presetBase,
+      parameters: {
+        "7_seed": {
+          type: "int",
+          target: { node_id: "7", input: "seed" },
+          role: "seed",
+        },
+        "12_noise_seed": {
+          type: "int",
+          target: { node_id: "12", input: "noise_seed" },
+          role: "seed",
+        },
+      },
+    };
+
+    expect(resolveSeedTargets(preset)).toEqual([
+      { param: "7_seed", matched_by: "role" },
+      { param: "12_noise_seed", matched_by: "role" },
+    ]);
+  });
+
+  it("returns empty when nothing matches", () => {
+    const preset: Preset = {
+      ...presetBase,
+      parameters: {
+        steps: presetBase.parameters!.steps,
+      },
+    };
+
+    expect(resolveSeedTargets(preset)).toEqual([]);
+  });
+});
+
+describe("applySeedValue", () => {
+  const targets = [
+    { param: "7_seed", matched_by: "role" as const },
+    { param: "12_noise_seed", matched_by: "role" as const },
+  ];
+
+  it("writes seed to all targets", () => {
+    expect(applySeedValue({ prompt: "cat" }, targets, 42)).toEqual({
+      prompt: "cat",
+      "7_seed": 42,
+      "12_noise_seed": 42,
+    });
+  });
+
+  it("keeps explicit per-param value", () => {
+    expect(applySeedValue({ "7_seed": 5 }, targets, 42)).toEqual({
+      "7_seed": 5,
+      "12_noise_seed": 42,
+    });
   });
 });

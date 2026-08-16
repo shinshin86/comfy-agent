@@ -22,7 +22,8 @@ export const messages = {
   "cli.run.option.dry_run": "Output patched workflow JSON without sending",
   "cli.run.option.out": "Output directory",
   "cli.run.option.n": "Run count",
-  "cli.run.option.seed": "Seed (int or random)",
+  "cli.run.option.seed":
+    "Seed (int or random). Applies to the preset's seed parameter (name `seed`, alias `seed`, or role: seed)",
   "cli.run.option.seed_step": "Seed increment",
   "cli.run.option.poll_interval": "Polling interval (ms)",
   "cli.run.option.timeout": "Timeout (seconds)",
@@ -151,7 +152,7 @@ export const messages = {
   "run.file_path_required": "{key} must be a file path.",
   "run.unknown_param": "{key} is not a defined parameter.",
   "run.value_required": "{key} requires a value.",
-  "run.missing_seed_target": "seed parameter is not defined in preset.",
+  "run.missing_seed_target": "No seed parameter found (name `seed`, alias `seed`, or role: seed).",
   "run.seed_step_requires_seed": "--seed-step must be used with --seed.",
   "run.file_not_file": "{path} is not a file.",
   "run.file_not_found": "{path} not found.",

@@ -277,6 +277,10 @@ comfy-agent run text2img_v1 --global --prompt "A cat"
 comfy-agent run image_z_image_turbo --source remote-catalog --prompt "A cat" --base-url http://127.0.0.1:8188
 ```
 
+- `--seed` は、parameter名 `seed`、alias `seed`、`role: seed` の順で、最初に一致した分類を対象にします。
+- 同じ分類に複数の対象がある場合はすべてに同じ値を適用し、`--seed-step` でも同期して進めます。
+- `--12_noise_seed 5` のように個別のparameter flagを明示した対象では、その値を `--seed` より優先します。
+
 uploads がある場合の例:
 
 ```bash

@@ -16,7 +16,14 @@ import { extractOutputFiles } from "../output/provider.js";
 import { resolveComfyBaseUrl } from "../utils/base-url.js";
 import { sleep } from "../utils/time.js";
 import { ComfyProgressChannel, type ProgressEventRecord } from "../api/progress.js";
-import { parseArgv, parseNumeric, resolveDynamicArgs, resolveSeedValues } from "./run/args.js";
+import {
+  applySeedValue,
+  parseArgv,
+  parseNumeric,
+  resolveDynamicArgs,
+  resolveSeedTargets,
+  resolveSeedValues,
+} from "./run/args.js";
 import { tryLoadRemoteCatalogRunTarget, tryLoadRemoteUserdataRunTarget } from "./run/remote.js";
 import { resolveRunSource, resolveSelectedRunSource } from "./run/source.js";
 import type { RunOptions } from "./run/types.js";
@@ -361,15 +368,21 @@ export const runRun = async (presetName: string, options: RunOptions, rawArgs: s
     ? parseNumeric(options.timeoutSeconds, "timeout-seconds", true)
     : 300;
 
-  const { params, uploads } = resolveDynamicArgs(rawArgs, preset);
+  const { params, uploads, explicitParams } = resolveDynamicArgs(rawArgs, preset);
+  const seedTargets = resolveSeedTargets(preset);
   const seedValues = resolveSeedValues(preset, params, options, runCount);
+  const withSeedValue = (baseParams: Record<string, unknown>, seed: number) => {
+    const seedableParams = { ...baseParams };
+    for (const target of seedTargets) {
+      if (!explicitParams.has(target.param)) delete seedableParams[target.param];
+    }
+    return applySeedValue(seedableParams, seedTargets, seed);
+  };
 
   if (options.dryRun) {
     const seedValue = seedValues[0];
-    if (seedValue !== null) {
-      params.seed = seedValue;
-    }
-    const patched = applyParameters(workflow, preset, params);
+    const runParams = seedValue === null ? params : withSeedValue(params, seedValue);
+    const patched = applyParameters(workflow, preset, runParams);
     const withUploads = applyUploads(patched, preset, uploads);
     printJson(withUploads);
     return;
@@ -398,10 +411,10 @@ export const runRun = async (presetName: string, options: RunOptions, rawArgs: s
   for (let i = 0; i < runCount; i += 1) {
     const runIndex = i + 1;
     const start = Date.now();
-    const runParams = { ...params };
+    let runParams = { ...params };
     const seedValue = seedValues[i];
     if (seedValue !== null) {
-      runParams.seed = seedValue;
+      runParams = withSeedValue(runParams, seedValue);
     }
 
     const patched = applyParameters(workflow, preset, runParams);
@@ -495,6 +508,7 @@ export const runRun = async (presetName: string, options: RunOptions, rawArgs: s
       base_url: baseUrl,
       scope,
       output_dir: outputDir,
+      seed_targets: seedTargets,
       runs,
     });
     return;

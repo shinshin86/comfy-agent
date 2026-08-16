@@ -22,7 +22,8 @@ export const messages = {
   "cli.run.option.dry_run": "APIに送信せずworkflow JSONを出力",
   "cli.run.option.out": "出力先ディレクトリ",
   "cli.run.option.n": "実行回数",
-  "cli.run.option.seed": "seed (int or random)",
+  "cli.run.option.seed":
+    "seed（整数または random）。preset の seed parameter（名前 `seed`、alias `seed`、または role: seed）に適用",
   "cli.run.option.seed_step": "seed の増分",
   "cli.run.option.poll_interval": "ポーリング間隔 (ms)",
   "cli.run.option.timeout": "タイムアウト (秒)",
@@ -155,7 +156,8 @@ export const messages = {
   "run.file_path_required": "{key} はファイルパスを指定してください。",
   "run.unknown_param": "{key} は未定義のパラメータです。",
   "run.value_required": "{key} は値が必要です。",
-  "run.missing_seed_target": "seed パラメータがプリセットにありません。",
+  "run.missing_seed_target":
+    "seed parameter が見つかりません（名前 `seed`、alias `seed`、または role: seed）。",
   "run.seed_step_requires_seed": "--seed-step は --seed と併用してください。",
   "run.file_not_file": "{path} はファイルではありません。",
   "run.file_not_found": "{path} が見つかりません。",
