@@ -1,5 +1,7 @@
 # Colab × comfy-agent
 
+This directory is also distributed in the `comfy-agent` npm package.
+
 Run ComfyUI on Google Colab and drive it from local `comfy-agent` over a
 cloudflared tunnel. Automatable via the `colab-mcp` MCP server declared
 in `.mcp.json` at the repo root.

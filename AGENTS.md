@@ -3,6 +3,8 @@
 Guidance for AI coding agents (Codex, Claude Code, and others) driving the
 `comfy-agent` CLI to generate images, video, or audio with ComfyUI.
 
+Codex can also use the generated `.agents/skills/comfy-agent` repository skill.
+
 **Read [docs/agent-playbook.md](docs/agent-playbook.md) before orchestrating
 any generation work.** It defines:
 

@@ -8,7 +8,9 @@ import { runDoctor } from "./doctor.js";
 import { runAnalyze } from "./analyze.js";
 import { runStatus } from "./status.js";
 import { runPresetShow } from "./preset-show.js";
-import { runColabCatalog, runColabSuggest } from "./colab.js";
+import { registerColabKitCommand, runColabCatalog, runColabSuggest } from "./colab.js";
+import { runPlaybook } from "./playbook.js";
+import { runSkillInstall, runSkillList } from "./skill.js";
 import { runConnect } from "./connect.js";
 import { runJobsList, runJobsPrune, runJobsShow, runJobsWait } from "./jobs.js";
 import { runVerify } from "./verify.js";
@@ -300,7 +302,61 @@ program
     }
   });
 
+program
+  .command("playbook")
+  .description(t("cli.playbook.description"))
+  .argument("[name]", t("cli.playbook.arg.name"))
+  .option("--section <n|slug>", t("cli.playbook.option.section"))
+  .option("--list", t("cli.playbook.option.list"))
+  .option("--path", t("cli.playbook.option.path"))
+  .option("--json", t("cli.option.json"))
+  .option("--lang <lang>", t("cli.option.lang"))
+  .action(async (name, options) => {
+    try {
+      await runPlaybook(name, options);
+    } catch (err) {
+      handleError(err, options?.json);
+    }
+  });
+
+const skill = program.command("skill").description(t("cli.skill.description"));
+
+skill
+  .command("list")
+  .description(t("cli.skill.list.description"))
+  .option("--json", t("cli.option.json"))
+  .option("--lang <lang>", t("cli.option.lang"))
+  .action(async (options) => {
+    try {
+      await runSkillList(options);
+    } catch (err) {
+      handleError(err, options?.json);
+    }
+  });
+
+skill
+  .command("install")
+  .description(t("cli.skill.install.description"))
+  .argument("[names...]", t("cli.skill.install.arg.names"))
+  .requiredOption("--agent <agent>", t("cli.skill.option.agent"))
+  .option("--global", t("cli.skill.option.global"))
+  .option("--project", t("cli.skill.option.project"))
+  .option("--dir <path>", t("cli.skill.option.dir"))
+  .option("--force", t("cli.option.force"))
+  .option("--dry-run", t("cli.option.dry_run"))
+  .option("--json", t("cli.option.json"))
+  .option("--lang <lang>", t("cli.option.lang"))
+  .action(async (names, options) => {
+    try {
+      await runSkillInstall(names ?? [], options);
+    } catch (err) {
+      handleError(err, options?.json);
+    }
+  });
+
 const colab = program.command("colab").description(t("cli.colab.description"));
+
+registerColabKitCommand(colab, (error, jsonOutput) => handleError(error, jsonOutput));
 
 colab
   .command("catalog")

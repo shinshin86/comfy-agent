@@ -21,7 +21,12 @@
     "dist",
     "README.md",
     "README.ja.md",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    "AGENTS.md",
+    "docs/*.md",
+    "recipes/**/*.md",
+    "scripts/colab/**/*.{py,json,md,yaml}",
+    ".claude/skills/**"
   ],
   "type": "module",
   "bin": {
@@ -35,6 +40,9 @@
     "fmt": "prettier -w .",
     "test": "vitest run",
     "test:smoke": "vitest run -c vitest.smoke.config.ts",
+    "sync-skills": "node scripts/sync-skills.mjs",
+    "check-pack": "node scripts/check-pack.mjs",
+    "pack-smoke": "bash scripts/pack-smoke.sh",
     "prepublishOnly": "npm run clean && npm run build"
   },
   "dependencies": {

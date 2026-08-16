@@ -1,6 +1,9 @@
+import path from "node:path";
+import type { Command } from "commander";
 import { print, printJson } from "../io/output.js";
 import { t } from "../i18n/index.js";
 import { CliError } from "../io/errors.js";
+import { RESOURCES, resourceExists, resourcePath } from "../io/resources.js";
 import {
   buildColabCatalogPayload,
   buildColabSuggestPayload,
@@ -22,6 +25,8 @@ export type ColabSuggestOptions = {
   gpu?: string;
   limit?: string;
 };
+
+export type ColabKitOptions = { json?: boolean };
 
 const VALID_TASKS = new Set<ColabTask>([
   "text_to_image",
@@ -125,4 +130,65 @@ export const runColabSuggest = async (goal: string | undefined, options: ColabSu
       );
     }
   }
+};
+
+const requireKitResource = async (relative: string) => {
+  if (await resourceExists(relative)) return resourcePath(relative);
+  const resolved = resourcePath(relative);
+  throw new CliError(
+    "RESOURCE_NOT_FOUND",
+    t("resource.not_found", { resource: relative, path: resolved }),
+    2,
+    { resource: relative, path: resolved },
+  );
+};
+
+export const runColabKit = async (name: string, options: ColabKitOptions) => {
+  const catalog = await loadColabCatalogFile();
+  const kit = catalog.kits.find((candidate) => candidate.name === name);
+  if (!kit) {
+    throw new CliError("COLAB_KIT_NOT_FOUND", t("colab.kit_not_found", { name }), 2, {
+      name,
+      available: catalog.kits.map((candidate) => candidate.name),
+    });
+  }
+  const kitRelative = path.posix.join(RESOURCES.colabDir, kit.path.replace(/\/+$/, ""));
+  const dir = resourcePath(kitRelative);
+  const setup = await requireKitResource(path.posix.join(kitRelative, kit.setup_file));
+  const launcher = await requireKitResource(RESOURCES.launcher);
+  const workflows = Object.fromEntries(
+    await Promise.all(
+      kit.workflows.map(async (workflow) => [
+        workflow.file,
+        await requireKitResource(path.posix.join(kitRelative, workflow.file)),
+      ]),
+    ),
+  );
+  const payload = { ok: true, kit, paths: { dir, setup, launcher, workflows } };
+  if (options.json) printJson(payload);
+  else {
+    print(`Kit: ${kit.name}`);
+    print(`Paste ${setup} then ${launcher} into Colab.`);
+    for (const workflow of Object.values(workflows)) print(`Import ${workflow}`);
+  }
+  return payload;
+};
+
+export const registerColabKitCommand = (
+  colab: Command,
+  onError: (error: unknown, jsonOutput?: boolean) => void,
+) => {
+  colab
+    .command("kit")
+    .description(t("cli.colab.kit.description"))
+    .argument("<name>", t("cli.colab.kit.arg.name"))
+    .option("--json", t("cli.option.json"))
+    .option("--lang <lang>", t("cli.option.lang"))
+    .action(async (name, options) => {
+      try {
+        await runColabKit(name, options);
+      } catch (error) {
+        onError(error, options?.json);
+      }
+    });
 };

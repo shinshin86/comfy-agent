@@ -1,10 +1,10 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import YAML from "yaml";
 import { z } from "zod";
 import { CliError } from "../io/errors.js";
 import { t } from "../i18n/index.js";
+import { RESOURCES, resourcePath } from "../io/resources.js";
 
 const RelativePathSchema = z
   .string()
@@ -189,8 +189,7 @@ export const ColabCatalogSchema = z
 export type ColabCatalog = z.infer<typeof ColabCatalogSchema>;
 export type ColabKit = z.infer<typeof ColabKitSchema>;
 
-export const defaultColabCatalogPath = () =>
-  path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../scripts/colab/catalog.yaml");
+export const defaultColabCatalogPath = () => resourcePath(RESOURCES.catalog);
 
 const sortCatalog = (catalog: ColabCatalog): ColabCatalog => ({
   version: catalog.version,
@@ -228,9 +227,12 @@ export const loadColabCatalogFile = async (filePath = defaultColabCatalogPath())
     parsed = YAML.parse(raw);
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === "ENOENT") {
-      throw new CliError("COLAB_CATALOG_UNAVAILABLE", t("colab.catalog_unavailable"), 2, {
-        path: filePath,
-      });
+      throw new CliError(
+        "COLAB_CATALOG_UNAVAILABLE",
+        t("colab.catalog_unavailable", { path: filePath }),
+        2,
+        { path: filePath },
+      );
     }
     throw new CliError("COLAB_CATALOG_READ_FAILED", t("colab.catalog_read_failed"), 2, {
       cause: String(err),
