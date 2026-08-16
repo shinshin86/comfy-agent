@@ -3,6 +3,7 @@
 Complete command, preset, output, and error reference for `comfy-agent`.
 For the orchestration policy used by AI agents, see the
 [Agent Playbook](./agent-playbook.md). Japanese: [CLI reference (日本語)](./cli-reference.ja.md).
+For planned milestones and explicit non-goals, see the [Roadmap](./roadmap.md).
 
 ## Work directory
 

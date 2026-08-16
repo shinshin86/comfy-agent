@@ -185,6 +185,7 @@ See [Exit codes and errors](./docs/cli-reference.md#exit-codes).
 
 - [Agent Playbook](./docs/agent-playbook.md) — blueprint, recovery, and verification policy.
 - [CLI reference](./docs/cli-reference.md) — commands, presets, JSON, and errors.
+- [Roadmap](./docs/roadmap.md) — released foundations, planned milestones, and non-goals.
 - [MiniMax H3 prompting](./docs/minimax-h3-prompting.md) — H3 video/audio prompt format.
 - [Music-video recipe](./recipes/music-video/RECIPE.md) — multi-stage production workflow.
 - [Colab kit guide](./scripts/colab/README.md) — all kits and their setup details.

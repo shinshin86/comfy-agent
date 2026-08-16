@@ -185,6 +185,7 @@ CLI の終了コードは `0`（成功）、`2`（呼び出し・入力・local 
 
 - [Agent Playbook](./docs/agent-playbook.md) — blueprint、復旧、検証方針。
 - [CLI リファレンス](./docs/cli-reference.ja.md) — command、preset、JSON、error。
+- [Roadmap](./docs/roadmap.md) — release 済みの基盤、計画中 milestone、non-goal。
 - [MiniMax H3 prompting](./docs/minimax-h3-prompting.md) — H3 動画・音声 prompt 形式。
 - [music-video recipe](./recipes/music-video/RECIPE.md) — 多段制作 workflow。
 - [Colab kit guide](./scripts/colab/README.md) — 全 kit と setup 詳細。

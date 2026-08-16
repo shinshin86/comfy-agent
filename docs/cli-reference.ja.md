@@ -3,6 +3,7 @@
 `comfy-agent` のコマンド、preset、出力、エラーに関する完全版リファレンスです。
 AI エージェントの実行方針は [Agent Playbook](./agent-playbook.md) を参照してください。
 English: [CLI reference](./cli-reference.md)。
+計画中の milestone と明示的な non-goal は [Roadmap](./roadmap.md) を参照してください。
 
 ## 作業ディレクトリ
 

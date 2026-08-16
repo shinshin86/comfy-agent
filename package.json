@@ -1,7 +1,7 @@
 {
   "name": "comfy-agent",
   "description": "Comfy Agent is a tool to use ComfyUI from the CLI. It is suitable for both direct CLI usage and AI-agent-driven automation.",
-  "version": "0.0.2",
+  "version": "0.1.0",
   "keywords": [
     "comfyui",
     "cli",
