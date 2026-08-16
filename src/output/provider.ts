@@ -2,6 +2,7 @@ export type OutputFileRef = {
   filename: string;
   subfolder?: string;
   type?: string;
+  kind?: string;
 };
 
 type Provider = {
@@ -16,7 +17,7 @@ const PROVIDERS: Provider[] = [
   { name: "audio", keys: ["audios", "audio"] },
 ];
 
-const toFileRef = (item: unknown): OutputFileRef | null => {
+const toFileRef = (item: unknown, kind?: string): OutputFileRef | null => {
   if (!item || typeof item !== "object") return null;
   const obj = item as Record<string, unknown>;
   const filename = obj.filename;
@@ -24,14 +25,19 @@ const toFileRef = (item: unknown): OutputFileRef | null => {
 
   const subfolder = typeof obj.subfolder === "string" ? obj.subfolder : undefined;
   const type = typeof obj.type === "string" ? obj.type : undefined;
-  return { filename, subfolder, type };
+  return {
+    filename,
+    ...(subfolder === undefined ? {} : { subfolder }),
+    ...(type === undefined ? {} : { type }),
+    ...(kind === undefined ? {} : { kind }),
+  };
 };
 
-const collectFromValue = (value: unknown): OutputFileRef[] => {
+const collectFromValue = (value: unknown, kind?: string): OutputFileRef[] => {
   if (!Array.isArray(value)) return [];
   const files: OutputFileRef[] = [];
   for (const item of value) {
-    const ref = toFileRef(item);
+    const ref = toFileRef(item, kind);
     if (ref) files.push(ref);
   }
   return files;
@@ -54,7 +60,7 @@ const collectFromNodeOutput = (nodeOutput: Record<string, unknown>) => {
 
   for (const provider of PROVIDERS) {
     for (const key of provider.keys) {
-      collected.push(...collectFromValue(nodeOutput[key]));
+      collected.push(...collectFromValue(nodeOutput[key], provider.name));
     }
   }
 
