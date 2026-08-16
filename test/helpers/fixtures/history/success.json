@@ -1,0 +1,21 @@
+{
+  "prompt-id": {
+    "prompt": [0, "prompt-id", {}, {}, ["9"]],
+    "outputs": {
+      "9": {
+        "images": [
+          {
+            "filename": "smoke_00001_.png",
+            "subfolder": "",
+            "type": "output"
+          }
+        ]
+      }
+    },
+    "status": {
+      "status_str": "success",
+      "completed": true,
+      "messages": []
+    }
+  }
+}

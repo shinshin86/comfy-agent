@@ -62,7 +62,8 @@ comfy-agent run mv_song --<tags_flag> "..." --<lyrics_flag> "$(cat lyrics.txt)" 
   --<bpm_flag> 118 --json
 ```
 
-- Check duration with `ffprobe`; regenerate (new seed) if unusable.
+- Run `comfy-agent verify <song-file> --expect-kind audio --json`; check its
+  duration/waveform and regenerate with a new seed if unusable.
 - **Extract the beat grid from the actual audio** (generated BPM can drift
   from the requested value):
 
@@ -87,7 +88,8 @@ tempo, beats = librosa.beat.beat_track(y=y, sr=sr, units="time")
 - Generate **2 candidates** (different seeds) for every protagonist scene;
   view them and keep the one closer to the sheet. Environment-only shots
   usually need 1 take.
-- Inspect every keyframe side by side (contact sheet) before animating:
+- Run `comfy-agent verify <keyframe-run-dir> --expect-kind image --json`, then
+  inspect its contact sheet before animating:
   same person? same outfit? consistent palette? Fix now — a wrong keyframe
   wastes ~5 A100-minutes per clip downstream.
 
@@ -102,10 +104,11 @@ comfy-agent run mv_clip --image sceneN.png \
   each to its planned bar count, so generate at least one bar more than the
   cut plan needs.
 - **Last-frame chaining** (optional, for adjacent scenes sharing a
-  location): extract the final frame of clip N and use it as `--image` for
-  clip N+1 instead of a fresh keyframe.
-- **Retake loop**: after each clip, extract first/middle/last frames and
-  check against the shot list (subject correct? motion as planned? no
+  location): run `comfy-agent verify <clip-file> --expect-kind video`, then
+  use its final extracted frame as `--image` for clip N+1 instead of a fresh
+  keyframe.
+- **Retake loop**: after each clip, run `verify` and check its
+  first/middle/last frames against the shot list (subject correct? motion as planned? no
   morphing?). One retake with adjusted motion prompt or seed; keep the
   better take. Cap retakes (~1 per clip) to bound cost.
 - **Object hallucination rescue (no-retake fallback)**: i2v sometimes grows
@@ -145,8 +148,9 @@ ffmpeg -i visual.mp4 -i song.mp3 -map 0:v -map 1:a -c:v copy -c:a aac \
 
 ### 6. MV quality gate (before reporting ANYTHING)
 
-Score the assembled MV against this checklist by actually inspecting it
-(frames at every cut point + spaced frames + `ffprobe`):
+Run `comfy-agent verify <mv-file> --expect-kind video --json`, then score the
+assembled MV against this checklist by actually inspecting its spaced frames,
+cut-point frames, duration, and audio metadata:
 
 - [ ] **Story**: a stranger can say what happened (arc start → end)
 - [ ] **Protagonist**: same person (hair/outfit) in every appearance

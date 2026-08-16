@@ -26,7 +26,7 @@ Parameter flags follow the `--<node_id>_<input>` convention of the
 auto-generated preset (`--11_text` = positive prompt, `--12_text` =
 negative, `--19_seed` = sampler seed, `--19_steps`, `--19_cfg`). Rename
 keys in `.comfy-agent/presets/anima.yaml` for friendlier flags if
-needed.
+needed. You can also use `--seed 42` instead of `--19_seed 42`.
 
 ## Notes
 

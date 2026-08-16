@@ -8,10 +8,8 @@ description: >-
   camera move, style drift, rushed pacing) and the prompt needs iteration.
 ---
 
-<!-- Mirrored at .agents/skills/minimax-h3-prompting/SKILL.md for Codex
-     repo-level skill discovery (supported in newer Codex versions; older
-     Codex reaches this content via AGENTS.md → docs/minimax-h3-prompting.md).
-     Keep both copies in sync. -->
+<!-- Generated into .agents/skills by `npm run sync-skills` for repo-level
+     discovery. Edit only this .claude source; do not edit the mirror. -->
 
 # minimax-h3-prompting
 

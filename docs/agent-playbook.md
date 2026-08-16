@@ -28,7 +28,7 @@ Produce a **blueprint** first, in this order:
    - "10-second anime video" → `text_to_video` (anime style)
    - "music video" → `text_to_audio` (song) + `text_to_image` (keyframes)
      + `image_to_video` (clips) + local ffmpeg assembly
-2. **Find kits per capability** (run from a checkout of this repo):
+2. **Find kits per capability** (available from `npm i -g comfy-agent` since 0.0.3):
    ```bash
    comfy-agent colab suggest "<capability + style + constraints>" --json
    ```
@@ -92,13 +92,27 @@ ephemerality tax entirely.
 
 ## 3. Error contract (CLI → agent)
 
-Commands with a `--json` flag (`run`, `doctor`, `list`, `status`, `preset`,
-`connect`, `analyze`, `colab *`) emit errors in this shape (`init` and
-`import` are text-only):
+Commands with a `--json` flag (`init`, `import`, `run`, `jobs *`, `doctor`,
+`list`, `status`, `preset`, `connect`, `verify`, `analyze`, `colab *`) emit
+errors in this shape:
 
 ```json
 { "ok": false, "error": { "code": "...", "message": "...", "details": { } } }
 ```
+
+Success and failure both use an `{ "ok": ... }` envelope. The sole exception
+is `run --dry-run --json`, which emits the raw patched workflow so it can be
+sent directly to ComfyUI.
+
+The CLI returns only exit codes `0`, `2`, and `3`:
+
+- `2` — the invocation, input, or local environment is invalid; fix the command.
+- `3` — the inspected or executed target state differs from what was expected
+  (server failure or artifact mismatch); regenerate or retry.
+
+`INVALID_PARAM` is for an invalid value type or range. `INVALID_USAGE` is for
+an invalid argument structure, including Commander errors such as missing
+required options and unknown commands.
 
 One shape exception: when `doctor` itself cannot reach the server it still
 exits 0-vs-3 as usual but reports the failure **inside** its normal payload
@@ -115,9 +129,16 @@ Codes the orchestration flow relies on (Phase 1):
 | `MISSING_NODE_ON_SERVER` | 3 | Workflow references a node class the server does not have | `server`, `missing_nodes: [{node_id, class_type}]`, `missing_models` |
 | `MISSING_MODEL_ON_SERVER` | 3 | Workflow references model files absent on the server | `server`, `missing_models: [{node_id, class_type, input, value, available[], available_truncated?}]`, `missing_nodes` |
 | `WORKDIR_NOT_FOUND` | 2 | No `.comfy-agent/` — run `comfy-agent init` | — |
+| `INVALID_USAGE` | 2 | Invalid argument structure | `commander_code` for Commander errors |
 | `MISSING_REQUIRED_PARAM` | 2 | Bad invocation | `param` |
 | `API_ERROR` | 3 | Server reached but request failed (5xx, invalid response) | — |
+| `EXECUTION_FAILED` | 3 | ComfyUI execution failed or was interrupted. For `category: oom`, reduce resolution/steps or ask the human about a higher GPU; for `kind: interrupted`, retry once | `prompt_id`, `run_index`, `kind`, `node_id`, `node_type`, `exception_type`, `exception_message`, `category`, `executed`, `traceback_tail`, `partial_outputs`, `output_dir` |
+| `NO_OUTPUTS` | 2 | Execution completed without output files; add an appropriate `Save*` node | `prompt_id`, `run_index`, `output_dir` |
 | `TIMEOUT` | 3 | Generation exceeded timeout | — |
+| `JOB_LOST` | 3 | The submitted job is absent from both ComfyUI history and queue | `job_id`, `prompt_id`, `base_url`, `recorded_base_url`, `hint` |
+| `MISSING_TOOL` | 2 | An explicitly requested verify artifact needs ffmpeg | `tool`, `hint`, `env` |
+| `UNSUPPORTED_FORMAT` | 2 | A single verify target cannot be parsed | `path`, `magic`, `ext`, `supported` |
+| `VERIFY_CHECKS_FAILED` | 3 | Artifact metadata failed one or more requested checks | `failed`, `report` |
 
 `run` performs the preflight automatically before submitting;
 `doctor --preset <name>` runs the same check standalone;
@@ -141,31 +162,53 @@ work that costs money, rights, or physical human action → the human decides.**
 | GPU below kit's `gpu.minimum` | **human (choice)** | Present: upgrade runtime (cost) vs. smaller model (quality delta). Never choose paid options silently |
 | License constraint (`license_notes`: non-commercial etc.) | **human (choice)** | Summarize the constraint, ask about intended use before generating |
 | Generation succeeded but quality is off | **agent (bounded)** | Inspect the output yourself, adjust params, retry ≤ 3 times, then report with evidence |
+| `EXECUTION_FAILED` with `category: oom` | depends | Reduce resolution or steps first; if that is insufficient, present a higher-GPU option to the human because it may cost money |
+| `EXECUTION_FAILED` with `kind: interrupted` | **agent** | Retry once; if the server interrupts it again, report the repeated interruption |
+| `NO_OUTPUTS` | **agent** | Add or fix the workflow's appropriate `Save*` output node, then rerun |
 | `TIMEOUT` | **agent** | Retry once with a raised `--timeout-seconds`; if it persists, report — the model may be too heavy for the runtime |
+| `JOB_LOST` | **agent** | Re-run the preset with the same arguments, using the record's `params`, `uploads`, and `seed` |
 
 ## 5. Reconnect flow (Colab volatility, condensed)
 
 ```
-run/doctor → SERVER_UNREACHABLE (trycloudflare URL)
+run/doctor/jobs wait → SERVER_UNREACHABLE (trycloudflare URL)
   → tell human: "Run All the notebook, paste the final line"
   → human pastes: comfy-agent connect https://new-id.trycloudflare.com
-  → agent runs it (verifies + persists), then resumes the exact task
+  → agent runs it (verifies + persists)
+  → if a job was in flight: comfy-agent jobs wait <id>
+       same runtime → downloads the outputs
+       new runtime → JOB_LOST → re-run the preset (local files remain intact)
 ```
 
 Total human cost per Colab session: open notebook, Run All, paste one line.
 
 ## 6. Verification duty
 
-Before reporting success, verify the artifact yourself:
+Before reporting success, verify the artifact yourself. Start with
+`comfy-agent verify <run-dir> --json` — it needs no API key and works
+offline. It reports per-file kind / dimensions / duration / frame count
+(pure-JS, including the animated WEBP that Wan-family kits emit), and when
+`ffmpeg` is on PATH it also writes `<run-dir>/verify/sheet.png` (contact
+sheet), `verify/<name>/frame_NN_*.png` (first, evenly spaced, last frames),
+and `verify/<name>_wave.png` for audio. Add `--expect-kind`,
+`--expect-count`, or `--min-duration` to turn the request into machine-checked
+assertions (exit 3 on failure — regenerate or fix the artifact).
 
-- **Images** — view the file; compare against the request.
-- **Video** — extract frames (`ffmpeg -i out.mp4 -vf fps=1 f_%02d.png`) and
-  view them; check duration and motion plausibility.
-- **Audio** — check duration/waveform (`ffprobe`); play it back when possible.
+Then **look**: open the sheet/frames (or pass them to `analyze` when an
+OpenAI key is available) and compare against the request — subject, style,
+motion, count. `verify` never looks at content; its
+`summary.verified_visually` is always `false` on purpose.
+
+- **Images** — `verify` sheet → view; compare against the request.
+- **Video** — `verify` frames (first/middle/last are always included) → view;
+  check duration and motion plausibility. Animated WEBP: `verify` gives frame
+  count/duration but cannot extract frames — use the PIL one-liner from its
+  warning hint before viewing.
+- **Audio** — `verify` duration/waveform; play it back when possible.
 
 Report differences from the request honestly. Never say "done" for an
-output you have not inspected; if verification is impossible, say so
-explicitly and mark the result unverified.
+output you have not inspected; if verification is impossible (no ffmpeg or
+viewer), say so explicitly and mark the result unverified.
 
 ## 7. Worked example
 
@@ -180,5 +223,6 @@ Human: "アニメ調で10秒くらいの動画プロトタイプを作りたい"
 5. Human picks `animegen_t2v`, runs the notebook, pastes
    `comfy-agent connect https://….trycloudflare.com`.
 6. Agent: `import` the kit workflow → `run` with designed prompt →
-   `MISSING_MODEL_ON_SERVER`? (mismatched kit → §4) → frames check →
-   deliver with a summary of what was verified.
+   `MISSING_MODEL_ON_SERVER`? (mismatched kit → §4) →
+   `comfy-agent verify <run-dir> --expect-kind video --min-duration 8` →
+   view the frames → deliver with a summary of what was verified.

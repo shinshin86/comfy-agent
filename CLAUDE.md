@@ -52,3 +52,19 @@ Mac in a single run-through:
 
 If any box is unchecked at PR time, the kit is **Starter** — not
 Verified E2E.
+
+## Releasing
+
+Releases are automated by `.github/workflows/publish.yml` using npm Trusted
+Publishing (OIDC) — no npm token lives in this repository or its secrets.
+
+1. Bump `version` in `package.json` (`npm version patch --no-git-tag-version`)
+   and add the matching `## <version> - <date>` section to `CHANGELOG.md`.
+2. Open a PR and merge it into `main`.
+3. The workflow runs the quality gates, publishes to npm with provenance, and
+   creates the `v<version>` git tag and GitHub Release from the CHANGELOG
+   section. Merges that do not change the version publish nothing.
+
+Do not run `npm publish` by hand for a version that will also be merged to
+`main`; the workflow skips versions that already exist on npm, but the
+provenance attestation is only produced by the workflow path.

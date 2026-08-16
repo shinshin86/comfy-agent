@@ -67,5 +67,7 @@ run-through from a local macOS machine over a trycloudflare tunnel:
       (35.3 s, h264 + AAC), spot-checked frame-by-frame
 
 Notes from the run: ffmpeg could not decode the animated WEBP directly —
-use the recipe's PIL frame-extraction fallback. Character consistency
+`comfy-agent verify` can still report its dimensions, duration, and frame
+count; use the recipe's PIL frame-extraction fallback for visual review.
+Character consistency
 across scenes varies without a character LoRA.

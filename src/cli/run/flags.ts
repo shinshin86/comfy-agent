@@ -1,0 +1,17 @@
+export const KNOWN_RUN_FLAGS = new Set([
+  "json",
+  "async",
+  "dry-run",
+  "out",
+  "n",
+  "seed",
+  "seed-step",
+  "poll-interval-ms",
+  "timeout-seconds",
+  "no-preflight",
+  "preflight",
+  "base-url",
+  "source",
+  "global",
+  "lang",
+]);

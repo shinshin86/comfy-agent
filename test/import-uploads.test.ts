@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { buildPresetTemplate } from "../src/cli/import.js";
+import { buildImportPayload, buildPresetTemplate } from "../src/cli/import.js";
+import type { Preset } from "../src/preset/schema.js";
 
 describe("buildPresetTemplate upload inference", () => {
   it("turns LoadImage, LoadAudio, and LoadVideo inputs into required uploads", () => {
@@ -87,5 +88,117 @@ describe("buildPresetTemplate upload inference", () => {
       "1_negative_prompt": { role: "negative_prompt" },
       "1_steps": { role: "steps", min: 1 },
     });
+  });
+});
+
+describe("buildImportPayload", () => {
+  it("lists parameters and uploads in preset --json shape", () => {
+    const presetTemplate: Preset = {
+      version: 1,
+      name: "demo",
+      workflow: "demo.json",
+      parameters: {
+        seed: {
+          type: "int",
+          required: false,
+          default: 42,
+          target: { node_id: "19", input: "seed" },
+          description: "Random seed.",
+          role: "seed",
+          aliases: ["--random-seed"],
+          min: 0,
+          max: 100,
+          choices: [42, 84],
+          recommended: 42,
+        },
+      },
+      uploads: {
+        image: {
+          kind: "image",
+          cli_flag: "--image",
+          target: { node_id: "1", input: "image" },
+          description: "Input image.",
+          role: "input_image",
+          aliases: ["--input-image"],
+          required: true,
+        },
+      },
+    };
+
+    const payload = buildImportPayload({
+      name: "demo",
+      scope: "local",
+      baseUrl: "http://127.0.0.1:8188",
+      workflowDest: "/project/.comfy-agent/workflows/demo.json",
+      presetDest: "/project/.comfy-agent/presets/demo.yaml",
+      objectInfoSource: "server",
+      overwritten: false,
+      hadSubgraphs: true,
+      presetTemplate,
+    });
+
+    expect(payload).toEqual({
+      ok: true,
+      scope: "local",
+      preset: "demo",
+      preset_path: "/project/.comfy-agent/presets/demo.yaml",
+      workflow_path: "/project/.comfy-agent/workflows/demo.json",
+      base_url: "http://127.0.0.1:8188",
+      object_info: "server",
+      subgraphs_expanded: true,
+      overwritten: false,
+      parameters: [
+        {
+          name: "seed",
+          type: "int",
+          required: false,
+          default: 42,
+          target: { node_id: "19", input: "seed" },
+          description: "Random seed.",
+          role: "seed",
+          aliases: ["--random-seed"],
+          min: 0,
+          max: 100,
+          choices: [42, 84],
+          recommended: 42,
+        },
+      ],
+      uploads: [
+        {
+          name: "image",
+          kind: "image",
+          cli_flag: "--image",
+          target: { node_id: "1", input: "image" },
+          description: "Input image.",
+          role: "input_image",
+          aliases: ["--input-image"],
+          required: true,
+        },
+      ],
+    });
+    expect(Object.keys(payload.parameters[0])).toEqual([
+      "name",
+      "type",
+      "required",
+      "default",
+      "target",
+      "description",
+      "role",
+      "aliases",
+      "min",
+      "max",
+      "choices",
+      "recommended",
+    ]);
+    expect(Object.keys(payload.uploads[0])).toEqual([
+      "name",
+      "kind",
+      "cli_flag",
+      "target",
+      "description",
+      "role",
+      "aliases",
+      "required",
+    ]);
   });
 });

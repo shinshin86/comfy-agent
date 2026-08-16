@@ -14,7 +14,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        node-version: [22]
+        node-version: [22, 24]
 
     steps:
       - name: Checkout
@@ -32,8 +32,38 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Check documentation links
+        run: npm run check-links
+
       - name: Test
         run: npm test
 
       - name: Build
         run: npm run build
+
+      - name: Check npm package contents
+        run: npm run check-pack
+
+      - name: Smoke
+        run: npm run test:smoke
+
+  pack-smoke:
+    name: Pack and installed CLI smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Pack and install smoke
+        run: npm run pack-smoke

@@ -1,7 +1,54 @@
 import { CliError } from "../../io/errors.js";
 import { t } from "../../i18n/index.js";
 import type { Preset } from "../../preset/schema.js";
+import { KNOWN_RUN_FLAGS } from "./flags.js";
 import type { RunOptions } from "./types.js";
+
+export { KNOWN_RUN_FLAGS } from "./flags.js";
+
+export type SeedTarget = {
+  param: string;
+  matched_by: "name" | "alias" | "role";
+};
+
+export const resolveSeedTargets = (preset: Preset): SeedTarget[] => {
+  const parameters = preset.parameters ?? {};
+  if (parameters.seed) {
+    return [{ param: "seed", matched_by: "name" }];
+  }
+
+  const aliasTargets = Object.entries(parameters)
+    .filter(([, def]) => def.aliases?.includes("seed"))
+    .map(([param]) => ({ param, matched_by: "alias" as const }));
+  if (aliasTargets.length > 0) return aliasTargets;
+
+  return Object.entries(parameters)
+    .filter(([, def]) => def.role === "seed")
+    .map(([param]) => ({ param, matched_by: "role" as const }));
+};
+
+export const applySeedValue = (
+  params: Record<string, unknown>,
+  targets: SeedTarget[],
+  seed: number,
+): Record<string, unknown> => {
+  const seeded = { ...params };
+  for (const target of targets) {
+    if (!Object.hasOwn(seeded, target.param)) {
+      seeded[target.param] = seed;
+    }
+  }
+  return seeded;
+};
+
+export const extractRunPassthrough = (presetName: string, commandArgs: string[]): string[] => {
+  if (presetName.startsWith("--")) {
+    throw new CliError("INVALID_USAGE", t("run.preset_name_first"), 2, {
+      received: presetName,
+    });
+  }
+  return commandArgs[0] === presetName ? commandArgs.slice(1) : commandArgs;
+};
 
 export const parseNumeric = (value: string, name: string, integer = false) => {
   const num = Number(value);
@@ -47,11 +94,15 @@ const coerceParamValue = (type: string, rawValue: string | boolean) => {
   return rawValue;
 };
 
-const parseArgv = (argv: string[]) => {
+export const parseArgv = (argv: string[]) => {
   const map: Record<string, string | boolean> = {};
+  const positionals: string[] = [];
   for (let i = 0; i < argv.length; i += 1) {
     const token = argv[i];
-    if (!token.startsWith("--")) continue;
+    if (!token.startsWith("--")) {
+      positionals.push(token);
+      continue;
+    }
     const trimmed = token.slice(2);
     if (trimmed.length === 0) continue;
 
@@ -73,33 +124,29 @@ const parseArgv = (argv: string[]) => {
     map[name] = next;
     i += 1;
   }
-  return map;
+  return { map, positionals };
 };
-
-const KNOWN_RUN_FLAGS = new Set([
-  "json",
-  "dry-run",
-  "out",
-  "n",
-  "seed",
-  "seed-step",
-  "poll-interval-ms",
-  "timeout-seconds",
-  "no-preflight",
-  "preflight",
-  "base-url",
-  "source",
-  "global",
-  "lang",
-]);
 
 export const resolveDynamicArgs = (
   rawArgs: string[],
   preset: Preset,
-): { params: Record<string, unknown>; uploads: Record<string, string> } => {
-  const parsed = parseArgv(rawArgs);
+): {
+  params: Record<string, unknown>;
+  uploads: Record<string, string>;
+  explicitParams: Set<string>;
+} => {
+  const { map: parsed, positionals } = parseArgv(rawArgs);
+  if (positionals.length > 0) {
+    throw new CliError(
+      "INVALID_USAGE",
+      t("run.unexpected_argument", { value: positionals[0] }),
+      2,
+      { unexpected: positionals },
+    );
+  }
   const params: Record<string, unknown> = {};
   const uploads: Record<string, string> = {};
+  const explicitParams = new Set<string>();
 
   const parameters = preset.parameters ?? {};
   const uploadsDef = preset.uploads ?? {};
@@ -142,6 +189,7 @@ export const resolveDynamicArgs = (
       throw new CliError("INVALID_PARAM", t("run.value_required", { key }), 2, { param: key });
     }
     params[paramName] = coerceParamValue(def.type, value);
+    explicitParams.add(paramName);
   }
 
   for (const [name, def] of Object.entries(parameters)) {
@@ -159,15 +207,13 @@ export const resolveDynamicArgs = (
 
   for (const [name, def] of Object.entries(uploadsDef)) {
     if (uploads[name] !== undefined || !def.required) continue;
-    throw new CliError(
-      "MISSING_REQUIRED_UPLOAD",
-      t("param.required", { param: def.cli_flag }),
-      2,
-      { upload: name, flag: def.cli_flag },
-    );
+    throw new CliError("MISSING_REQUIRED_UPLOAD", t("param.required", { param: def.cli_flag }), 2, {
+      upload: name,
+      flag: def.cli_flag,
+    });
   }
 
-  return { params, uploads };
+  return { params, uploads, explicitParams };
 };
 
 const randomSeed = () => Math.floor(Math.random() * 2 ** 31);
@@ -185,9 +231,10 @@ export const resolveSeedValues = (
     return Array.from({ length: runCount }, () => null);
   }
 
-  const hasSeedParam = preset.parameters && "seed" in preset.parameters;
-  if (!hasSeedParam) {
-    throw new CliError("MISSING_SEED_TARGET", t("run.missing_seed_target"), 2);
+  if (resolveSeedTargets(preset).length === 0) {
+    throw new CliError("MISSING_SEED_TARGET", t("run.missing_seed_target"), 2, {
+      hint: "add role: seed (or aliases: [seed]) to the seed parameter",
+    });
   }
 
   if (!seedOption && seedStepOption) {

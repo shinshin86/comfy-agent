@@ -9,18 +9,24 @@ import { getSubdirPath, getWorkdirPath } from "../io/workdir.js";
 import { loadPresetFile } from "../preset/loader.js";
 import type { Preset } from "../preset/schema.js";
 import { resolvePresetPath } from "../preset/path.js";
-import {
-  normalizeWorkflow,
-  workflowHasSubgraphs,
-  type WorkflowObjectInfo,
-} from "../workflow/normalize.js";
+import { loadLocalWorkflow } from "../workflow/load.js";
 import { applyParameters, applyUploads } from "../workflow/patch.js";
 import { assertPreflightPasses, fetchPreflightReport } from "../workflow/preflight.js";
-import { extractOutputFiles } from "../output/provider.js";
 import { resolveComfyBaseUrl } from "../utils/base-url.js";
-import { sleep } from "../utils/time.js";
-import { ComfyProgressChannel, type ProgressEventRecord } from "../api/progress.js";
-import { parseNumeric, resolveDynamicArgs, resolveSeedValues } from "./run/args.js";
+import type { ProgressEventRecord } from "../api/progress.js";
+import { createProgressUi } from "../jobs/progress-ui.js";
+import { assertJobsDirWritable, updateJob, writeJob } from "../jobs/store.js";
+import { upsertRunManifest } from "../jobs/manifest.js";
+import type { JobOutput, JobRecord } from "../jobs/types.js";
+import { awaitAndDownload, submitPrompt } from "../jobs/wait.js";
+import {
+  applySeedValue,
+  parseArgv,
+  parseNumeric,
+  resolveDynamicArgs,
+  resolveSeedTargets,
+  resolveSeedValues,
+} from "./run/args.js";
 import { tryLoadRemoteCatalogRunTarget, tryLoadRemoteUserdataRunTarget } from "./run/remote.js";
 import { resolveRunSource, resolveSelectedRunSource } from "./run/source.js";
 import type { RunOptions } from "./run/types.js";
@@ -39,7 +45,17 @@ type OutputFile = {
   filename: string;
   subfolder?: string;
   type?: string;
+  kind?: string;
   saved_to: string;
+};
+
+type JobSummary = {
+  job_id: string;
+  prompt_id: string;
+  batch_index: number;
+  seed: number | null;
+  status: JobRecord["status"];
+  job_file?: string;
 };
 
 type RunResult = {
@@ -65,29 +81,6 @@ const ensureWorkdir = async (scope: "local" | "global") => {
   }
 };
 
-const loadWorkflow = async (preset: Preset, client: ComfyClient) => {
-  const workflowPath = path.join(getSubdirPath("workflows"), preset.workflow);
-  const raw = await fs.readFile(workflowPath, "utf-8");
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch (err) {
-    throw new CliError("INVALID_WORKFLOW", t("run.invalid_workflow_json"), 2, {
-      file: workflowPath,
-      cause: String(err),
-    });
-  }
-
-  const objectInfo = workflowHasSubgraphs(parsed)
-    ? await client.objectInfo<WorkflowObjectInfo>()
-    : null;
-  try {
-    return normalizeWorkflow(parsed, { objectInfo });
-  } catch (err) {
-    throw new CliError("INVALID_WORKFLOW", (err as Error).message, 2, { file: workflowPath });
-  }
-};
-
 const tryLoadLocalRunTarget = async (
   presetName: string,
   scope: "local" | "global",
@@ -96,7 +89,7 @@ const tryLoadLocalRunTarget = async (
   try {
     const presetPath = await resolvePresetPath(presetName, scope);
     const preset = await loadPresetFile(presetPath);
-    const workflow = await loadWorkflow(preset, client);
+    const { workflow } = await loadLocalWorkflow(preset, scope, client);
     return { source: "local" as const, preset, workflow };
   } catch (err) {
     if (err instanceof CliError && err.code === "PRESET_NOT_FOUND") return null;
@@ -144,6 +137,7 @@ const getOutputDir = async (
   presetName: string,
   outDir: string | undefined,
   scope: "local" | "global",
+  jobId: string,
 ) => {
   if (outDir) {
     const resolved = path.resolve(outDir);
@@ -152,8 +146,16 @@ const getOutputDir = async (
   }
   const timestamp = formatTimestamp(new Date());
   const dir = path.join(getSubdirPath("outputs", process.cwd(), scope), presetName, timestamp);
-  await fs.mkdir(dir, { recursive: true });
-  return dir;
+  await fs.mkdir(path.dirname(dir), { recursive: true });
+  try {
+    await fs.mkdir(dir);
+    return dir;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+    const suffixed = `${dir}_${jobId.slice(0, 8)}`;
+    await fs.mkdir(suffixed, { recursive: true });
+    return suffixed;
+  }
 };
 
 const formatTimestamp = (date: Date) => {
@@ -163,157 +165,17 @@ const formatTimestamp = (date: Date) => {
   )}${pad(date.getMinutes())}${pad(date.getSeconds())}`;
 };
 
-const safeFilename = (name: string) => name.replace(/[^a-zA-Z0-9._-]/g, "_");
-
-const getHistoryEntry = (history: unknown, promptId: string) => {
-  if (!history || typeof history !== "object") return null;
-  const obj = history as Record<string, unknown>;
-  if (promptId in obj) {
-    return obj[promptId];
-  }
-  return history;
-};
-
-const waitForHistory = async (
-  client: ComfyClient,
-  promptId: string,
-  pollIntervalMs: number,
-  timeoutSeconds: number,
-) => {
-  const start = Date.now();
-  while (true) {
-    const history = await client.history(promptId);
-    const entry = getHistoryEntry(history, promptId);
-    const outputs = extractOutputFiles(entry);
-    if (outputs.length > 0) {
-      return { entry, outputs };
-    }
-
-    if (Date.now() - start > timeoutSeconds * 1000) {
-      throw new CliError("TIMEOUT", t("run.timeout"), 3, {
-        prompt_id: promptId,
-      });
-    }
-    await sleep(pollIntervalMs);
-  }
-};
-
-const formatProgressEvent = (event: ProgressEventRecord) => {
-  if (event.kind === "channel_connected") return t("run.progress.channel_connected");
-  if (event.kind === "channel_unavailable") return t("run.progress.channel_unavailable");
-  if (event.kind === "channel_lost") return t("run.progress.channel_lost");
-  if (event.kind === "execution_start") return t("run.progress.execution_start");
-  if (event.kind === "execution_interrupted") return t("run.progress.execution_interrupted");
-  if (event.kind === "execution_error") {
-    return t("run.progress.execution_error", {
-      node: event.node ?? "-",
-      message: event.message ?? "-",
-    });
-  }
-  if (event.kind === "execution_cached") {
-    return t("run.progress.execution_cached", { node: event.node ?? "-" });
-  }
-  if (event.kind === "executing") {
-    return t("run.progress.executing", { node: event.node ?? "-" });
-  }
-  if (event.kind === "executed") {
-    return t("run.progress.executed", { node: event.node ?? "-" });
-  }
-  if (event.kind === "progress") {
-    return t("run.progress.progress", {
-      node: event.node ?? "-",
-      value: event.value ?? 0,
-      max: event.max ?? 0,
-      percent: event.percent?.toFixed(2) ?? "-",
-    });
-  }
-  return `progress: ${event.kind}`;
-};
-
-type ProgressUi = {
-  onEvent: (event: ProgressEventRecord) => void;
-  finish: () => void;
-};
-
-const createProgressUi = (enabled: boolean): ProgressUi => {
-  if (!enabled) {
-    return {
-      onEvent: () => {},
-      finish: () => {},
-    };
-  }
-
-  if (!process.stderr.isTTY) {
-    return {
-      onEvent: (event) => {
-        log(formatProgressEvent(event));
-      },
-      finish: () => {},
-    };
-  }
-
-  let hasRendered = false;
-  let latestNode = "-";
-
-  const bar = (percent: number, width = 24) => {
-    const clamped = Math.max(0, Math.min(100, percent));
-    const filled = Math.round((clamped / 100) * width);
-    return `[${"#".repeat(filled)}${"-".repeat(width - filled)}]`;
-  };
-
-  const draw = (line: string) => {
-    process.stderr.write(`\r\x1b[2K${line}`);
-    hasRendered = true;
-  };
-
-  const flushLine = () => {
-    if (!hasRendered) return;
-    process.stderr.write("\n");
-    hasRendered = false;
-  };
-
-  return {
-    onEvent: (event) => {
-      if (event.node) {
-        latestNode = event.node;
-      }
-
-      if (event.kind === "progress" && event.percent !== undefined) {
-        draw(`Progress ${bar(event.percent)} ${event.percent.toFixed(1)}% (node: ${latestNode})`);
-        return;
-      }
-      if (event.kind === "executing") {
-        draw(`Progress running... (node: ${latestNode})`);
-        return;
-      }
-      if (event.kind === "execution_start") {
-        draw("Progress started...");
-        return;
-      }
-      if (event.kind === "execution_cached") {
-        draw(`Progress using cache... (node: ${latestNode})`);
-        return;
-      }
-
-      if (
-        event.kind === "channel_connected" ||
-        event.kind === "channel_unavailable" ||
-        event.kind === "channel_lost" ||
-        event.kind === "execution_error" ||
-        event.kind === "execution_interrupted" ||
-        event.kind === "executed"
-      ) {
-        flushLine();
-        log(formatProgressEvent(event));
-      }
-    },
-    finish: () => {
-      flushLine();
-    },
-  };
-};
-
 export const runRun = async (presetName: string, options: RunOptions, rawArgs: string[]) => {
+  const { positionals } = parseArgv(rawArgs);
+  if (positionals.length > 0) {
+    throw new CliError(
+      "INVALID_USAGE",
+      t("run.unexpected_argument", { value: positionals[0] }),
+      2,
+      { unexpected: positionals },
+    );
+  }
+
   const scope = options.global ? "global" : "local";
   const scopeLabel = t(scope === "global" ? "scope.global" : "scope.local");
   await ensureWorkdir(scope);
@@ -378,15 +240,21 @@ export const runRun = async (presetName: string, options: RunOptions, rawArgs: s
     ? parseNumeric(options.timeoutSeconds, "timeout-seconds", true)
     : 300;
 
-  const { params, uploads } = resolveDynamicArgs(rawArgs, preset);
+  const { params, uploads, explicitParams } = resolveDynamicArgs(rawArgs, preset);
+  const seedTargets = resolveSeedTargets(preset);
   const seedValues = resolveSeedValues(preset, params, options, runCount);
+  const withSeedValue = (baseParams: Record<string, unknown>, seed: number) => {
+    const seedableParams = { ...baseParams };
+    for (const target of seedTargets) {
+      if (!explicitParams.has(target.param)) delete seedableParams[target.param];
+    }
+    return applySeedValue(seedableParams, seedTargets, seed);
+  };
 
   if (options.dryRun) {
     const seedValue = seedValues[0];
-    if (seedValue !== null) {
-      params.seed = seedValue;
-    }
-    const patched = applyParameters(workflow, preset, params);
+    const runParams = seedValue === null ? params : withSeedValue(params, seedValue);
+    const patched = applyParameters(workflow, preset, runParams);
     const withUploads = applyUploads(patched, preset, uploads);
     printJson(withUploads);
     return;
@@ -397,7 +265,9 @@ export const runRun = async (presetName: string, options: RunOptions, rawArgs: s
     assertPreflightPasses(report, baseUrl);
   }
 
-  const outputDir = await getOutputDir(preset.name, options.out, scope);
+  if (options.async) await assertJobsDirWritable(process.cwd(), scope);
+  const requestPromptIds = Array.from({ length: runCount }, () => randomUUID());
+  const outputDir = await getOutputDir(preset.name, options.out, scope, requestPromptIds[0]);
   log(t("run.output_dir", { dir: outputDir }));
 
   const resolvedUploads: Record<string, string> = {};
@@ -412,96 +282,152 @@ export const runRun = async (presetName: string, options: RunOptions, rawArgs: s
   }
 
   const runs: RunResult[] = [];
+  const jobSummaries: JobSummary[] = [];
+  let batchId: string | null = null;
   for (let i = 0; i < runCount; i += 1) {
     const runIndex = i + 1;
-    const start = Date.now();
-    const runParams = { ...params };
+    let runParams = { ...params };
     const seedValue = seedValues[i];
     if (seedValue !== null) {
-      runParams.seed = seedValue;
+      runParams = withSeedValue(runParams, seedValue);
     }
 
     const patched = applyParameters(workflow, preset, runParams);
     const withUploads = applyUploads(patched, preset, resolvedUploads);
 
     const clientId = randomUUID();
-    const requestPromptId = randomUUID();
+    const requestPromptId = requestPromptIds[i];
     log(t("run.sending_prompt", { index: runIndex, count: runCount }));
-
-    const progressEvents: ProgressEventRecord[] = [];
-    const progressUi = createProgressUi(!options.json);
-    let resolveChannelReady: (() => void) | null = null;
-    const channelReady = new Promise<void>((resolve) => {
-      resolveChannelReady = resolve;
-    });
-    const progressChannel = new ComfyProgressChannel(
-      baseUrl,
-      (event) => {
-        progressEvents.push(event);
-        if (
-          event.kind === "channel_connected" ||
-          event.kind === "channel_unavailable" ||
-          event.kind === "channel_lost"
-        ) {
-          resolveChannelReady?.();
-        }
-        progressUi.onEvent(event);
-      },
-      { targetPromptId: requestPromptId, clientId },
-    );
-    progressChannel.start();
-    await Promise.race([channelReady, sleep(500)]);
-
-    const promptResponse = await client.prompt(withUploads, {
+    const promptId = await submitPrompt(client, withUploads, {
       clientId,
       promptId: requestPromptId,
     });
-    const promptId = promptResponse.prompt_id ?? requestPromptId;
-    if (!promptId) {
-      progressChannel.stop();
-      throw new CliError("API_ERROR", t("run.prompt_id_missing"), 3);
+    batchId ??= promptId;
+    const job: JobRecord = {
+      version: 1,
+      job_id: promptId,
+      prompt_id: promptId,
+      client_id: clientId,
+      batch_id: batchId,
+      batch_index: runIndex,
+      batch_count: runCount,
+      scope,
+      base_url: client.baseUrl,
+      preset: preset.name,
+      source: selectedSource,
+      params: runParams,
+      uploads: resolvedUploads,
+      seed: seedValue,
+      output_dir: outputDir,
+      submitted_at: new Date().toISOString(),
+      status: "submitted",
+      outputs: [],
+    };
+
+    let jobFile: string | undefined;
+    let recordStored = false;
+    try {
+      jobFile = await writeJob(job, process.cwd(), scope);
+      recordStored = true;
+    } catch (error) {
+      if (options.async) throw error;
+      const message = error instanceof Error ? error.message : String(error);
+      log(t("jobs.record_write_warning", { message }));
     }
-    if (promptId !== requestPromptId) {
-      progressChannel.setTargetPromptId(promptId);
+    log(t("jobs.submitted_job", { id: promptId, index: runIndex, count: runCount }));
+
+    const summary: JobSummary = {
+      job_id: promptId,
+      prompt_id: promptId,
+      batch_index: runIndex,
+      seed: seedValue,
+      status: "submitted",
+      ...(jobFile === undefined ? {} : { job_file: jobFile }),
+    };
+    jobSummaries.push(summary);
+
+    if (options.async) {
+      const manifest = await upsertRunManifest(
+        outputDir,
+        {
+          preset: preset.name,
+          source: selectedSource,
+          base_url: client.baseUrl,
+          scope,
+          params: runParams,
+          uploads: resolvedUploads,
+        },
+        {
+          index: runIndex,
+          job_id: promptId,
+          prompt_id: promptId,
+          status: "submitted",
+          seed: seedValue,
+          outputs: [],
+        },
+      );
+      if (!manifest.ok) log(t("jobs.manifest_warning", { message: manifest.error.message }));
+      continue;
     }
 
-    let outputs: Array<{ filename: string; subfolder?: string; type?: string }> = [];
+    const progressUi = createProgressUi(!options.json);
+    let completed: Awaited<ReturnType<typeof awaitAndDownload>>;
     try {
-      const result = await waitForHistory(client, promptId, pollIntervalMs, timeoutSeconds);
-      outputs = result.outputs;
+      completed = await awaitAndDownload(client, job, {
+        pollIntervalMs,
+        timeoutSeconds,
+        resume: false,
+        onProgress: progressUi.onEvent,
+        onWarning: (message) => log(t("jobs.manifest_warning", { message })),
+        store: {
+          update: async (patch) => {
+            if (!recordStored) return;
+            await updateJob(promptId, patch, process.cwd(), scope);
+          },
+        },
+      });
     } finally {
-      progressChannel.stop();
       progressUi.finish();
     }
 
-    const outputFiles: OutputFile[] = [];
-    for (let j = 0; j < outputs.length; j += 1) {
-      const output = outputs[j];
-      const buffer = await client.viewFile(output);
-      const ext = path.extname(output.filename) || ".png";
-      const safeBase = safeFilename(path.basename(output.filename, ext));
-      const seedSuffix = seedValue !== null ? String(seedValue) : "seed";
-      const fileName = `${safeBase}_${seedSuffix}_${runIndex}_${j + 1}${ext}`;
-      const filePath = path.join(outputDir, fileName);
-      await fs.writeFile(filePath, buffer);
-      log(t("run.saved_file", { path: filePath }));
-      outputFiles.push({
-        filename: output.filename,
-        subfolder: output.subfolder,
-        type: output.type,
-        saved_to: filePath,
-      });
-    }
-
-    const durationMs = Date.now() - start;
+    const outputFiles: OutputFile[] = completed.outputs.map((output: JobOutput) => ({
+      filename: output.filename,
+      ...(output.subfolder === undefined ? {} : { subfolder: output.subfolder }),
+      ...(output.type === undefined ? {} : { type: output.type }),
+      ...(output.kind === undefined ? {} : { kind: output.kind }),
+      saved_to: path.join(outputDir, output.saved_to),
+    }));
+    for (const output of outputFiles) log(t("run.saved_file", { path: output.saved_to }));
+    summary.status = "completed";
     runs.push({
       index: runIndex,
       prompt_id: promptId,
       seed: seedValue,
       outputs: outputFiles,
-      duration_ms: durationMs,
-      progress_events: progressEvents,
+      duration_ms: completed.duration_ms,
+      progress_events: completed.progress_events,
     });
+  }
+
+  if (options.async) {
+    if (options.json) {
+      printJson({
+        ok: true,
+        async: true,
+        preset: preset.name,
+        source: selectedSource,
+        base_url: client.baseUrl,
+        scope,
+        output_dir: outputDir,
+        jobs: jobSummaries,
+      });
+      return;
+    }
+    print(t("run.scope", { scope: scopeLabel }));
+    print(t("run.source", { source: selectedSource }));
+    print(t("jobs.submitted_count", { count: jobSummaries.length }));
+    print(t("jobs.wait_hint", { ids: jobSummaries.map(({ job_id: id }) => id).join(" ") }));
+    return;
   }
 
   if (options.json) {
@@ -509,10 +435,12 @@ export const runRun = async (presetName: string, options: RunOptions, rawArgs: s
       ok: true,
       preset: preset.name,
       source: selectedSource,
-      base_url: baseUrl,
+      base_url: client.baseUrl,
       scope,
       output_dir: outputDir,
+      seed_targets: seedTargets,
       runs,
+      jobs: jobSummaries,
     });
     return;
   }

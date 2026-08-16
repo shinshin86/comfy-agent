@@ -1,7 +1,7 @@
 {
   "name": "comfy-agent",
   "description": "Comfy Agent is a tool to use ComfyUI from the CLI. It is suitable for both direct CLI usage and AI-agent-driven automation.",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "keywords": [
     "comfyui",
     "cli",
@@ -14,11 +14,19 @@
   ],
   "author": "shinshin86 <shinshin86npm@gmail.com> (https://github.com/shinshin86)",
   "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
   "files": [
     "dist",
     "README.md",
     "README.ja.md",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    "AGENTS.md",
+    "docs/*.md",
+    "recipes/**/*.md",
+    "scripts/colab/**/*.{py,json,md,yaml}",
+    ".claude/skills/**"
   ],
   "type": "module",
   "bin": {
@@ -31,6 +39,11 @@
     "lint": "eslint .",
     "fmt": "prettier -w .",
     "test": "vitest run",
+    "test:smoke": "vitest run -c vitest.smoke.config.ts",
+    "sync-skills": "node scripts/sync-skills.mjs",
+    "check-links": "node scripts/check-links.mjs",
+    "check-pack": "node scripts/check-pack.mjs",
+    "pack-smoke": "bash scripts/pack-smoke.sh",
     "prepublishOnly": "npm run clean && npm run build"
   },
   "dependencies": {

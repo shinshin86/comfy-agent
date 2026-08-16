@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { CliError } from "../src/io/errors.js";
-import { parseNumeric, resolveDynamicArgs, resolveSeedValues } from "../src/cli/run/args.js";
+import {
+  applySeedValue,
+  extractRunPassthrough,
+  parseNumeric,
+  resolveDynamicArgs,
+  resolveSeedTargets,
+  resolveSeedValues,
+} from "../src/cli/run/args.js";
 import type { Preset } from "../src/preset/schema.js";
 
 const presetBase: Preset = {
@@ -48,6 +55,26 @@ const presetBase: Preset = {
   },
 };
 
+describe("extractRunPassthrough", () => {
+  it("drops the leading preset name", () => {
+    expect(extractRunPassthrough("demo", ["demo", "--prompt", "cat"])).toEqual(["--prompt", "cat"]);
+  });
+
+  it("throws INVALID_USAGE when the preset name looks like an option", () => {
+    try {
+      extractRunPassthrough("--prompt", ["--prompt", "cat", "demo"]);
+      expect.unreachable();
+    } catch (err) {
+      expect(err).toBeInstanceOf(CliError);
+      expect(err).toMatchObject({
+        code: "INVALID_USAGE",
+        exitCode: 2,
+        details: { received: "--prompt" },
+      });
+    }
+  });
+});
+
 describe("parseNumeric", () => {
   it("parses valid numbers", () => {
     expect(parseNumeric("10", "n", true)).toBe(10);
@@ -61,6 +88,26 @@ describe("parseNumeric", () => {
 });
 
 describe("resolveDynamicArgs", () => {
+  it("throws INVALID_USAGE on stray positional arguments", () => {
+    try {
+      resolveDynamicArgs(["extra", "--prompt", "cat", "another"], presetBase);
+      expect.unreachable();
+    } catch (err) {
+      expect(err).toBeInstanceOf(CliError);
+      expect(err).toMatchObject({
+        code: "INVALID_USAGE",
+        exitCode: 2,
+        details: { unexpected: ["extra", "another"] },
+      });
+    }
+  });
+
+  it("still accepts negative numbers and values containing spaces", () => {
+    const { params } = resolveDynamicArgs(["--prompt", "a cat", "--steps", "-1"], presetBase);
+    expect(params.prompt).toBe("a cat");
+    expect(params.steps).toBe(-1);
+  });
+
   it("parses inline values including '=' in value", () => {
     const { params } = resolveDynamicArgs(
       ["--prompt=a=b=c", "--steps=30", '--config={"a":1}'],
@@ -79,6 +126,12 @@ describe("resolveDynamicArgs", () => {
   it("fills default values", () => {
     const { params } = resolveDynamicArgs(["--prompt", "cat"], presetBase);
     expect(params.steps).toBe(20);
+  });
+
+  it("accepts --async as a known run flag", () => {
+    expect(resolveDynamicArgs(["--prompt", "cat", "--async"], presetBase).params.prompt).toBe(
+      "cat",
+    );
   });
 
   it("parses uploads and keeps them separated from params", () => {
@@ -164,10 +217,131 @@ describe("resolveSeedValues", () => {
         prompt: presetBase.parameters!.prompt,
       },
     };
-    expect(() => resolveSeedValues(noSeedPreset, {}, { seed: "1" }, 1)).toThrow(CliError);
+    try {
+      resolveSeedValues(noSeedPreset, {}, { seed: "1" }, 1);
+      expect.unreachable();
+    } catch (err) {
+      expect(err).toBeInstanceOf(CliError);
+      expect(err).toMatchObject({
+        code: "MISSING_SEED_TARGET",
+        details: {
+          hint: "add role: seed (or aliases: [seed]) to the seed parameter",
+        },
+      });
+    }
+  });
+
+  it("accepts an imported-style parameter with role seed", () => {
+    const importedPreset: Preset = {
+      ...presetBase,
+      parameters: {
+        "7_seed": {
+          type: "int",
+          target: { node_id: "7", input: "seed" },
+          role: "seed",
+          default: 1,
+        },
+      },
+    };
+
+    expect(resolveSeedValues(importedPreset, {}, { seed: "10" }, 1)).toEqual([10]);
   });
 
   it("throws when seed-step is provided without seed", () => {
     expect(() => resolveSeedValues(presetBase, {}, { seedStep: "1" }, 1)).toThrow(CliError);
+  });
+});
+
+describe("resolveSeedTargets", () => {
+  it("prefers literal seed over role", () => {
+    const preset: Preset = {
+      ...presetBase,
+      parameters: {
+        ...presetBase.parameters,
+        "7_seed": {
+          type: "int",
+          target: { node_id: "7", input: "seed" },
+          role: "seed",
+        },
+      },
+    };
+
+    expect(resolveSeedTargets(preset)).toEqual([{ param: "seed", matched_by: "name" }]);
+  });
+
+  it("falls back to alias seed", () => {
+    const preset: Preset = {
+      ...presetBase,
+      parameters: {
+        manual_seed: {
+          type: "int",
+          target: { node_id: "7", input: "seed" },
+          aliases: ["seed"],
+        },
+        role_seed: {
+          type: "int",
+          target: { node_id: "8", input: "seed" },
+          role: "seed",
+        },
+      },
+    };
+
+    expect(resolveSeedTargets(preset)).toEqual([{ param: "manual_seed", matched_by: "alias" }]);
+  });
+
+  it("falls back to role seed and returns all matches", () => {
+    const preset: Preset = {
+      ...presetBase,
+      parameters: {
+        "7_seed": {
+          type: "int",
+          target: { node_id: "7", input: "seed" },
+          role: "seed",
+        },
+        "12_noise_seed": {
+          type: "int",
+          target: { node_id: "12", input: "noise_seed" },
+          role: "seed",
+        },
+      },
+    };
+
+    expect(resolveSeedTargets(preset)).toEqual([
+      { param: "7_seed", matched_by: "role" },
+      { param: "12_noise_seed", matched_by: "role" },
+    ]);
+  });
+
+  it("returns empty when nothing matches", () => {
+    const preset: Preset = {
+      ...presetBase,
+      parameters: {
+        steps: presetBase.parameters!.steps,
+      },
+    };
+
+    expect(resolveSeedTargets(preset)).toEqual([]);
+  });
+});
+
+describe("applySeedValue", () => {
+  const targets = [
+    { param: "7_seed", matched_by: "role" as const },
+    { param: "12_noise_seed", matched_by: "role" as const },
+  ];
+
+  it("writes seed to all targets", () => {
+    expect(applySeedValue({ prompt: "cat" }, targets, 42)).toEqual({
+      prompt: "cat",
+      "7_seed": 42,
+      "12_noise_seed": 42,
+    });
+  });
+
+  it("keeps explicit per-param value", () => {
+    expect(applySeedValue({ "7_seed": 5 }, targets, 42)).toEqual({
+      "7_seed": 5,
+      "12_noise_seed": 42,
+    });
   });
 });

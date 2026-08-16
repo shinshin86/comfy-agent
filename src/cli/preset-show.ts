@@ -8,6 +8,7 @@ import { CliError } from "../io/errors.js";
 import { ComfyClient } from "../api/client.js";
 import { fetchRemoteTemplateByName, type RemoteTemplate } from "../preset/remote.js";
 import { resolveComfyBaseUrl } from "../utils/base-url.js";
+import { formatPresetParameters, formatPresetUploads } from "../preset/output.js";
 
 export type PresetShowOptions = {
   json?: boolean;
@@ -113,6 +114,11 @@ const normalizeRemoteUploads = (template: RemoteTemplate) => {
   });
 };
 
+const formatAliases = (aliases?: string[]) =>
+  aliases && aliases.length > 0
+    ? ` ${t("preset_show.aliases", { aliases: aliases.map((alias) => `--${alias}`).join(",") })}`
+    : "";
+
 export const runPresetShow = async (presetName: string, options: PresetShowOptions) => {
   const scope = options.global ? "global" : "local";
   const scopeLabel = t(scope === "global" ? "scope.global" : "scope.local");
@@ -146,31 +152,8 @@ export const runPresetShow = async (presetName: string, options: PresetShowOptio
       preset.workflow,
     );
 
-    const parameters = Object.entries(preset.parameters ?? {}).map(([name, param]) => ({
-      name,
-      type: param.type,
-      required: param.required ?? false,
-      default: param.default,
-      target: param.target,
-      description: param.description,
-      role: param.role,
-      aliases: param.aliases,
-      min: param.min,
-      max: param.max,
-      choices: param.choices,
-      recommended: param.recommended,
-    }));
-
-    const uploads = Object.entries(preset.uploads ?? {}).map(([name, def]) => ({
-      name,
-      kind: def.kind,
-      cli_flag: def.cli_flag,
-      target: def.target,
-      description: def.description,
-      role: def.role,
-      aliases: def.aliases,
-      required: def.required ?? false,
-    }));
+    const parameters = formatPresetParameters(preset.parameters);
+    const uploads = formatPresetUploads(preset.uploads);
 
     const payload = {
       ok: true,
@@ -209,8 +192,9 @@ export const runPresetShow = async (presetName: string, options: PresetShowOptio
         const required = param.required ? t("preset_show.required") : t("preset_show.optional");
         const defaultValue =
           param.default !== undefined ? ` default=${JSON.stringify(param.default)}` : "";
+        const aliases = formatAliases(param.aliases);
         print(
-          `- ${param.name}: ${param.type} (${required}) target=${String(param.target.node_id)}.${param.target.input}${defaultValue}`,
+          `- ${param.name}: ${param.type} (${required}) target=${String(param.target.node_id)}.${param.target.input}${defaultValue}${aliases}`,
         );
       }
     }
@@ -282,8 +266,9 @@ export const runPresetShow = async (presetName: string, options: PresetShowOptio
       const required = param.required ? t("preset_show.required") : t("preset_show.optional");
       const defaultValue =
         param.default !== undefined ? ` default=${JSON.stringify(param.default)}` : "";
+      const aliases = formatAliases(param.aliases);
       print(
-        `- ${param.name}: ${param.type} (${required})${param.target ? ` target=${String(param.target.node_id)}.${param.target.input}` : ""}${defaultValue}`,
+        `- ${param.name}: ${param.type} (${required})${param.target ? ` target=${String(param.target.node_id)}.${param.target.input}` : ""}${defaultValue}${aliases}`,
       );
     }
   }

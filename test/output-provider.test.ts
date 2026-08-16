@@ -19,10 +19,10 @@ describe("extractOutputFiles", () => {
 
     const files = extractOutputFiles(entry);
     expect(files).toEqual([
-      { filename: "a.png", subfolder: "x", type: "output" },
-      { filename: "b.mp4" },
-      { filename: "c.wav" },
-      { filename: "d.gif" },
+      { filename: "a.png", subfolder: "x", type: "output", kind: "image" },
+      { filename: "b.mp4", kind: "video" },
+      { filename: "c.wav", kind: "audio" },
+      { filename: "d.gif", kind: "gif" },
     ]);
   });
 
