@@ -21,6 +21,7 @@ import type { JobOutput, JobRecord } from "../jobs/types.js";
 import { awaitAndDownload, submitPrompt } from "../jobs/wait.js";
 import {
   applySeedValue,
+  assertRequiredInputs,
   parseArgv,
   parseNumeric,
   resolveDynamicArgs,
@@ -241,6 +242,7 @@ export const runRun = async (presetName: string, options: RunOptions, rawArgs: s
     : 300;
 
   const { params, uploads, explicitParams } = resolveDynamicArgs(rawArgs, preset);
+  assertRequiredInputs(preset, params, uploads);
   const seedTargets = resolveSeedTargets(preset);
   const seedValues = resolveSeedValues(preset, params, options, runCount);
   const withSeedValue = (baseParams: Record<string, unknown>, seed: number) => {

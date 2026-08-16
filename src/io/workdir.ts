@@ -1,6 +1,6 @@
 import os from "node:os";
 import path from "node:path";
-import { promises as fs } from "node:fs";
+import { promises as fs, statSync } from "node:fs";
 import { CliError } from "./errors.js";
 import { t } from "../i18n/index.js";
 
@@ -42,6 +42,22 @@ const ensureDir = async (dirPath: string, force: boolean): Promise<"created" | "
 
 export const getWorkdirPath = (cwd = process.cwd(), scope: WorkdirScope = "local") => {
   return scope === "global" ? GLOBAL_WORK_DIR : path.join(cwd, WORK_DIR);
+};
+
+export const resolveWorkdirRootFrom = (dir: string): string => {
+  let current = path.resolve(dir);
+
+  while (true) {
+    try {
+      if (statSync(path.join(current, WORK_DIR)).isDirectory()) return current;
+    } catch {
+      // Missing or inaccessible candidates are not workdir roots.
+    }
+
+    const parent = path.dirname(current);
+    if (parent === current) return process.cwd();
+    current = parent;
+  }
 };
 
 export const getSubdirPath = (
