@@ -31,6 +31,12 @@ const otherScope = (scope: WorkdirScope): WorkdirScope => (scope === "local" ? "
 
 const errorCause = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
+const workdirNotWritableError = (jobsDir: string, error: unknown) =>
+  new CliError("WORKDIR_NOT_WRITABLE", t("jobs.workdir_not_writable", { path: jobsDir }), 2, {
+    path: jobsDir,
+    cause: errorCause(error),
+  });
+
 const invalidRecordError = (filePath: string, error: unknown) =>
   new CliError("INVALID_JOB_RECORD", t("jobs.invalid_record", { path: filePath }), 2, {
     path: filePath,
@@ -126,12 +132,20 @@ export const writeJob = async (
     await fs.rename(tempPath, filePath);
     return filePath;
   } catch (error) {
-    throw new CliError(
-      "WORKDIR_NOT_WRITABLE",
-      t("jobs.workdir_not_writable", { path: jobsDir }),
-      2,
-      { path: jobsDir, cause: errorCause(error) },
-    );
+    throw workdirNotWritableError(jobsDir, error);
+  }
+};
+
+export const assertJobsDirWritable = async (cwd: string, scope: WorkdirScope): Promise<void> => {
+  const jobsDir = getJobsDirPath(cwd, scope);
+  const probePath = path.join(jobsDir, `.write-test-${process.pid}-${Date.now()}`);
+  try {
+    await fs.mkdir(jobsDir, { recursive: true });
+    const handle = await fs.open(probePath, "wx");
+    await handle.close();
+    await fs.unlink(probePath);
+  } catch (error) {
+    throw workdirNotWritableError(jobsDir, error);
   }
 };
 

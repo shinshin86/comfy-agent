@@ -128,6 +128,12 @@ describe("resolveDynamicArgs", () => {
     expect(params.steps).toBe(20);
   });
 
+  it("accepts --async as a known run flag", () => {
+    expect(resolveDynamicArgs(["--prompt", "cat", "--async"], presetBase).params.prompt).toBe(
+      "cat",
+    );
+  });
+
   it("parses uploads and keeps them separated from params", () => {
     const { params, uploads } = resolveDynamicArgs(
       ["--prompt", "cat", "--init-image", "./in.png", "--audio", "./voice.mp3"],

@@ -313,6 +313,50 @@ remote ソースについて:
 - カタログ側は API から workflow JSON を直接取得できない項目が存在します。
 - 複雑な custom node 構成で検証エラーになる場合は、ComfyUI から API JSON をエクスポートして local preset として取り込んでください。
 
+### jobs
+
+`run --async` は prompt を投入し、完了を待たずに job ID を返します。
+`jobs wait <id>` は現在のサーバーへ再接続し、進捗を表示して、投入時に記録した
+ディレクトリへ出力を保存します。同期・非同期を問わずすべての run が
+`.comfy-agent/jobs/` に record を書くため、端末を閉じたり run を中断した後も再開できます。
+
+```bash
+comfy-agent run text2img_v1 --prompt "A cat" --n 2 --async
+comfy-agent jobs list
+comfy-agent jobs show <job_id>
+comfy-agent jobs wait <job_id> --poll-interval-ms 1000
+comfy-agent jobs prune --older-than-days 30 --dry-run
+```
+
+`jobs list` と `jobs show` はローカル record のみを読み、サーバーへ接続しません。
+完了済み job への `jobs wait` は安全に再実行できます。global workdir には
+`--global` を使いますが、job の個別検索では見つからない場合に他方 scope も検索します。
+
+```json
+{
+  "ok": true,
+  "async": true,
+  "preset": "text2img_v1",
+  "source": "local",
+  "base_url": "http://127.0.0.1:8188",
+  "scope": "local",
+  "output_dir": "/path/to/.comfy-agent/outputs/text2img_v1/20260816_101500",
+  "jobs": [
+    {
+      "job_id": "<job_id>",
+      "prompt_id": "<job_id>",
+      "batch_index": 1,
+      "seed": null,
+      "status": "submitted",
+      "job_file": "/path/to/.comfy-agent/jobs/<job_id>.json"
+    }
+  ]
+}
+```
+
+ComfyUI の history はメモリ上にあります。server process または Colab runtime が
+再起動すると `jobs wait` は `JOB_LOST` を返すため、同じ preset を再実行してください。
+
 ### connect
 
 ComfyUI の base URL を疎通確認して `.comfy-agent/config.yaml` に保存します。
@@ -599,6 +643,9 @@ CLI が返す終了コードは `0` / `2` / `3` のみです。
 - `WORKDIR_NOT_FOUND`: `comfy-agent init` を先に実行してください。
 - `INVALID_PRESET`: YAML の構造が不正です。`version/name/workflow` を確認してください。
 - `MISSING_REQUIRED_PARAM`: 必須パラメータが不足しています。
+- `JOB_NOT_FOUND`: 指定したローカル job record がありません。
+- `JOB_LOST`: サーバーの history と queue に job がありません。同じ preset を
+  再実行してください。
 - `SERVER_UNREACHABLE`: サーバーに接続できません。`base_url` を確認するか、
   トンネル切れの場合は `comfy-agent connect <url>` で再接続してください。
 - `MISSING_NODE_ON_SERVER`: ワークフローが参照するノードクラスが接続先サーバーに

@@ -323,6 +323,51 @@ Remote source notes:
 - For some catalog entries, workflow JSON may not be directly downloadable from API endpoints.
 - If validation still fails for complex/custom graphs, export API JSON from ComfyUI and import it as a local preset.
 
+### `jobs`
+
+`run --async` submits the prompt(s) and returns immediately with job IDs.
+`jobs wait <id>` reconnects to the current server, shows progress, and downloads
+outputs into the directory recorded at submission. Every synchronous and
+asynchronous run writes a record under `.comfy-agent/jobs/`, so an interrupted
+run can be resumed from another terminal.
+
+```bash
+comfy-agent run text2img_v1 --prompt "A cat" --n 2 --async
+comfy-agent jobs list
+comfy-agent jobs show <job_id>
+comfy-agent jobs wait <job_id> --poll-interval-ms 1000
+comfy-agent jobs prune --older-than-days 30 --dry-run
+```
+
+`jobs list` and `jobs show` only read local records and do not contact the
+server. Completed jobs are safe to wait for again. Use `--global` for the
+global workdir; a specific job lookup also falls back to the other scope.
+
+```json
+{
+  "ok": true,
+  "async": true,
+  "preset": "text2img_v1",
+  "source": "local",
+  "base_url": "http://127.0.0.1:8188",
+  "scope": "local",
+  "output_dir": "/path/to/.comfy-agent/outputs/text2img_v1/20260816_101500",
+  "jobs": [
+    {
+      "job_id": "<job_id>",
+      "prompt_id": "<job_id>",
+      "batch_index": 1,
+      "seed": null,
+      "status": "submitted",
+      "job_file": "/path/to/.comfy-agent/jobs/<job_id>.json"
+    }
+  ]
+}
+```
+
+ComfyUI keeps history in memory. If the server process or Colab runtime
+restarts, `jobs wait` reports `JOB_LOST`; run the same preset again.
+
 ### `connect`
 
 Verify a ComfyUI base URL and persist it to `.comfy-agent/config.yaml`, so
@@ -610,6 +655,9 @@ missing required options, unknown commands, and extra positional arguments.
 - `WORKDIR_NOT_FOUND`: run `comfy-agent init` first
 - `INVALID_PRESET`: invalid YAML structure (`version/name/workflow`)
 - `MISSING_REQUIRED_PARAM`: missing required parameter
+- `JOB_NOT_FOUND`: the requested local job record does not exist
+- `JOB_LOST`: the server no longer has the job in history or its queue; run
+  the same preset again
 - `SERVER_UNREACHABLE`: could not reach the server at all; check `base_url`,
   or reconnect an expired tunnel with `comfy-agent connect <url>`
 - `MISSING_NODE_ON_SERVER`: the workflow references a node class the connected

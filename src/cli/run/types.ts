@@ -1,5 +1,6 @@
 export type RunOptions = {
   json?: boolean;
+  async?: boolean;
   dryRun?: boolean;
   out?: string;
   source?: string;

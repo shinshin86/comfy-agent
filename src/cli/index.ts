@@ -10,6 +10,7 @@ import { runStatus } from "./status.js";
 import { runPresetShow } from "./preset-show.js";
 import { runColabCatalog, runColabSuggest } from "./colab.js";
 import { runConnect } from "./connect.js";
+import { runJobsList, runJobsPrune, runJobsShow, runJobsWait } from "./jobs.js";
 import { CliError, errorPayloadFrom, exitCodeFrom, isCliError } from "../io/errors.js";
 import { log } from "../io/output.js";
 import { resolveLanguage, setLanguage, t } from "../i18n/index.js";
@@ -98,6 +99,7 @@ program
   .option("--seed-step <step>", t("cli.run.option.seed_step"))
   .option("--poll-interval-ms <ms>", t("cli.run.option.poll_interval"))
   .option("--timeout-seconds <sec>", t("cli.run.option.timeout"))
+  .option("--async", t("cli.run.option.async"))
   .option("--no-preflight", t("cli.run.option.no_preflight"))
   .option("--base-url <url>", t("cli.option.base_url"))
   .option("--source <local|remote|remote-catalog>", t("cli.run.option.source"))
@@ -108,6 +110,73 @@ program
     try {
       const rawArgs = extractRunPassthrough(presetName, command.args);
       await runRun(presetName, options, rawArgs);
+    } catch (err) {
+      handleError(err, options?.json);
+    }
+  });
+
+const jobs = program.command("jobs").description(t("cli.jobs.description"));
+
+jobs
+  .command("list")
+  .description(t("cli.jobs.list.description"))
+  .option("--status <status>", t("cli.jobs.list.option.status"))
+  .option("--limit <n>", t("cli.jobs.list.option.limit"))
+  .option("--global", t("cli.option.global"))
+  .option("--json", t("cli.option.json"))
+  .option("--lang <lang>", t("cli.option.lang"))
+  .action(async (options) => {
+    try {
+      await runJobsList(options);
+    } catch (err) {
+      handleError(err, options?.json);
+    }
+  });
+
+jobs
+  .command("show")
+  .description(t("cli.jobs.show.description"))
+  .argument("<job_id>", t("cli.jobs.show.arg.id"))
+  .option("--global", t("cli.option.global"))
+  .option("--json", t("cli.option.json"))
+  .option("--lang <lang>", t("cli.option.lang"))
+  .action(async (jobId, options) => {
+    try {
+      await runJobsShow(jobId, options);
+    } catch (err) {
+      handleError(err, options?.json);
+    }
+  });
+
+jobs
+  .command("wait")
+  .description(t("cli.jobs.wait.description"))
+  .argument("<job_ids...>", t("cli.jobs.wait.arg.ids"))
+  .option("--timeout-seconds <sec>", t("cli.run.option.timeout"))
+  .option("--poll-interval-ms <ms>", t("cli.run.option.poll_interval"))
+  .option("--base-url <url>", t("cli.option.base_url"))
+  .option("--global", t("cli.option.global"))
+  .option("--json", t("cli.option.json"))
+  .option("--lang <lang>", t("cli.option.lang"))
+  .action(async (jobIds, options) => {
+    try {
+      await runJobsWait(jobIds, options);
+    } catch (err) {
+      handleError(err, options?.json);
+    }
+  });
+
+jobs
+  .command("prune")
+  .description(t("cli.jobs.prune.description"))
+  .option("--older-than-days <n>", t("cli.jobs.prune.option.older_than_days"))
+  .option("--dry-run", t("cli.option.dry_run"))
+  .option("--global", t("cli.option.global"))
+  .option("--json", t("cli.option.json"))
+  .option("--lang <lang>", t("cli.option.lang"))
+  .action(async (options) => {
+    try {
+      await runJobsPrune(options);
     } catch (err) {
       handleError(err, options?.json);
     }

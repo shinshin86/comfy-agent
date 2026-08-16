@@ -1,5 +1,6 @@
 export const KNOWN_RUN_FLAGS = new Set([
   "json",
+  "async",
   "dry-run",
   "out",
   "n",

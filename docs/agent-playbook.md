@@ -92,8 +92,8 @@ ephemerality tax entirely.
 
 ## 3. Error contract (CLI → agent)
 
-Commands with a `--json` flag (`init`, `import`, `run`, `doctor`, `list`,
-`status`, `preset`, `connect`, `analyze`, `colab *`) emit errors in this
+Commands with a `--json` flag (`init`, `import`, `run`, `jobs *`, `doctor`,
+`list`, `status`, `preset`, `connect`, `analyze`, `colab *`) emit errors in this
 shape:
 
 ```json
@@ -135,6 +135,7 @@ Codes the orchestration flow relies on (Phase 1):
 | `EXECUTION_FAILED` | 3 | ComfyUI execution failed or was interrupted. For `category: oom`, reduce resolution/steps or ask the human about a higher GPU; for `kind: interrupted`, retry once | `prompt_id`, `run_index`, `kind`, `node_id`, `node_type`, `exception_type`, `exception_message`, `category`, `executed`, `traceback_tail`, `partial_outputs`, `output_dir` |
 | `NO_OUTPUTS` | 2 | Execution completed without output files; add an appropriate `Save*` node | `prompt_id`, `run_index`, `output_dir` |
 | `TIMEOUT` | 3 | Generation exceeded timeout | — |
+| `JOB_LOST` | 3 | The submitted job is absent from both ComfyUI history and queue | `job_id`, `prompt_id`, `base_url`, `recorded_base_url`, `hint` |
 
 `run` performs the preflight automatically before submitting;
 `doctor --preset <name>` runs the same check standalone;
@@ -162,14 +163,18 @@ work that costs money, rights, or physical human action → the human decides.**
 | `EXECUTION_FAILED` with `kind: interrupted` | **agent** | Retry once; if the server interrupts it again, report the repeated interruption |
 | `NO_OUTPUTS` | **agent** | Add or fix the workflow's appropriate `Save*` output node, then rerun |
 | `TIMEOUT` | **agent** | Retry once with a raised `--timeout-seconds`; if it persists, report — the model may be too heavy for the runtime |
+| `JOB_LOST` | **agent** | Re-run the preset with the same arguments, using the record's `params`, `uploads`, and `seed` |
 
 ## 5. Reconnect flow (Colab volatility, condensed)
 
 ```
-run/doctor → SERVER_UNREACHABLE (trycloudflare URL)
+run/doctor/jobs wait → SERVER_UNREACHABLE (trycloudflare URL)
   → tell human: "Run All the notebook, paste the final line"
   → human pastes: comfy-agent connect https://new-id.trycloudflare.com
-  → agent runs it (verifies + persists), then resumes the exact task
+  → agent runs it (verifies + persists)
+  → if a job was in flight: comfy-agent jobs wait <id>
+       same runtime → downloads the outputs
+       new runtime → JOB_LOST → re-run the preset (local files remain intact)
 ```
 
 Total human cost per Colab session: open notebook, Run All, paste one line.

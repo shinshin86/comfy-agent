@@ -227,12 +227,89 @@ describe("mock ComfyUI CLI smoke", () => {
     ).toBeGreaterThanOrEqual(1);
   });
 
-  it.skip("7: run --async can be completed with jobs wait (requires run --async and the jobs command)", () => {
-    // Enable once run --async, the jobs command, and durable job records exist.
+  it("7: run --async can be completed with jobs wait", async () => {
+    const server = await startServer();
+    const workdir = await createTmpWorkdir();
+    await importSmokePreset(workdir, server);
+
+    const submitted = await runCli(
+      ["run", "smoke", "--source", "local", "--async", "--json"],
+      cliOptions(workdir, server.baseUrl),
+    );
+    const submittedPayload = parseJson(submitted);
+    const submittedJobs = submittedPayload.jobs as JsonObject[];
+    const jobId = submittedJobs[0]?.job_id as string;
+    const jobPath = path.join(workdir.workdir, "jobs", `${jobId}.json`);
+
+    expect(submitted.code, submitted.stderr).toBe(0);
+    expect(submittedPayload).toMatchObject({ ok: true, async: true, scope: "local" });
+    expect(JSON.parse(await fs.readFile(jobPath, "utf-8"))).toMatchObject({
+      job_id: jobId,
+      status: "submitted",
+    });
+
+    const waited = await runCli(
+      ["jobs", "wait", jobId, "--json", "--poll-interval-ms", "50", "--timeout-seconds", "10"],
+      cliOptions(workdir, server.baseUrl),
+    );
+    const waitedPayload = parseJson(waited);
+    const waitedRuns = waitedPayload.runs as JsonObject[];
+    const waitedOutputs = waitedRuns[0]?.outputs as JsonObject[];
+    const savedTo = waitedOutputs[0]?.saved_to as string;
+
+    expect(waited.code, waited.stderr).toBe(0);
+    expect(waitedPayload).toMatchObject({
+      ok: true,
+      base_url_changed: false,
+      jobs: [{ job_id: jobId, status: "completed" }],
+    });
+    await expect(fs.stat(savedTo)).resolves.toBeDefined();
+    expect(JSON.parse(await fs.readFile(jobPath, "utf-8"))).toMatchObject({
+      status: "completed",
+      outputs: [{ saved_to: expect.any(String) }],
+    });
+    const manifest = JSON.parse(
+      await fs.readFile(path.join(waitedPayload.output_dir as string, "run.json"), "utf-8"),
+    ) as JsonObject;
+    expect(manifest).toMatchObject({
+      runs: [{ job_id: jobId, status: "completed", outputs: [{ saved_to: expect.any(String) }] }],
+    });
   });
 
-  it.skip("8: jobs wait reports JOB_LOST when history is forgotten (requires run --async and the jobs command)", () => {
-    // Enable once lost-job detection and job record transitions exist.
+  it("8: jobs wait reports JOB_LOST when history is forgotten", async () => {
+    const server = await startServer({ forgetHistory: true });
+    const workdir = await createTmpWorkdir();
+    await importSmokePreset(workdir, server);
+
+    const submitted = await runCli(
+      ["run", "smoke", "--source", "local", "--async", "--json"],
+      cliOptions(workdir, server.baseUrl),
+    );
+    const submittedPayload = parseJson(submitted);
+    const submittedJobs = submittedPayload.jobs as JsonObject[];
+    const jobId = submittedJobs[0]?.job_id as string;
+    const jobPath = path.join(workdir.workdir, "jobs", `${jobId}.json`);
+
+    expect(submitted.code, submitted.stderr).toBe(0);
+    const waited = await runCli(
+      ["jobs", "wait", jobId, "--json", "--poll-interval-ms", "50"],
+      cliOptions(workdir, server.baseUrl),
+    );
+    const waitedPayload = parseJson(waited);
+
+    expect(waited.code).toBe(3);
+    expect(waitedPayload.error).toMatchObject({
+      code: "JOB_LOST",
+      details: {
+        job_id: jobId,
+        prompt_id: jobId,
+        hint: expect.any(String),
+      },
+    });
+    expect(JSON.parse(await fs.readFile(jobPath, "utf-8"))).toMatchObject({
+      status: "lost",
+      error: { code: "JOB_LOST" },
+    });
   });
 
   it("9: run reports SERVER_UNREACHABLE during preflight", async () => {
@@ -422,5 +499,23 @@ describe("mock ComfyUI CLI smoke", () => {
       "/prompt",
       "/history/:id",
     ]);
+  });
+
+  it("15: run --async rejects an unwritable jobs path before submitting", async () => {
+    const server = await startServer();
+    const workdir = await createTmpWorkdir();
+    await importSmokePreset(workdir, server);
+    await fs.writeFile(path.join(workdir.workdir, "jobs"), "blocked", "utf-8");
+    server.requests.length = 0;
+
+    const result = await runCli(
+      ["run", "smoke", "--source", "local", "--async", "--json"],
+      cliOptions(workdir, server.baseUrl),
+    );
+    const payload = parseJson(result);
+
+    expect(result.code).toBe(2);
+    expect(payload.error).toMatchObject({ code: "WORKDIR_NOT_WRITABLE" });
+    expect(normalizedRequestPaths(server.requests)).toEqual(["/object_info"]);
   });
 });
