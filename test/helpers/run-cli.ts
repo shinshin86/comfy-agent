@@ -18,6 +18,7 @@ export type RunCliResult = {
 const REPO_ROOT = fileURLToPath(new URL("../../", import.meta.url));
 const DIST_CLI = path.join(REPO_ROOT, "dist", "cli", "index.js");
 const SOURCE_CLI = path.join(REPO_ROOT, "src", "cli", "index.ts");
+const TSX_CLI = path.join(REPO_ROOT, "node_modules", "tsx", "dist", "cli.mjs");
 let staleWarningChecked = false;
 
 const latestMtime = async (target: string): Promise<number> => {
@@ -64,8 +65,11 @@ export const runCli = async (
   let commandArgs = [DIST_CLI, ...args];
 
   if (entryMode === "tsx") {
-    command = process.platform === "win32" ? "npx.cmd" : "npx";
-    commandArgs = ["--prefix", REPO_ROOT, "--no-install", "tsx", SOURCE_CLI, ...args];
+    // Run the local tsx binary directly instead of going through `npx`, so npm's
+    // own stderr chatter (warnings, `npm notice run` lines) never leaks into the
+    // CLI's stderr that tests assert on.
+    command = process.execPath;
+    commandArgs = [TSX_CLI, SOURCE_CLI, ...args];
   } else {
     await assertDistReady();
   }

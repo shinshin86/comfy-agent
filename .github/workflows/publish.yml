@@ -8,12 +8,15 @@ name: Publish
 # Flow: merge a PR that changes package.json "version" -> this job runs -> if that
 # version is not on npm yet, run the quality gates, publish with provenance, and
 # create the matching git tag + GitHub Release with the CHANGELOG section as notes.
+# It can also be started manually (workflow_dispatch) to publish the version
+# currently on main, e.g. after fixing a failed gate without bumping the version.
 
 on:
   push:
     branches: [main]
     paths:
       - package.json
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -39,9 +42,6 @@ jobs:
           node-version: 22
           registry-url: https://registry.npmjs.org
           cache: npm
-
-      - name: Use an npm CLI that supports trusted publishing
-        run: npm install -g npm@latest && npm --version
 
       - name: Install dependencies
         run: npm ci
@@ -71,6 +71,11 @@ jobs:
           npm run test:smoke
           npm run check-pack
           npm run check-links
+
+      - name: Use an npm CLI that supports trusted publishing
+        if: steps.check.outputs.publish == 'true'
+        # Done after the quality gates so tests run on the npm shipped with Node.
+        run: npm install -g npm@latest && npm --version
 
       - name: Publish
         if: steps.check.outputs.publish == 'true'
