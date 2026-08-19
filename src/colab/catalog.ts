@@ -41,13 +41,19 @@ export const COLAB_GPUS = ["T4", "L4", "A100"] as const;
 export type ColabGpu = (typeof COLAB_GPUS)[number];
 
 const AudioKindSchema = z.enum(["music", "sound_effect", "speech", "mixed"]);
-const ColabCapabilitiesSchema = z
+const ColabAudioCapabilitiesSchema = z
   .object({
     audio_kinds: z.array(AudioKindSchema).min(1),
     lyrics: z.boolean().optional(),
     vocals: z.boolean().optional(),
   })
   .strict();
+
+const ColabFeatureSchema = z.enum(["lora"]);
+const ColabCapabilitiesSchema = z.union([
+  ColabAudioCapabilitiesSchema,
+  z.array(ColabFeatureSchema).min(1),
+]);
 
 const TASK_OUTPUTS: Partial<Record<ColabTask, ColabOutput>> = {
   text_to_image: "image",
@@ -158,6 +164,8 @@ export const ColabKitSchema = z
       const capabilities = workflow.capabilities;
       if (!capabilities) return;
 
+      if (Array.isArray(capabilities)) return;
+
       if (workflowOutput !== "audio") {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -189,6 +197,28 @@ export const ColabCatalogSchema = z
 export type ColabCatalog = z.infer<typeof ColabCatalogSchema>;
 export type ColabKit = z.infer<typeof ColabKitSchema>;
 
+type ColabCapabilities = NonNullable<ColabKit["workflows"][number]["capabilities"]>;
+type ColabAudioCapabilities = z.infer<typeof ColabAudioCapabilitiesSchema>;
+
+const asAudioCapabilities = (
+  capabilities: ColabCapabilities | undefined,
+): ColabAudioCapabilities | undefined =>
+  capabilities && !Array.isArray(capabilities) ? capabilities : undefined;
+
+const cloneCapabilities = (
+  capabilities: ColabCapabilities | undefined,
+): ColabCapabilities | undefined => {
+  if (!capabilities) return undefined;
+  return Array.isArray(capabilities)
+    ? [...capabilities]
+    : { ...capabilities, audio_kinds: [...capabilities.audio_kinds] };
+};
+
+const capabilityTerms = (capabilities: ColabCapabilities | undefined) =>
+  Array.isArray(capabilities)
+    ? capabilities
+    : (capabilities?.audio_kinds ?? []);
+
 export const defaultColabCatalogPath = () => resourcePath(RESOURCES.catalog);
 
 const sortCatalog = (catalog: ColabCatalog): ColabCatalog => ({
@@ -207,12 +237,7 @@ const sortCatalog = (catalog: ColabCatalog): ColabCatalog => ({
         .sort((a, b) => a.name.localeCompare(b.name))
         .map((workflow) => ({
           ...workflow,
-          capabilities: workflow.capabilities
-            ? {
-                ...workflow.capabilities,
-                audio_kinds: [...workflow.capabilities.audio_kinds],
-              }
-            : undefined,
+          capabilities: cloneCapabilities(workflow.capabilities),
         })),
       license_notes: kit.license_notes ? [...kit.license_notes] : undefined,
       tags: kit.tags ? [...kit.tags] : undefined,
@@ -366,7 +391,7 @@ const textForKit = (kit: ColabKit, workflow: ColabKit["workflows"][number]) =>
     workflow.name,
     workflow.task,
     workflowOutput(workflow),
-    ...(workflow.capabilities?.audio_kinds ?? []),
+    ...capabilityTerms(workflow.capabilities),
   ]
     .filter(Boolean)
     .join(" ")
@@ -423,9 +448,10 @@ const matchesRequestedAudioKind = (
   if (hints.wantsMusic || hints.wantsLyrics || hints.wantsVocals) requestedKinds.push("music");
   if (hints.wantsSoundEffect) requestedKinds.push("sound_effect");
   if (requestedKinds.length === 0) return true;
-  if (!capabilities) return false;
+  const audioCapabilities = asAudioCapabilities(capabilities);
+  if (!audioCapabilities) return false;
   return requestedKinds.every((requestedKind) =>
-    capabilities.audio_kinds.some(
+    audioCapabilities.audio_kinds.some(
       (supportedKind) => supportedKind === "mixed" || supportedKind === requestedKind,
     ),
   );
@@ -472,6 +498,7 @@ export const buildColabSuggestPayload = (
       const reasons: string[] = [`status:${kit.status}`];
       const haystack = textForKit(kit, workflow);
       const unmetRequirements: string[] = [];
+      const audioCapabilities = asAudioCapabilities(workflow.capabilities);
 
       if (options.task) reasons.push(`task:${workflow.task}`);
       if (primaryOutput) reasons.push(`output:${primaryOutput}`);
@@ -513,8 +540,8 @@ export const buildColabSuggestPayload = (
           score += 15;
           reasons.push("capability:music");
           if (
-            workflow.capabilities?.audio_kinds.length === 1 &&
-            workflow.capabilities.audio_kinds[0] === "music"
+            audioCapabilities?.audio_kinds.length === 1 &&
+            audioCapabilities.audio_kinds[0] === "music"
           ) {
             score += 5;
             reasons.push("capability:music:dedicated");
@@ -524,8 +551,8 @@ export const buildColabSuggestPayload = (
           score += 15;
           reasons.push("capability:sound_effect");
           if (
-            workflow.capabilities?.audio_kinds.length === 1 &&
-            workflow.capabilities.audio_kinds[0] === "sound_effect"
+            audioCapabilities?.audio_kinds.length === 1 &&
+            audioCapabilities.audio_kinds[0] === "sound_effect"
           ) {
             score += 5;
             reasons.push("capability:sound_effect:dedicated");
@@ -533,7 +560,7 @@ export const buildColabSuggestPayload = (
         }
       }
       if (hints.wantsLyrics) {
-        if (workflow.capabilities?.lyrics === true) {
+        if (audioCapabilities?.lyrics === true) {
           score += 15;
           reasons.push("capability:lyrics");
         } else {
@@ -541,7 +568,7 @@ export const buildColabSuggestPayload = (
         }
       }
       if (hints.wantsVocals) {
-        if (workflow.capabilities?.vocals === true) {
+        if (audioCapabilities?.vocals === true) {
           score += 15;
           reasons.push("capability:vocals");
         } else {
@@ -604,12 +631,7 @@ export const buildColabSuggestPayload = (
         task: workflow.task,
         workflow_output: output,
         outputs: [...kit.outputs],
-        capabilities: workflow.capabilities
-          ? {
-              ...workflow.capabilities,
-              audio_kinds: [...workflow.capabilities.audio_kinds],
-            }
-          : undefined,
+        capabilities: cloneCapabilities(workflow.capabilities),
         gpu: {
           ...kit.gpu,
           verified: kit.gpu.verified ? [...kit.gpu.verified] : undefined,

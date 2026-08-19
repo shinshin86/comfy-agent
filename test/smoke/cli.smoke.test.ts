@@ -538,10 +538,7 @@ describe("mock ComfyUI CLI smoke", () => {
       scope: "local",
     });
 
-    const imported = await runCli(
-      ["import", WORKFLOW_FIXTURE, "--name", "q", "--json"],
-      options,
-    );
+    const imported = await runCli(["import", WORKFLOW_FIXTURE, "--name", "q", "--json"], options);
     expect(imported.code, imported.stderr).toBe(0);
     expect(parseJson(imported)).toMatchObject({ ok: true, preset: "q" });
 
@@ -555,5 +552,258 @@ describe("mock ComfyUI CLI smoke", () => {
     expect(result.code, result.stderr).toBe(0);
     expect(payload).toMatchObject({ ok: true, preset: "q", source: "local" });
     expect(runs).toHaveLength(1);
+  });
+
+  it("17: run prompt fields are searchable through history", async () => {
+    const server = await startServer();
+    const workdir = await createTmpWorkdir();
+    await importSmokePreset(workdir, server);
+
+    const run = await runCli(
+      [
+        "run",
+        "smoke",
+        "--source",
+        "local",
+        "--json",
+        "--prompt",
+        "hello smoke",
+        "--poll-interval-ms",
+        "50",
+        "--timeout-seconds",
+        "10",
+      ],
+      cliOptions(workdir, server.baseUrl),
+    );
+    expect(run.code, run.stderr).toBe(0);
+
+    const history = await runCli(
+      ["history", "--search", "hello smoke", "--json"],
+      cliOptions(workdir, server.baseUrl),
+    );
+    const payload = parseJson(history);
+    const jobs = payload.jobs as JsonObject[];
+
+    expect(history.code, history.stderr).toBe(0);
+    expect(payload).toMatchObject({ ok: true, scopes: ["local"], total: 1 });
+    expect(jobs).toHaveLength(1);
+    expect(jobs[0]).toMatchObject({
+      preset: "smoke",
+      prompt_input: "hello smoke",
+      prompt_final: "hello smoke",
+    });
+  });
+
+  it("18: verify summary is available through history show", async () => {
+    const server = await startServer();
+    const workdir = await createTmpWorkdir();
+    await importSmokePreset(workdir, server);
+
+    const run = await runCli(
+      [
+        "run",
+        "smoke",
+        "--source",
+        "local",
+        "--json",
+        "--poll-interval-ms",
+        "50",
+        "--timeout-seconds",
+        "10",
+      ],
+      cliOptions(workdir, server.baseUrl),
+    );
+    const runPayload = parseJson(run);
+    const jobs = runPayload.jobs as JsonObject[];
+    const jobId = jobs[0]?.job_id as string;
+    const outputDir = runPayload.output_dir as string;
+    expect(run.code, run.stderr).toBe(0);
+
+    const verified = await runCli(
+      ["verify", outputDir, "--json", "--no-ffmpeg"],
+      cliOptions(workdir, server.baseUrl),
+    );
+    expect(verified.code, verified.stderr).toBe(0);
+    expect(parseJson(verified)).toMatchObject({
+      ok: true,
+      summary: { checks_failed: 0, record_updated: true },
+    });
+
+    const shown = await runCli(
+      ["history", "show", jobId, "--json"],
+      cliOptions(workdir, server.baseUrl),
+    );
+    expect(shown.code, shown.stderr).toBe(0);
+    expect(parseJson(shown)).toMatchObject({
+      job: { verify: { checks_failed: 0 } },
+      verify: { checks_failed: 0 },
+    });
+  });
+
+  it("19: character memory flows from dry-run through record and brief", async () => {
+    const server = await startServer();
+    const workdir = await createTmpWorkdir();
+    await importSmokePreset(workdir, server);
+    const options = cliOptions(workdir, server.baseUrl);
+
+    const created = await runCli(
+      [
+        "character",
+        "create",
+        "miko",
+        "--appearance",
+        "dark bob hair with red hairpin",
+        "--trigger",
+        "m1ko",
+        "--json",
+      ],
+      options,
+    );
+    expect(created.code, created.stderr).toBe(0);
+
+    const dryRun = await runCli(
+      ["run", "smoke", "--source", "local", "--character", "miko", "--dry-run", "--json"],
+      options,
+    );
+    const dryPayload = parseJson(dryRun);
+    const dryWorkflow = dryPayload.workflow as JsonObject;
+    const promptNode = dryWorkflow["6"] as JsonObject;
+    const promptInputs = promptNode.inputs as JsonObject;
+    const promptFinal = "m1ko dark bob hair with red hairpin, smoke test prompt";
+    expect(dryRun.code, dryRun.stderr).toBe(0);
+    expect(promptInputs.text).toBe(promptFinal);
+    expect(dryPayload).toMatchObject({
+      prompt_input: "smoke test prompt",
+      prompt_final: promptFinal,
+      character: {
+        name: "miko",
+        scope: "local",
+        form: "default",
+        injected: { prompt: "replace" },
+      },
+    });
+
+    const run = await runCli(
+      [
+        "run",
+        "smoke",
+        "--source",
+        "local",
+        "--character",
+        "miko",
+        "--json",
+        "--poll-interval-ms",
+        "50",
+        "--timeout-seconds",
+        "10",
+      ],
+      options,
+    );
+    const runPayload = parseJson(run);
+    const jobs = runPayload.jobs as JsonObject[];
+    const jobId = jobs[0]?.job_id as string;
+    expect(run.code, run.stderr).toBe(0);
+    expect(runPayload).toMatchObject({
+      prompt_input: "smoke test prompt",
+      prompt_final: promptFinal,
+      character: { name: "miko", injected: { prompt: "replace" } },
+    });
+    expect(
+      JSON.parse(await fs.readFile(path.join(workdir.workdir, "jobs", `${jobId}.json`), "utf-8")),
+    ).toMatchObject({
+      character: { name: "miko", scope: "local", form: "default" },
+      prompt_input: "smoke test prompt",
+      prompt_final: promptFinal,
+    });
+    expect(
+      JSON.parse(
+        await fs.readFile(path.join(runPayload.output_dir as string, "run.json"), "utf-8"),
+      ),
+    ).toMatchObject({
+      character: { name: "miko", scope: "local", form: "default" },
+      prompt_input: "smoke test prompt",
+      prompt_final: promptFinal,
+    });
+
+    const brief = await runCli(["brief", "miko", "--preset", "smoke", "--json"], options);
+    expect(brief.code, brief.stderr).toBe(0);
+    expect(parseJson(brief)).toMatchObject({
+      ok: true,
+      applicable: { prompt: true },
+      top_jobs: [{ job_id: jobId, prompt_final: promptFinal }],
+    });
+  });
+
+  it("20: a global character run appends and queries its cross-project index", async () => {
+    const server = await startServer();
+    const workdir = await createTmpWorkdir();
+    await importSmokePreset(workdir, server);
+    const options = cliOptions(workdir, server.baseUrl);
+    const created = await runCli(
+      [
+        "character",
+        "create",
+        "shared",
+        "--appearance",
+        "silver bob hair",
+        "--trigger",
+        "shared-token",
+        "--global",
+        "--json",
+      ],
+      options,
+    );
+    expect(created.code, created.stderr).toBe(0);
+
+    const run = await runCli(
+      [
+        "run",
+        "smoke",
+        "--source",
+        "local",
+        "--character",
+        "shared",
+        "--json",
+        "--poll-interval-ms",
+        "50",
+        "--timeout-seconds",
+        "10",
+      ],
+      options,
+    );
+    const payload = parseJson(run);
+    const jobs = payload.jobs as JsonObject[];
+    const jobId = jobs[0]?.job_id as string;
+    expect(run.code, run.stderr).toBe(0);
+    expect(payload).toMatchObject({ character: { name: "shared", scope: "global" } });
+
+    const indexPath = path.join(
+      workdir.home,
+      ".config",
+      ".comfy-agent",
+      "characters",
+      "shared",
+      "index.jsonl",
+    );
+    const indexed = (await fs.readFile(indexPath, "utf-8"))
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line) as JsonObject);
+    expect(indexed).toEqual([
+      expect.objectContaining({
+        job_id: jobId,
+        project: expect.any(String),
+        preset: "smoke",
+        prompt_final: "shared-token silver bob hair, smoke test prompt",
+      }),
+    ]);
+    expect(await fs.realpath(indexed[0].project as string)).toBe(await fs.realpath(workdir.cwd));
+
+    const history = await runCli(
+      ["history", "--character", "shared", "--all-scopes", "--json"],
+      options,
+    );
+    expect(history.code, history.stderr).toBe(0);
+    expect(parseJson(history)).toMatchObject({ total: 1, jobs: [{ job_id: jobId }] });
   });
 });

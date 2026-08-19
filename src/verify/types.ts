@@ -109,6 +109,7 @@ export type VerifySummary = {
   checks_failed: number;
   warnings: number;
   verified_visually: false;
+  record_updated: boolean;
 };
 
 export type VerifyReport = {

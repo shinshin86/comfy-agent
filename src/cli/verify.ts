@@ -4,8 +4,10 @@ import { createHash } from "node:crypto";
 import { CliError } from "../io/errors.js";
 import { print, printJson } from "../io/output.js";
 import { t } from "../i18n/index.js";
+import { resolveWorkdirRootFrom } from "../io/workdir.js";
 import { readRunManifest } from "../jobs/manifest.js";
-import type { RunManifest } from "../jobs/types.js";
+import { attachVerifySummary, type AttachVerifySummaryResult } from "../jobs/store.js";
+import type { JobVerifySummary, RunManifest } from "../jobs/types.js";
 import {
   builtinChecks,
   countCheck,
@@ -385,6 +387,70 @@ const createGlobalSheets = async (
   return outputs.length === 0 ? null : outputs.length === 1 ? outputs[0] : outputs;
 };
 
+const dominantKind = (files: FileReport[]): VerifyKind => {
+  const counts = new Map<VerifyKind, number>();
+  let selected: VerifyKind = files[0]?.kind ?? "unknown";
+  let selectedCount = 0;
+  for (const file of files) {
+    const count = (counts.get(file.kind) ?? 0) + 1;
+    counts.set(file.kind, count);
+    if (count > selectedCount) {
+      selected = file.kind;
+      selectedCount = count;
+    }
+  }
+  return selected;
+};
+
+const summedValue = (values: Array<number | null>) => {
+  const present = values.filter((value): value is number => value !== null);
+  return present.length === 0 ? undefined : present.reduce((total, value) => total + value, 0);
+};
+
+const buildJobVerifySummary = (
+  files: FileReport[],
+  checksFailed: number,
+  sheet: VerifyReport["sheet"],
+): JobVerifySummary => {
+  const kinds = new Set(files.map(({ kind }) => kind));
+  const first = kinds.size === 1 ? files[0] : undefined;
+  const duration = summedValue(
+    files
+      .filter(({ kind }) => kind === "video" || kind === "audio")
+      .map(({ duration_s: value }) => value),
+  );
+  const frameCount = summedValue(
+    files.filter(({ kind }) => kind === "video").map(({ frame_count: value }) => value),
+  );
+  const sheetPath = typeof sheet === "string" ? sheet : sheet?.[0];
+
+  return {
+    at: new Date().toISOString(),
+    files: files.length,
+    kind: dominantKind(files),
+    ...(first?.width === null || first?.width === undefined ? {} : { width: first.width }),
+    ...(first?.height === null || first?.height === undefined ? {} : { height: first.height }),
+    ...(duration === undefined ? {} : { duration_s: duration }),
+    ...(frameCount === undefined ? {} : { frame_count: frameCount }),
+    checks_failed: checksFailed,
+    ...(sheetPath === undefined ? {} : { sheet: sheetPath }),
+  };
+};
+
+const recordUpdateError = (result: AttachVerifySummaryResult): Record<string, unknown> => {
+  if (result.status !== "error") return {};
+  if (result.error instanceof CliError) {
+    return {
+      code: result.error.code,
+      message: result.error.message,
+      ...(result.error.details === undefined ? {} : { details: result.error.details }),
+    };
+  }
+  return {
+    message: result.error instanceof Error ? result.error.message : String(result.error),
+  };
+};
+
 export const runVerify = async (targetInput: string, options: VerifyOptions) => {
   const resolved = resolveOptions(options);
   const target = path.resolve(targetInput);
@@ -518,6 +584,45 @@ export const runVerify = async (targetInput: string, options: VerifyOptions) => 
   const manifestExpected = manifest
     ? manifest.runs.reduce((count, run) => count + run.outputs.length, 0)
     : undefined;
+  const preRecordSummary = summarize(fileReports, reportChecks, reportWarnings);
+  const jobVerifySummary = buildJobVerifySummary(
+    fileReports,
+    preRecordSummary.checks_failed,
+    sheet,
+  );
+  let recordUpdated = false;
+  if (manifest) {
+    const jobIds = [...new Set(manifest.runs.map(({ job_id: jobId }) => jobId).filter(Boolean))];
+    if (jobIds.length > 0) {
+      const cwd = resolveWorkdirRootFrom(target);
+      const results = await Promise.all(
+        jobIds.map(async (jobId) => ({
+          jobId,
+          result: await attachVerifySummary(jobId, jobVerifySummary, {
+            cwd,
+            scope: manifest.scope,
+          }),
+        })),
+      );
+      recordUpdated = results.every(({ result }) => result.status === "written");
+      for (const { jobId, result } of results) {
+        if (result.status === "written") continue;
+        reportWarnings.push({
+          code: "VERIFY_RECORD_NOT_UPDATED",
+          message: t("verify.warning.record_not_updated"),
+          details: {
+            job_id: jobId,
+            status: result.status,
+            ...recordUpdateError(result),
+          },
+        });
+      }
+    }
+  }
+  const reportSummary = {
+    ...summarize(fileReports, reportChecks, reportWarnings),
+    record_updated: recordUpdated,
+  };
   const report: VerifyReport = {
     ok: false,
     target,
@@ -536,7 +641,7 @@ export const runVerify = async (targetInput: string, options: VerifyOptions) => 
     extra_files: extraFiles,
     sheet,
     checks: reportChecks,
-    summary: summarize(fileReports, reportChecks, reportWarnings),
+    summary: reportSummary,
     warnings: reportWarnings,
   };
   report.ok = report.summary.checks_failed === 0;

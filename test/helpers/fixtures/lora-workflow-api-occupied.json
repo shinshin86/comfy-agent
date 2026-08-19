@@ -1,0 +1,11 @@
+{
+  "1": {
+    "class_type": "LoraLoaderModelOnly",
+    "inputs": {
+      "model": ["0", 0],
+      "lora_name": "ltx-2.3-22b-distilled-lora-384.safetensors",
+      "strength_model": 1,
+      "strength_clip": 1
+    }
+  }
+}

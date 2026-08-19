@@ -9,6 +9,7 @@ import { ComfyClient } from "../api/client.js";
 import { fetchRemoteTemplateByName, type RemoteTemplate } from "../preset/remote.js";
 import { resolveComfyBaseUrl } from "../utils/base-url.js";
 import { formatPresetParameters, formatPresetUploads } from "../preset/output.js";
+import { KNOWN_RUN_FLAGS } from "./run/flags.js";
 
 export type PresetShowOptions = {
   json?: boolean;
@@ -119,6 +120,35 @@ const formatAliases = (aliases?: string[]) =>
     ? ` ${t("preset_show.aliases", { aliases: aliases.map((alias) => `--${alias}`).join(",") })}`
     : "";
 
+export type PresetShowWarning = {
+  code: "ALIAS_SHADOWED";
+  param: string;
+  alias: string;
+};
+
+export const collectAliasShadowedWarnings = (
+  parameters: Array<{ name: string; aliases?: string[] }>,
+): PresetShowWarning[] => {
+  const warnings: PresetShowWarning[] = [];
+  const seen = new Set<string>();
+  for (const parameter of parameters) {
+    for (const rawAlias of parameter.aliases ?? []) {
+      const alias = rawAlias.replace(/^--/, "");
+      const key = `${parameter.name}\0${alias}`;
+      if (!KNOWN_RUN_FLAGS.has(alias) || seen.has(key)) continue;
+      warnings.push({ code: "ALIAS_SHADOWED", param: parameter.name, alias });
+      seen.add(key);
+    }
+  }
+  return warnings;
+};
+
+const printAliasShadowedWarnings = (warnings: PresetShowWarning[]) => {
+  for (const warning of warnings) {
+    print(t("preset_show.alias_shadowed", { alias: warning.alias }));
+  }
+};
+
 export const runPresetShow = async (presetName: string, options: PresetShowOptions) => {
   const scope = options.global ? "global" : "local";
   const scopeLabel = t(scope === "global" ? "scope.global" : "scope.local");
@@ -154,11 +184,13 @@ export const runPresetShow = async (presetName: string, options: PresetShowOptio
 
     const parameters = formatPresetParameters(preset.parameters);
     const uploads = formatPresetUploads(preset.uploads);
+    const warnings = collectAliasShadowedWarnings(parameters);
 
     const payload = {
       ok: true,
       scope,
       source,
+      warnings,
       preset: {
         name: preset.name,
         version: preset.version,
@@ -183,6 +215,7 @@ export const runPresetShow = async (presetName: string, options: PresetShowOptio
     print(t("preset_show.source", { source }));
     print(t("preset_show.file", { path: presetPath }));
     print(t("preset_show.workflow", { workflow: preset.workflow, path: workflowPath }));
+    printAliasShadowedWarnings(warnings);
 
     if (parameters.length === 0) {
       print(t("preset_show.parameters_none"));
@@ -216,6 +249,7 @@ export const runPresetShow = async (presetName: string, options: PresetShowOptio
   const remote = remoteTemplate!;
   const parameters = normalizeRemoteParameters(remote);
   const uploads = normalizeRemoteUploads(remote);
+  const warnings = collectAliasShadowedWarnings(parameters);
   const remoteRaw = remote.raw as Record<string, unknown> | undefined;
   const workflowFile = typeof remoteRaw?.workflow === "string" ? remoteRaw.workflow : "(remote)";
   const tags = Array.isArray(remoteRaw?.tags)
@@ -225,6 +259,7 @@ export const runPresetShow = async (presetName: string, options: PresetShowOptio
     ok: true,
     scope,
     source,
+    warnings,
     preset: {
       name: remote.name,
       version: 1,
@@ -257,6 +292,7 @@ export const runPresetShow = async (presetName: string, options: PresetShowOptio
   print(t("preset_show.file", { path: "(remote)" }));
   print(t("preset_show.remote_endpoint", { endpoint: remoteEndpoint }));
   print(t("preset_show.workflow", { workflow: workflowFile, path: "(remote)" }));
+  printAliasShadowedWarnings(warnings);
 
   if (parameters.length === 0) {
     print(t("preset_show.parameters_none"));

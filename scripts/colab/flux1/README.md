@@ -29,6 +29,28 @@ positive prompt, `--3_guidance` = Flux distilled guidance, `--6_seed` /
 `--6_steps` for sampler). Rename keys in
 `.comfy-agent/presets/flux1_dev.yaml` for friendlier flags.
 
+## Character LoRA (flux1_dev_lora)
+
+**Status: Starter (E2E not yet performed).** This optional workflow is
+statically validated only; the verified status above applies to the base
+`flux1_dev` workflow.
+
+Place your own Flux 1 LoRA in Colab's `ComfyUI/models/loras/` directory using
+the Files upload UI or a Google Drive mount. The kit does not download or
+publish the LoRA through a public host. Then, from the local checkout:
+
+```bash
+comfy-agent import scripts/colab/flux1/flux1_dev_lora.json --name flux1_lora
+comfy-agent character lora add <name> <file.safetensors> --base flux1
+comfy-agent brief <name> --preset flux1_lora --json
+comfy-agent run flux1_lora --character <name> --prompt "..."
+```
+
+Before running, confirm that the brief JSON reports
+`applicable.lora === true`. The LoRA filename is injected into the workflow's
+empty `LoraLoaderModelOnly.lora_name` slot; the character's configured LoRA
+strength is applied at the same time.
+
 ## Notes
 
 - Defaults match the official ComfyUI Flux example: 1024×1024, 20 steps,

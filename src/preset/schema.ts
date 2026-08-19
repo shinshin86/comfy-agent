@@ -32,13 +32,15 @@ const ParameterRoleSchema = z.enum([
   "sampler",
   "scheduler",
   "model",
+  "lora",
+  "lora_strength",
   "strength",
   "denoise",
   "advanced",
   "custom",
 ]);
 
-const UploadRoleSchema = z.enum([
+export const UploadRoleSchema = z.enum([
   "init_image",
   "mask",
   "reference_image",

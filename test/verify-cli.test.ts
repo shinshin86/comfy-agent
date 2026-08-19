@@ -3,7 +3,8 @@ import { promises as fs } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { runVerify } from "../src/cli/verify.js";
 import { CliError } from "../src/io/errors.js";
-import type { RunManifest } from "../src/jobs/types.js";
+import { readJob, writeJob } from "../src/jobs/store.js";
+import type { JobRecord, RunManifest } from "../src/jobs/types.js";
 import { createTmpWorkdir } from "./helpers/tmp-workdir.js";
 
 const pngChunk = (type: string, data: Buffer) => {
@@ -83,11 +84,72 @@ const createRunDir = async (status: RunManifest["runs"][number]["status"] = "com
   return { tmp, runDir };
 };
 
+const matchingJob = (cwd: string, outputDir: string): JobRecord => ({
+  version: 1,
+  job_id: "job-1",
+  prompt_id: "prompt-1",
+  client_id: "verify-client",
+  batch_id: "verify-batch",
+  batch_index: 1,
+  batch_count: 1,
+  scope: "local",
+  base_url: "http://127.0.0.1:8188",
+  preset: "verify-test",
+  source: "local",
+  params: {},
+  uploads: {},
+  seed: null,
+  output_dir: outputDir,
+  submitted_at: "2026-08-16T00:00:00.000Z",
+  status: "completed",
+  outputs: manifest().runs[0].outputs,
+});
+
 afterEach(() => {
   vi.restoreAllMocks();
 });
 
 describe("verify CLI core", () => {
+  it("writes the verification summary to the matching job record", async () => {
+    const { tmp, runDir } = await createRunDir();
+    await writeJob(matchingJob(tmp.cwd, runDir), tmp.cwd, "local");
+    vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+
+    const report = await runVerify(runDir, { json: true, noFfmpeg: true });
+    expect(report.summary.record_updated).toBe(true);
+    await expect(readJob("job-1", tmp.cwd, "local")).resolves.toMatchObject({
+      record: {
+        version: 2,
+        verify: {
+          at: expect.any(String),
+          files: 3,
+          kind: "image",
+          duration_s: 1,
+          checks_failed: 0,
+        },
+      },
+    });
+  });
+
+  it("warns without failing when the matching job record is absent", async () => {
+    const { runDir } = await createRunDir();
+    vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+
+    const report = await runVerify(runDir, { json: true, noFfmpeg: true });
+    expect(report).toMatchObject({
+      ok: true,
+      summary: { checks_failed: 0, record_updated: false },
+    });
+    expect(report.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "VERIFY_RECORD_NOT_UPDATED",
+          details: { job_id: "job-1", status: "not_found" },
+        }),
+      ]),
+    );
+  });
+
   it("returns the JSON report with manifest and pure-JS metadata", async () => {
     const { runDir } = await createRunDir();
     const stdout = vi.spyOn(process.stdout, "write").mockImplementation(() => true);

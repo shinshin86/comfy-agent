@@ -125,7 +125,7 @@ download してください。
 
 - 各 parameter の `description`。
 - 判別できた `role`。例: `prompt`、`seed`、`steps`、`guidance`、`width`、`height`、
-  `sampler`、`scheduler`、`denoise`、`strength`。
+  `sampler`、`scheduler`、`lora`、`lora_strength`、`denoise`、`strength`。
 - 既知 role の数値ヒント。
 - `--prompt`、`--negative`、`--steps`、`--cfg`、`--width`、`--height` などの安定した
   alias。動画・音声では `--length`、`--fps`、`--seconds`、`--lyrics` が付く場合もあります。
@@ -168,25 +168,41 @@ comfy-agent run text2img_v1 --prompt "A cat" --async --json
 comfy-agent run text2img_v1 --out ./generated --timeout-seconds 600
 comfy-agent run text2img_v1 --source local --poll-interval-ms 1000
 comfy-agent run text2img_v1 --global --prompt "A cat"
+comfy-agent run portrait --character miko --form casual --json
 ```
 
 主な option:
 
-| option | 意味 |
-|---|---|
-| `--source <local|remote|remote-catalog>` | preset/workflow の取得元を選択。 |
-| `--n <count>` | 複数回 submit。 |
-| `--seed <int|random>` / `--seed-step <int>` | seed target の設定と増分。 |
-| `--out <dir>` | 出力 directory を上書き。 |
-| `--poll-interval-ms <ms>` | history polling 間隔。 |
-| `--timeout-seconds <sec>` | 完了待ち timeout。 |
-| `--async` | submit 後すぐ戻り、job record を保存。 |
-| `--dry-run` | ComfyUI に接続せず、patch 後の workflow を表示。 |
-| `--no-preflight` | debug 用に server node/model 検査を省略。 |
+| option                       | 意味                                                                |
+| ---------------------------- | ------------------------------------------------------------------- |
+| `--source <local\|remote\|remote-catalog>` | preset/workflow の取得元を選択。 |
+| `--n <count>`                | 複数回 submit。                                                     |
+| `--seed <int\|random>` / `--seed-step <int>` | seed target の設定と増分。 |
+| `--out <dir>`                | 出力 directory を上書き。                                           |
+| `--poll-interval-ms <ms>`    | history polling 間隔。                                              |
+| `--timeout-seconds <sec>`    | 完了待ち timeout。                                                  |
+| `--async`                    | submit 後すぐ戻り、job record を保存。                              |
+| `--dry-run`                  | ComfyUI に接続せず、patch 後の workflow を表示。                    |
+| `--no-preflight`             | debug 用に server node/model 検査を省略。                           |
+| `--character <name>`         | local 優先で再利用可能な character を注入。                         |
+| `--form <id>`                | character form を選択（既定: `default`）。                          |
+| `--character-ref <index\|file>` | form に合う character 参照画像を選択。 |
+| `--character-prompt <replace\|prefix\|off>` | prompt 注入方式（既定: `replace`）。 |
+| `--lora <file>`              | 単一の `role: lora` target を上書き。`--character` なしでも使用可。 |
 
 `--seed` は parameter 名 `seed`、alias `seed`、`role: seed` の順で最初に一致した分類を
 対象にします。同じ分類に複数 target がある場合は同じ値を適用し、一緒に増分します。
 `--12_noise_seed 5` のような明示 flag は、その target について優先されます。
+
+character 注入は required input 検査、seed 解決、dry-run、preflight より前に行います。
+JSON、job record、`run.json` には注入前後を `prompt_input` / `prompt_final` として保存します。
+参照画像は `role: reference_image` upload だけが対象で、`input_image` / `init_image` には
+入りません。LoRA target が複数なら `LORA_TARGET_AMBIGUOUS`、単一 target が使用済みなら
+保持し、明示的な `--lora` だけが上書きします。
+
+character option なしの `run --dry-run --json` は従来どおり raw workflow を返します。
+`--character` 付きでは `{ok, workflow, prompt_input, prompt_final, character}` を返し、
+注入結果を検査できます。
 
 preset parameter は生成 alias または canonical な `--<node_id>_<input>` で指定します。
 両方を指定した場合は後の値を使います。upload flag は `uploads.*.cli_flag` で定義します。
@@ -214,6 +230,125 @@ remote source の補足:
 同期 run も job record を書くため、ローカルコマンドが中断されても再開できます。
 ComfyUI history はメモリ上にあり、server process や Colab runtime が再起動すると
 `JOB_LOST` になり、再 submit が必要な場合があります。
+
+### `history`
+
+制作内容の確認には `history`、投入済み job の運用・再開には `jobs` を使います。
+
+```bash
+comfy-agent history
+comfy-agent history list --preset portrait --kind image --limit 20
+comfy-agent history --search "soft light" --since 7d --json
+comfy-agent history --character miko --favorite --all-scopes --json
+comfy-agent history show <job_id> --json
+comfy-agent history note <job_id> "Keep the lighting soft" --json
+comfy-agent history tag <job_id> portrait approved --json
+comfy-agent history tag <job_id> reject --reason "identity drift" --json
+comfy-agent history tag <job_id> reject --rm --json
+comfy-agent history open <job_id>
+```
+
+一覧では `--preset`、`--character`、`--kind image|video|audio`、`--status`、`--tag`、
+`--search`、`--since <ISO|7d|24h>`、`--favorite`、`--rejected`、`--limit`（既定30）を
+指定できます。既定 scope は local、`--global` は global、`--all-scopes` は両方を統合
+します。scope 横断時の JSON は、`--full-prompts` を付けない限り `prompt_final` を60文字に
+切り詰めます。
+global character では `--character <name> --all-scopes` が character の cross-project
+`index.jsonl` も追跡し、prompt は同じく既定60文字です。
+
+`history show` は job record、`run.json`、存在する場合は `verify/verify.json` の summary、
+出力ファイルの絶対パスを返します。完全な job ID と一意な prefix を使用できます。
+`history open` は GUI を開かず、出力ディレクトリだけを表示します。
+
+### `character`
+
+character 資源は `.comfy-agent/characters/<name>/` に独立して保存されます。`--global`
+では global workdir を使います。各 directory は `character.yaml`、追記専用の
+`notes.md`、`gallery.json`、`refs/` にコピーした参照画像、`gallery/` にコピーした
+採用候補を持ちます。`--global` を指定しない検索は local を優先し、無ければ global に
+フォールバックします。
+
+```yaml
+version: 1
+name: miko
+display_name: ミコ
+appearance: dark bob hair, small red hairpin, brown eyes
+triggers:
+  default: m1ko
+style: anime, soft lighting
+negative: extra fingers, text
+prompt_template: "{trigger} {appearance}, {prompt}, {style}"
+forms:
+  - id: default
+  - id: casual
+    appearance: dark bob hair, red hairpin, casual hoodie
+references:
+  - file: refs/front.png
+    role: reference_image
+    forms: [default]
+loras:
+  - file: miko_flux.safetensors
+    strength: 1
+    base: flux1
+content_rating:
+  age_depicted: teen
+  allow_nsfw: false
+privacy:
+  export_refs: false
+  export_gallery: false
+```
+
+`default` form は必須で、`create` 時に省略されていれば自動追加されます。default trigger
+は空文字、`allow_nsfw` は false、export はメタデータのみが安全側の既定です。
+gallery への追加は job 出力を character directory にコピーし、`pending` にします。
+`gallery approve` だけが `human` 承認へ変更し、対応 job record の `favorite` を true にします。
+
+```bash
+comfy-agent character list [--global] [--json]
+comfy-agent character create <name> [--display-name <text>] [--appearance <text>|--appearance-file <path>] [--trigger <text>] [--style <text>] [--negative <text>] [--age <age>] [--allow-nsfw] [--tag <tags...>] [--global] [--json]
+comfy-agent character show <name> [--notes] [--gallery] [--full] [--global] [--json]
+comfy-agent character update <name> [create と同じ metadata option] [--global] [--json]
+comfy-agent character note <name> <text> [--kit <preset-or-kit>] [--global] [--json]
+comfy-agent character ref add <name> <path> [--role <role>] [--form <id>] [--note <text>] [--global] [--json]
+comfy-agent character ref rm <name> <file> [--global] [--json]
+comfy-agent character form add <name> <id> --appearance <text> [--ref <paths...>] [--global] [--json]
+comfy-agent character lora add <name> <file> [--strength <n>] [--base <tag>] [--global] [--json]
+comfy-agent character gallery add <name> <job_id> [--output <n>] [--caption <text>] [--tag <tags...>] [--form <id>] [--global] [--json]
+comfy-agent character gallery approve <name> <gallery_ids...> [--global] [--json]
+comfy-agent character gallery rm <name> <gallery_id> [--global] [--json]
+comfy-agent character sheet <name> [--form <id>] [--out <png>] [--global] [--json]
+comfy-agent character export <name> [--out <dir>] [--with-refs] [--with-gallery] [--global] [--json]
+comfy-agent character import <dir> [--name <override>] [--global] [--force] [--json]
+comfy-agent character rm <name> --force [--global] [--json]
+```
+
+`show --notes` は `--full` が無ければ末尾4,000文字を返します。export は常に
+`character.yaml`、`notes.md`、メタデータだけの `gallery.json` を含み、2つの
+`--with-*` flag で実ファイルを明示的に追加します。metadata の path は相対のままです。
+character command は `CHARACTER_NOT_FOUND`、`CHARACTER_EXISTS`、
+`INVALID_CHARACTER`、`CHARACTER_REF_NOT_FOUND`、`CHARACTER_FORM_NOT_FOUND`、
+`GALLERY_JOB_NOT_FOUND`、`GALLERY_ITEM_NOT_FOUND`、`CHARACTER_IMPORT_CONFLICT` などを
+exit 2 で返します。
+
+`character sheet` は `approved: human` の gallery 実ファイルだけを並べます。動画は抽出した
+先頭 frame を使い、既定出力は `<character-dir>/sheet.png` です。対象0件は
+`GALLERY_EMPTY`、ffmpeg が無ければ `MISSING_TOOL` を返します。成人向け preset は
+`nsfw`、`adult`、`explicit` などの tag を必ず付けてください。この tag は
+`allow_nsfw: false` の character を遮断しますが、content classifier ではありません。
+
+### `brief`
+
+既知 character を生成する前の唯一の memory 入口として `brief` を使います。
+
+```bash
+comfy-agent brief miko --preset portrait --json
+comfy-agent brief miko --preset portrait --form casual
+```
+
+resolved character/form と正典 appearance、理由付きの prompt/negative/reference/LoRA
+`applicable`、正確な `prompt_preview`、kit note、favorite 優先・次に verify 成功優先の
+上位5 job、reject job の `avoid`、人間承認済み gallery、notes 末尾2,000文字、warning を
+返します。通常 history と global character の cross-project 利用 index を統合します。
 
 ### `jobs`
 
@@ -482,34 +617,34 @@ uploads:
 
 preset 直下の項目:
 
-| 項目 | 型 | 意味 |
-|---|---|---|
-| `description` | string | preset の説明。 |
-| `task` | enum | `text_to_image`、`image_to_image`、`image_edit`、`remove_background`、`inpaint`、`upscale`、`text_to_audio`、`audio_to_audio`、`audio_inpaint`、`text_to_video`、`image_to_video`、`video_to_video`、`custom`。 |
-| `tags` | string[] | 検索・分類用の自由 label。 |
+| 項目          | 型       | 意味                                                                                                                                                                                                            |
+| ------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `description` | string   | preset の説明。                                                                                                                                                                                                 |
+| `task`        | enum     | `text_to_image`、`image_to_image`、`image_edit`、`remove_background`、`inpaint`、`upscale`、`text_to_audio`、`audio_to_audio`、`audio_inpaint`、`text_to_video`、`image_to_video`、`video_to_video`、`custom`。 |
+| `tags`        | string[] | 検索・分類用の自由 label。                                                                                                                                                                                      |
 
 `type`、`target`、`required`、`default` に加えられる parameter 項目:
 
-| 項目 | 型 | 意味 |
-|---|---|---|
-| `description` | string | 人間/agent 向けの説明。 |
-| `role` | enum | `prompt`、`negative_prompt`、`seed`、`steps`、`guidance`、`width`、`height`、`sampler`、`scheduler`、`model`、`strength`、`denoise`、`advanced`、`custom`。 |
-| `aliases` | string[] | `run` が受け付ける別名 CLI flag。 |
-| `min` / `max` | number | 参考用の数値範囲。 |
-| `choices` | array | 参考用の許容値一覧。 |
-| `recommended` | any | 参考用の推奨値。 |
+| 項目          | 型       | 意味                                                                                                                                                                                 |
+| ------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `description` | string   | 人間/agent 向けの説明。                                                                                                                                                              |
+| `role`        | enum     | `prompt`、`negative_prompt`、`seed`、`steps`、`guidance`、`width`、`height`、`sampler`、`scheduler`、`model`、`lora`、`lora_strength`、`strength`、`denoise`、`advanced`、`custom`。 |
+| `aliases`     | string[] | `run` が受け付ける別名 CLI flag。                                                                                                                                                    |
+| `min` / `max` | number   | 参考用の数値範囲。                                                                                                                                                                   |
+| `choices`     | array    | 参考用の許容値一覧。                                                                                                                                                                 |
+| `recommended` | any      | 参考用の推奨値。                                                                                                                                                                     |
 
 upload 項目:
 
-| 項目 | 型 | 意味 |
-|---|---|---|
-| `kind` | enum | `image`、`mask`、`audio`、`file`。 |
-| `cli_flag` | string | `--image`、`--audio` など `run` が受け付ける flag。 |
-| `target` | object | upload 後の file 名を受け取る workflow node input。 |
-| `description` | string | 人間/agent 向けの説明。 |
-| `role` | enum | `init_image`、`mask`、`reference_image`、`control_image`、`input_image`、`input_audio`、`reference_audio`、`input_file`、`custom`。 |
-| `aliases` | string[] | `run` が受け付ける別名 CLI flag。 |
-| `required` | boolean | 必須 upload かどうか。 |
+| 項目          | 型       | 意味                                                                                                                                |
+| ------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `kind`        | enum     | `image`、`mask`、`audio`、`file`。                                                                                                  |
+| `cli_flag`    | string   | `--image`、`--audio` など `run` が受け付ける flag。                                                                                 |
+| `target`      | object   | upload 後の file 名を受け取る workflow node input。                                                                                 |
+| `description` | string   | 人間/agent 向けの説明。                                                                                                             |
+| `role`        | enum     | `init_image`、`mask`、`reference_image`、`control_image`、`input_image`、`input_audio`、`reference_audio`、`input_file`、`custom`。 |
+| `aliases`     | string[] | `run` が受け付ける別名 CLI flag。                                                                                                   |
+| `required`    | boolean  | 必須 upload かどうか。                                                                                                              |
 
 `import` は description、判別できた role、数値ヒント、一般的な alias を設定します。
 input 名より先に graph 構造を考慮します。`seed` alias は生成せず、専用 `--seed` 解決が
@@ -518,8 +653,9 @@ seed role を使います。`list --json` と `preset --json` は全 metadata �
 ## JSON 出力
 
 `--json` は stdout に JSON だけを出します。対応する全コマンドは成功・失敗とも
-`{ "ok": ... }` envelope を使います。唯一の例外は `run --dry-run --json` で、ComfyUI へ
-そのまま送れる patch 後の workflow 生 JSON を返します。
+`{ "ok": ... }` envelope を使います。`run --dry-run --json` は character option が無ければ
+ComfyUI へそのまま送れる patch 後の workflow 生 JSON を返します。`--character` 付きでは
+`workflow`、`prompt_input`、`prompt_final`、character 注入詳細を含む envelope を返します。
 
 成功例:
 
@@ -580,50 +716,50 @@ CLI が返す終了コードは `0`、`2`、`3` のみです。
 
 ## 典型的なエラー
 
-| code | exit | 意味と対処 |
-|---|---:|---|
-| `INVALID_USAGE` | 2 | command 構造が不正。必須/未知引数や余剰 positional を修正。Commander failure は `details.commander_code` を含みます。 |
-| `INVALID_PARAM` | 2 | option 値または範囲が不正。 |
-| `UNSUPPORTED_RUNTIME` | 2 | 必須 Node.js runtime global がありません。Node.js 22 以上を使用。details は `node`、`required`、`missing`。 |
-| `WORKDIR_NOT_FOUND` | 2 | workdir 必須 command で workdir がありません。`init` または成功する `connect` を実行。 |
-| `WORKDIR_NOT_WRITABLE` | 2 | jobs directory を作成・書込できません。`details.path` と `details.cause` を確認。 |
-| `WORKDIR_CONFLICT` | 2 | workdir path が directory ではありません。確認後、必要なら `init --force`。 |
-| `FILE_NOT_FOUND` | 2 | input workflow、upload、analyze/verify 対象がありません。 |
-| `FILE_EXISTS` | 2 | import 先または marker の無い skill directory が存在。対象確認後に限り `--force`。 |
-| `INVALID_PRESET` | 2 | preset YAML が必要構造に一致しません。 |
-| `PRESET_NOT_FOUND` | 2 | 選択 source に指定 preset がありません。 |
-| `PRESET_SOURCE_AMBIGUOUS` | 2 | 同名 preset が local/remote 両方にあります。`--source` を指定。 |
-| `MISSING_REQUIRED_PARAM` | 2 | 必須 preset parameter が不足。`details.param` を確認。 |
-| `MISSING_REQUIRED_UPLOAD` | 2 | 必須 upload flag が不足。 |
-| `UNKNOWN_PARAM` | 2 | dynamic `run` flag が preset に未定義。 |
-| `SERVER_UNREACHABLE` | 3 | server に接続不能。`base_url`、server 起動、期限切れ tunnel の再接続を確認。 |
-| `API_ERROR` | 3 | server 到達後に request が失敗。path/status details を確認。 |
-| `MISSING_NODE_ON_SERVER` | 3 | workflow node class が不足。`details.missing_nodes` を確認。 |
-| `MISSING_MODEL_ON_SERVER` | 3 | model file が不足。`details.missing_models[].value` を `colab catalog --json` の asset と照合。 |
-| `EXECUTION_FAILED` | 3 | ComfyUI の実行失敗・中断。`category`、`kind`、node/exception、partial output、output directory を確認。`oom` は解像度/steps を下げ、中断は1回再試行。 |
-| `NO_OUTPUTS` | 2 | 実行完了後に保存 file がありません。適切な `Save*` node を追加。 |
-| `TIMEOUT` | 3 | `--timeout-seconds` を超過。適切に増やして1回再試行。 |
-| `JOB_NOT_FOUND` | 2 | 指定 job ID/prefix に一致する local record がありません。 |
-| `JOB_AMBIGUOUS_ID` | 2 | job prefix が複数 record に一致。長い ID または完全 ID を使用。 |
-| `INVALID_JOB_RECORD` | 2 | local job JSON record が不正または安全でありません。 |
-| `JOB_LOST` | 3 | server history/queue の両方に job がありません。runtime 再起動後など。保存引数で preset を再実行。 |
-| `VERIFY_CHECKS_FAILED` | 3 | 明示した成果物期待値の一部が不一致。`details.failed` と `details.report` を確認。 |
-| `MISSING_TOOL` | 2 | 明示要求した verify 成果物に ffmpeg が必要。install するか frames/sheet 指定を外す。 |
-| `UNSUPPORTED_FORMAT` | 2 | 単一 verify 対象を built-in probe/ffprobe で解釈できません。 |
-| `RESOURCE_NOT_FOUND` | 2 | 同梱 package resource が不足。details は `resource` と `path`。package を再 install。 |
-| `PLAYBOOK_NOT_FOUND` | 2 | 未知 playbook。`details.available` に候補。 |
-| `PLAYBOOK_SECTION_NOT_FOUND` | 2 | 未知 playbook section。`details.available` に section。 |
-| `SKILL_AGENT_UNSUPPORTED` | 2 | 未知 install target。`details.supported` に agent 名。 |
-| `SKILL_NOT_FOUND` | 2 | 未知同梱 skill。`details.available` に skill。 |
-| `SKILL_SCOPE_CONFLICT` | 2 | `--global`、`--project`、`--dir` を複数選択。 |
-| `SKILL_INSTALL_FAILED` | 2 | local skill install 失敗。`details.path` と `details.cause` を確認。 |
-| `COLAB_KIT_NOT_FOUND` | 2 | 未知 kit 名。`details.available` に catalog entry。 |
-| `COLAB_CATALOG_UNAVAILABLE` | 2 | 同梱 catalog が見つかりません。package を再 install。 |
-| `COLAB_CATALOG_READ_FAILED` | 2 | 同梱 catalog を読めません。 |
-| `INVALID_COLAB_CATALOG` | 2 | 同梱 catalog が schema validation に失敗。 |
-| `MISSING_API_KEY` | 2 | `analyze` に `OPENAI_API_KEY` または `--api-key` が必要。 |
-| `UNSUPPORTED_IMAGE` | 2 | `analyze` に未対応画像形式を指定。 |
-| `OPENAI_API_ERROR` | 3 | OpenAI request が失敗。 |
+| code                         | exit | 意味と対処                                                                                                                                            |
+| ---------------------------- | ---: | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `INVALID_USAGE`              |    2 | command 構造が不正。必須/未知引数や余剰 positional を修正。Commander failure は `details.commander_code` を含みます。                                 |
+| `INVALID_PARAM`              |    2 | option 値または範囲が不正。                                                                                                                           |
+| `UNSUPPORTED_RUNTIME`        |    2 | 必須 Node.js runtime global がありません。Node.js 22 以上を使用。details は `node`、`required`、`missing`。                                           |
+| `WORKDIR_NOT_FOUND`          |    2 | workdir 必須 command で workdir がありません。`init` または成功する `connect` を実行。                                                                |
+| `WORKDIR_NOT_WRITABLE`       |    2 | jobs directory を作成・書込できません。`details.path` と `details.cause` を確認。                                                                     |
+| `WORKDIR_CONFLICT`           |    2 | workdir path が directory ではありません。確認後、必要なら `init --force`。                                                                           |
+| `FILE_NOT_FOUND`             |    2 | input workflow、upload、analyze/verify 対象がありません。                                                                                             |
+| `FILE_EXISTS`                |    2 | import 先または marker の無い skill directory が存在。対象確認後に限り `--force`。                                                                    |
+| `INVALID_PRESET`             |    2 | preset YAML が必要構造に一致しません。                                                                                                                |
+| `PRESET_NOT_FOUND`           |    2 | 選択 source に指定 preset がありません。                                                                                                              |
+| `PRESET_SOURCE_AMBIGUOUS`    |    2 | 同名 preset が local/remote 両方にあります。`--source` を指定。                                                                                       |
+| `MISSING_REQUIRED_PARAM`     |    2 | 必須 preset parameter が不足。`details.param` を確認。                                                                                                |
+| `MISSING_REQUIRED_UPLOAD`    |    2 | 必須 upload flag が不足。                                                                                                                             |
+| `UNKNOWN_PARAM`              |    2 | dynamic `run` flag が preset に未定義。                                                                                                               |
+| `SERVER_UNREACHABLE`         |    3 | server に接続不能。`base_url`、server 起動、期限切れ tunnel の再接続を確認。                                                                          |
+| `API_ERROR`                  |    3 | server 到達後に request が失敗。path/status details を確認。                                                                                          |
+| `MISSING_NODE_ON_SERVER`     |    3 | workflow node class が不足。`details.missing_nodes` を確認。                                                                                          |
+| `MISSING_MODEL_ON_SERVER`    |    3 | model file が不足。`details.missing_models[].value` を `colab catalog --json` の asset と照合。                                                       |
+| `EXECUTION_FAILED`           |    3 | ComfyUI の実行失敗・中断。`category`、`kind`、node/exception、partial output、output directory を確認。`oom` は解像度/steps を下げ、中断は1回再試行。 |
+| `NO_OUTPUTS`                 |    2 | 実行完了後に保存 file がありません。適切な `Save*` node を追加。                                                                                      |
+| `TIMEOUT`                    |    3 | `--timeout-seconds` を超過。適切に増やして1回再試行。                                                                                                 |
+| `JOB_NOT_FOUND`              |    2 | 指定 job ID/prefix に一致する local record がありません。                                                                                             |
+| `JOB_AMBIGUOUS_ID`           |    2 | job prefix が複数 record に一致。長い ID または完全 ID を使用。                                                                                       |
+| `INVALID_JOB_RECORD`         |    2 | local job JSON record が不正または安全でありません。                                                                                                  |
+| `JOB_LOST`                   |    3 | server history/queue の両方に job がありません。runtime 再起動後など。保存引数で preset を再実行。                                                    |
+| `VERIFY_CHECKS_FAILED`       |    3 | 明示した成果物期待値の一部が不一致。`details.failed` と `details.report` を確認。                                                                     |
+| `MISSING_TOOL`               |    2 | 明示要求した verify 成果物に ffmpeg が必要。install するか frames/sheet 指定を外す。                                                                  |
+| `UNSUPPORTED_FORMAT`         |    2 | 単一 verify 対象を built-in probe/ffprobe で解釈できません。                                                                                          |
+| `RESOURCE_NOT_FOUND`         |    2 | 同梱 package resource が不足。details は `resource` と `path`。package を再 install。                                                                 |
+| `PLAYBOOK_NOT_FOUND`         |    2 | 未知 playbook。`details.available` に候補。                                                                                                           |
+| `PLAYBOOK_SECTION_NOT_FOUND` |    2 | 未知 playbook section。`details.available` に section。                                                                                               |
+| `SKILL_AGENT_UNSUPPORTED`    |    2 | 未知 install target。`details.supported` に agent 名。                                                                                                |
+| `SKILL_NOT_FOUND`            |    2 | 未知同梱 skill。`details.available` に skill。                                                                                                        |
+| `SKILL_SCOPE_CONFLICT`       |    2 | `--global`、`--project`、`--dir` を複数選択。                                                                                                         |
+| `SKILL_INSTALL_FAILED`       |    2 | local skill install 失敗。`details.path` と `details.cause` を確認。                                                                                  |
+| `COLAB_KIT_NOT_FOUND`        |    2 | 未知 kit 名。`details.available` に catalog entry。                                                                                                   |
+| `COLAB_CATALOG_UNAVAILABLE`  |    2 | 同梱 catalog が見つかりません。package を再 install。                                                                                                 |
+| `COLAB_CATALOG_READ_FAILED`  |    2 | 同梱 catalog を読めません。                                                                                                                           |
+| `INVALID_COLAB_CATALOG`      |    2 | 同梱 catalog が schema validation に失敗。                                                                                                            |
+| `MISSING_API_KEY`            |    2 | `analyze` に `OPENAI_API_KEY` または `--api-key` が必要。                                                                                             |
+| `UNSUPPORTED_IMAGE`          |    2 | `analyze` に未対応画像形式を指定。                                                                                                                    |
+| `OPENAI_API_ERROR`           |    3 | OpenAI request が失敗。                                                                                                                               |
 
 `run` は submit 前に server preflight を行います。`--no-preflight` は node/model 不足の
 検出を ComfyUI 側まで遅らせるため、限定的な debug にだけ使ってください。

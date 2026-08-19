@@ -27,7 +27,7 @@ Produce a **blueprint** first, in this order:
    Examples:
    - "10-second anime video" → `text_to_video` (anime style)
    - "music video" → `text_to_audio` (song) + `text_to_image` (keyframes)
-     + `image_to_video` (clips) + local ffmpeg assembly
+     plus `image_to_video` (clips) and local ffmpeg assembly
 2. **Find kits per capability** (available from `npm i -g comfy-agent` since 0.0.3):
    ```bash
    comfy-agent colab suggest "<capability + style + constraints>" --json
@@ -97,12 +97,13 @@ Commands with a `--json` flag (`init`, `import`, `run`, `jobs *`, `doctor`,
 errors in this shape:
 
 ```json
-{ "ok": false, "error": { "code": "...", "message": "...", "details": { } } }
+{ "ok": false, "error": { "code": "...", "message": "...", "details": {} } }
 ```
 
-Success and failure both use an `{ "ok": ... }` envelope. The sole exception
-is `run --dry-run --json`, which emits the raw patched workflow so it can be
-sent directly to ComfyUI.
+Success and failure both use an `{ "ok": ... }` envelope. `run --dry-run --json`
+without character options emits the raw patched workflow so it can be sent directly
+to ComfyUI. With `--character` it emits an envelope containing `workflow`,
+`prompt_input`, `prompt_final`, and character injection details.
 
 The CLI returns only exit codes `0`, `2`, and `3`:
 
@@ -123,22 +124,22 @@ structured `details` objects in the table below come from thrown errors
 
 Codes the orchestration flow relies on (Phase 1):
 
-| Code | Exit | Meaning | Key `details` fields |
-|---|---|---|---|
-| `SERVER_UNREACHABLE` | 3 | TCP/HTTP connection to base URL failed | `server`, `cause` |
-| `MISSING_NODE_ON_SERVER` | 3 | Workflow references a node class the server does not have | `server`, `missing_nodes: [{node_id, class_type}]`, `missing_models` |
-| `MISSING_MODEL_ON_SERVER` | 3 | Workflow references model files absent on the server | `server`, `missing_models: [{node_id, class_type, input, value, available[], available_truncated?}]`, `missing_nodes` |
-| `WORKDIR_NOT_FOUND` | 2 | No `.comfy-agent/` — run `comfy-agent init` | — |
-| `INVALID_USAGE` | 2 | Invalid argument structure | `commander_code` for Commander errors |
-| `MISSING_REQUIRED_PARAM` | 2 | Bad invocation | `param` |
-| `API_ERROR` | 3 | Server reached but request failed (5xx, invalid response) | — |
-| `EXECUTION_FAILED` | 3 | ComfyUI execution failed or was interrupted. For `category: oom`, reduce resolution/steps or ask the human about a higher GPU; for `kind: interrupted`, retry once | `prompt_id`, `run_index`, `kind`, `node_id`, `node_type`, `exception_type`, `exception_message`, `category`, `executed`, `traceback_tail`, `partial_outputs`, `output_dir` |
-| `NO_OUTPUTS` | 2 | Execution completed without output files; add an appropriate `Save*` node | `prompt_id`, `run_index`, `output_dir` |
-| `TIMEOUT` | 3 | Generation exceeded timeout | — |
-| `JOB_LOST` | 3 | The submitted job is absent from both ComfyUI history and queue | `job_id`, `prompt_id`, `base_url`, `recorded_base_url`, `hint` |
-| `MISSING_TOOL` | 2 | An explicitly requested verify artifact needs ffmpeg | `tool`, `hint`, `env` |
-| `UNSUPPORTED_FORMAT` | 2 | A single verify target cannot be parsed | `path`, `magic`, `ext`, `supported` |
-| `VERIFY_CHECKS_FAILED` | 3 | Artifact metadata failed one or more requested checks | `failed`, `report` |
+| Code                      | Exit | Meaning                                                                                                                                                            | Key `details` fields                                                                                                                                                       |
+| ------------------------- | ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SERVER_UNREACHABLE`      | 3    | TCP/HTTP connection to base URL failed                                                                                                                             | `server`, `cause`                                                                                                                                                          |
+| `MISSING_NODE_ON_SERVER`  | 3    | Workflow references a node class the server does not have                                                                                                          | `server`, `missing_nodes: [{node_id, class_type}]`, `missing_models`                                                                                                       |
+| `MISSING_MODEL_ON_SERVER` | 3    | Workflow references model files absent on the server                                                                                                               | `server`, `missing_models: [{node_id, class_type, input, value, available[], available_truncated?}]`, `missing_nodes`                                                      |
+| `WORKDIR_NOT_FOUND`       | 2    | No `.comfy-agent/` — run `comfy-agent init`                                                                                                                        | —                                                                                                                                                                          |
+| `INVALID_USAGE`           | 2    | Invalid argument structure                                                                                                                                         | `commander_code` for Commander errors                                                                                                                                      |
+| `MISSING_REQUIRED_PARAM`  | 2    | Bad invocation                                                                                                                                                     | `param`                                                                                                                                                                    |
+| `API_ERROR`               | 3    | Server reached but request failed (5xx, invalid response)                                                                                                          | —                                                                                                                                                                          |
+| `EXECUTION_FAILED`        | 3    | ComfyUI execution failed or was interrupted. For `category: oom`, reduce resolution/steps or ask the human about a higher GPU; for `kind: interrupted`, retry once | `prompt_id`, `run_index`, `kind`, `node_id`, `node_type`, `exception_type`, `exception_message`, `category`, `executed`, `traceback_tail`, `partial_outputs`, `output_dir` |
+| `NO_OUTPUTS`              | 2    | Execution completed without output files; add an appropriate `Save*` node                                                                                          | `prompt_id`, `run_index`, `output_dir`                                                                                                                                     |
+| `TIMEOUT`                 | 3    | Generation exceeded timeout                                                                                                                                        | —                                                                                                                                                                          |
+| `JOB_LOST`                | 3    | The submitted job is absent from both ComfyUI history and queue                                                                                                    | `job_id`, `prompt_id`, `base_url`, `recorded_base_url`, `hint`                                                                                                             |
+| `MISSING_TOOL`            | 2    | An explicitly requested verify artifact needs ffmpeg                                                                                                               | `tool`, `hint`, `env`                                                                                                                                                      |
+| `UNSUPPORTED_FORMAT`      | 2    | A single verify target cannot be parsed                                                                                                                            | `path`, `magic`, `ext`, `supported`                                                                                                                                        |
+| `VERIFY_CHECKS_FAILED`    | 3    | Artifact metadata failed one or more requested checks                                                                                                              | `failed`, `report`                                                                                                                                                         |
 
 `run` performs the preflight automatically before submitting;
 `doctor --preset <name>` runs the same check standalone;
@@ -149,24 +150,24 @@ Codes the orchestration flow relies on (Phase 1):
 Guiding principle: **work that only costs time → the agent does it;
 work that costs money, rights, or physical human action → the human decides.**
 
-| Situation | Who acts | Agent behavior |
-|---|---|---|
-| No environment configured (first run) | ask once | Offer Local / Colab (see §2), persist the answer |
-| Local: ComfyUI not installed | **agent** | Install it (announce disk/time first), start it, `connect` |
-| Local: server installed but not running | **agent** | Start it in background, wait for port, continue |
-| `SERVER_UNREACHABLE` and base URL is `*.trycloudflare.com` | **human (1 action)** | Say exactly: "Colab session expired. Open the notebook, Run All, paste the final line." Nothing else is lost — do not re-import. If a Colab automation MCP is available, offer to do it |
-| `SERVER_UNREACHABLE` and base URL is local | **agent** | Start/restart the local server |
-| `MISSING_MODEL_ON_SERVER`, local server | **agent (confirm if large)** | Map `missing_models[].value` → kit via `colab catalog --json` (each kit's `assets[].file`); download into the local ComfyUI. Ask first when downloads exceed a few GB |
-| `MISSING_MODEL_ON_SERVER`, Colab server | **human (setup cell)** | Identify the providing kit from catalog `assets`; hand the human that kit's `01_setup.py` cell. If the kit to add has `composable: true`, the cell can run additively on the existing runtime; otherwise advise a fresh runtime |
-| `MISSING_NODE_ON_SERVER` | depends | Usually means wrong/outdated ComfyUI or missing custom node — treat like missing model: local = agent fixes, Colab = setup cell |
-| GPU below kit's `gpu.minimum` | **human (choice)** | Present: upgrade runtime (cost) vs. smaller model (quality delta). Never choose paid options silently |
-| License constraint (`license_notes`: non-commercial etc.) | **human (choice)** | Summarize the constraint, ask about intended use before generating |
-| Generation succeeded but quality is off | **agent (bounded)** | Inspect the output yourself, adjust params, retry ≤ 3 times, then report with evidence |
-| `EXECUTION_FAILED` with `category: oom` | depends | Reduce resolution or steps first; if that is insufficient, present a higher-GPU option to the human because it may cost money |
-| `EXECUTION_FAILED` with `kind: interrupted` | **agent** | Retry once; if the server interrupts it again, report the repeated interruption |
-| `NO_OUTPUTS` | **agent** | Add or fix the workflow's appropriate `Save*` output node, then rerun |
-| `TIMEOUT` | **agent** | Retry once with a raised `--timeout-seconds`; if it persists, report — the model may be too heavy for the runtime |
-| `JOB_LOST` | **agent** | Re-run the preset with the same arguments, using the record's `params`, `uploads`, and `seed` |
+| Situation                                                  | Who acts                     | Agent behavior                                                                                                                                                                                                                  |
+| ---------------------------------------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| No environment configured (first run)                      | ask once                     | Offer Local / Colab (see §2), persist the answer                                                                                                                                                                                |
+| Local: ComfyUI not installed                               | **agent**                    | Install it (announce disk/time first), start it, `connect`                                                                                                                                                                      |
+| Local: server installed but not running                    | **agent**                    | Start it in background, wait for port, continue                                                                                                                                                                                 |
+| `SERVER_UNREACHABLE` and base URL is `*.trycloudflare.com` | **human (1 action)**         | Say exactly: "Colab session expired. Open the notebook, Run All, paste the final line." Nothing else is lost — do not re-import. If a Colab automation MCP is available, offer to do it                                         |
+| `SERVER_UNREACHABLE` and base URL is local                 | **agent**                    | Start/restart the local server                                                                                                                                                                                                  |
+| `MISSING_MODEL_ON_SERVER`, local server                    | **agent (confirm if large)** | Map `missing_models[].value` → kit via `colab catalog --json` (each kit's `assets[].file`); download into the local ComfyUI. Ask first when downloads exceed a few GB                                                           |
+| `MISSING_MODEL_ON_SERVER`, Colab server                    | **human (setup cell)**       | Identify the providing kit from catalog `assets`; hand the human that kit's `01_setup.py` cell. If the kit to add has `composable: true`, the cell can run additively on the existing runtime; otherwise advise a fresh runtime |
+| `MISSING_NODE_ON_SERVER`                                   | depends                      | Usually means wrong/outdated ComfyUI or missing custom node — treat like missing model: local = agent fixes, Colab = setup cell                                                                                                 |
+| GPU below kit's `gpu.minimum`                              | **human (choice)**           | Present: upgrade runtime (cost) vs. smaller model (quality delta). Never choose paid options silently                                                                                                                           |
+| License constraint (`license_notes`: non-commercial etc.)  | **human (choice)**           | Summarize the constraint, ask about intended use before generating                                                                                                                                                              |
+| Generation succeeded but quality is off                    | **agent (bounded)**          | Inspect the output yourself, adjust params, retry ≤ 3 times, then report with evidence                                                                                                                                          |
+| `EXECUTION_FAILED` with `category: oom`                    | depends                      | Reduce resolution or steps first; if that is insufficient, present a higher-GPU option to the human because it may cost money                                                                                                   |
+| `EXECUTION_FAILED` with `kind: interrupted`                | **agent**                    | Retry once; if the server interrupts it again, report the repeated interruption                                                                                                                                                 |
+| `NO_OUTPUTS`                                               | **agent**                    | Add or fix the workflow's appropriate `Save*` output node, then rerun                                                                                                                                                           |
+| `TIMEOUT`                                                  | **agent**                    | Retry once with a raised `--timeout-seconds`; if it persists, report — the model may be too heavy for the runtime                                                                                                               |
+| `JOB_LOST`                                                 | **agent**                    | Re-run the preset with the same arguments, using the record's `params`, `uploads`, and `seed`                                                                                                                                   |
 
 ## 5. Reconnect flow (Colab volatility, condensed)
 
@@ -226,3 +227,23 @@ Human: "アニメ調で10秒くらいの動画プロトタイプを作りたい"
    `MISSING_MODEL_ON_SERVER`? (mismatched kit → §4) →
    `comfy-agent verify <run-dir> --expect-kind video --min-duration 8` →
    view the frames → deliver with a summary of what was verified.
+
+## 8. Creative memory
+
+When a request uses a known character,
+`comfy-agent brief <character> --preset <preset> --json` is the single entry point
+before generation. Reuse `appearance` verbatim, do
+not add words from `avoid`, and start from useful `top_jobs` prompts and seeds. If every
+`applicable` field is false, follow the reported next action instead of assuming that
+`run --character` will change the workflow.
+
+After generation, run `verify` and show the evidence to the human. Add only work the
+human explicitly likes with `character gallery add` (pending), then approve it only
+after a separate human confirmation with `character gallery approve`. Record failures
+with `history tag <job_id> reject --reason "<reason>"`; record kit-specific learning with
+`character note <name> "<learning>" --kit <preset>`.
+
+For a new character, agree with the human on one canonical appearance string and its
+`content_rating` before `character create`. If a character LoRA produces
+`MISSING_MODEL_ON_SERVER`, ask for the single human action of placing that LoRA in the
+server's `models/loras/` directory. Export a character only when the human requests it.

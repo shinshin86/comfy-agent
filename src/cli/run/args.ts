@@ -196,13 +196,25 @@ export const resolveDynamicArgs = (
     if (params[name] !== undefined) continue;
     if (def.default !== undefined) {
       params[name] = def.default;
-      continue;
     }
-    if (def.required) {
-      throw new CliError("MISSING_REQUIRED_PARAM", t("param.required", { param: name }), 2, {
-        param: name,
-      });
-    }
+  }
+
+  return { params, uploads, explicitParams };
+};
+
+export const assertRequiredInputs = (
+  preset: Preset,
+  params: Record<string, unknown>,
+  uploads: Record<string, string>,
+): void => {
+  const parameters = preset.parameters ?? {};
+  const uploadsDef = preset.uploads ?? {};
+
+  for (const [name, def] of Object.entries(parameters)) {
+    if (params[name] !== undefined || !def.required) continue;
+    throw new CliError("MISSING_REQUIRED_PARAM", t("param.required", { param: name }), 2, {
+      param: name,
+    });
   }
 
   for (const [name, def] of Object.entries(uploadsDef)) {
@@ -212,8 +224,6 @@ export const resolveDynamicArgs = (
       flag: def.cli_flag,
     });
   }
-
-  return { params, uploads, explicitParams };
 };
 
 const randomSeed = () => Math.floor(Math.random() * 2 ** 31);

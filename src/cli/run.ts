@@ -17,10 +17,19 @@ import type { ProgressEventRecord } from "../api/progress.js";
 import { createProgressUi } from "../jobs/progress-ui.js";
 import { assertJobsDirWritable, updateJob, writeJob } from "../jobs/store.js";
 import { upsertRunManifest } from "../jobs/manifest.js";
+import { summarizePromptFields } from "../jobs/summary.js";
 import type { JobOutput, JobRecord } from "../jobs/types.js";
+import { applyCharacter } from "../characters/inject.js";
+import { resolveKitKey } from "../characters/resolve.js";
+import {
+  appendCharacterIndex,
+  resolveCharacter,
+  type ResolvedCharacter,
+} from "../characters/store.js";
 import { awaitAndDownload, submitPrompt } from "../jobs/wait.js";
 import {
   applySeedValue,
+  assertRequiredInputs,
   parseArgv,
   parseNumeric,
   resolveDynamicArgs,
@@ -165,6 +174,24 @@ const formatTimestamp = (date: Date) => {
   )}${pad(date.getMinutes())}${pad(date.getSeconds())}`;
 };
 
+const truncate = (value: string, length: number) => Array.from(value).slice(0, length).join("");
+
+const parseCharacterPromptMode = (value: RunOptions["characterPrompt"]) => {
+  if (value === undefined || value === "replace" || value === "prefix" || value === "off") {
+    return value ?? "replace";
+  }
+  throw new CliError("INVALID_PARAM", t("run.invalid_character_prompt"), 2, { value });
+};
+
+const inferredKind = (preset: Preset): string | undefined => {
+  if (preset.task?.includes("video")) return "video";
+  if (preset.task?.includes("audio")) return "audio";
+  if (preset.task?.includes("image") || preset.task === "inpaint" || preset.task === "upscale") {
+    return "image";
+  }
+  return undefined;
+};
+
 export const runRun = async (presetName: string, options: RunOptions, rawArgs: string[]) => {
   const { positionals } = parseArgv(rawArgs);
   if (positionals.length > 0) {
@@ -240,7 +267,61 @@ export const runRun = async (presetName: string, options: RunOptions, rawArgs: s
     ? parseNumeric(options.timeoutSeconds, "timeout-seconds", true)
     : 300;
 
-  const { params, uploads, explicitParams } = resolveDynamicArgs(rawArgs, preset);
+  const dynamic = resolveDynamicArgs(rawArgs, preset);
+  let params = dynamic.params;
+  let uploads = dynamic.uploads;
+  const { explicitParams } = dynamic;
+  const promptBeforeInjection = summarizePromptFields(preset, params);
+  let resolvedCharacter: ResolvedCharacter | undefined;
+  if (options.character) {
+    resolvedCharacter = await resolveCharacter(options.character, { cwd: process.cwd() });
+  }
+  const characterPrompt = parseCharacterPromptMode(options.characterPrompt);
+  const appliedCharacter =
+    resolvedCharacter || options.lora
+      ? applyCharacter(preset, params, uploads, explicitParams, resolvedCharacter?.character, {
+          form: options.form,
+          kitKey: resolvedCharacter
+            ? resolveKitKey(resolvedCharacter.character, preset)
+            : undefined,
+          characterPath: resolvedCharacter?.path,
+          characterRef: options.characterRef,
+          characterPrompt,
+          lora: options.lora,
+        })
+      : undefined;
+  if (appliedCharacter) {
+    params = appliedCharacter.params;
+    uploads = appliedCharacter.uploads;
+    if (!options.json) {
+      for (const item of appliedCharacter.warnings) log(`warning: ${item.code} — ${item.message}`);
+    }
+  }
+  const promptAfterInjection = summarizePromptFields(preset, params);
+  const promptInput = appliedCharacter?.prompt_input ?? promptBeforeInjection.prompt_input;
+  const promptFinal = appliedCharacter?.prompt_final ?? promptAfterInjection.prompt_input;
+  const characterForm = options.form ?? "default";
+  const jobCharacter = resolvedCharacter
+    ? {
+        name: resolvedCharacter.character.name,
+        scope: resolvedCharacter.scope,
+        form: characterForm,
+      }
+    : undefined;
+  const jsonCharacter =
+    resolvedCharacter && appliedCharacter
+      ? {
+          name: resolvedCharacter.character.name,
+          scope: resolvedCharacter.scope,
+          form: characterForm,
+          injected: appliedCharacter.injected,
+          prompt_input: promptInput,
+          prompt_final: promptFinal,
+          warnings: appliedCharacter.warnings,
+          ...(appliedCharacter.next_action ? { next_action: appliedCharacter.next_action } : {}),
+        }
+      : undefined;
+  assertRequiredInputs(preset, params, uploads);
   const seedTargets = resolveSeedTargets(preset);
   const seedValues = resolveSeedValues(preset, params, options, runCount);
   const withSeedValue = (baseParams: Record<string, unknown>, seed: number) => {
@@ -256,7 +337,19 @@ export const runRun = async (presetName: string, options: RunOptions, rawArgs: s
     const runParams = seedValue === null ? params : withSeedValue(params, seedValue);
     const patched = applyParameters(workflow, preset, runParams);
     const withUploads = applyUploads(patched, preset, uploads);
-    printJson(withUploads);
+    if (resolvedCharacter || options.lora) {
+      printJson({
+        ok: true,
+        preset: preset.name,
+        scope,
+        workflow: withUploads,
+        ...(promptInput === undefined ? {} : { prompt_input: promptInput }),
+        ...(promptFinal === undefined ? {} : { prompt_final: promptFinal }),
+        ...(jsonCharacter ? { character: jsonCharacter } : {}),
+      });
+    } else {
+      printJson(withUploads);
+    }
     return;
   }
   if (options.preflight !== false) {
@@ -291,6 +384,7 @@ export const runRun = async (presetName: string, options: RunOptions, rawArgs: s
     if (seedValue !== null) {
       runParams = withSeedValue(runParams, seedValue);
     }
+    const promptFields = summarizePromptFields(preset, runParams);
 
     const patched = applyParameters(workflow, preset, runParams);
     const withUploads = applyUploads(patched, preset, resolvedUploads);
@@ -304,7 +398,7 @@ export const runRun = async (presetName: string, options: RunOptions, rawArgs: s
     });
     batchId ??= promptId;
     const job: JobRecord = {
-      version: 1,
+      version: 2,
       job_id: promptId,
       prompt_id: promptId,
       client_id: clientId,
@@ -322,6 +416,17 @@ export const runRun = async (presetName: string, options: RunOptions, rawArgs: s
       submitted_at: new Date().toISOString(),
       status: "submitted",
       outputs: [],
+      ...(promptInput === undefined
+        ? {}
+        : {
+            prompt_input: promptInput,
+            prompt_final: promptFinal ?? promptInput,
+          }),
+      ...(promptFields.prompt_source === undefined
+        ? {}
+        : { prompt_source: promptFields.prompt_source }),
+      ...(promptFields.negative === undefined ? {} : { negative_final: promptFields.negative }),
+      ...(jobCharacter ? { character: jobCharacter } : {}),
     };
 
     let jobFile: string | undefined;
@@ -329,6 +434,17 @@ export const runRun = async (presetName: string, options: RunOptions, rawArgs: s
     try {
       jobFile = await writeJob(job, process.cwd(), scope);
       recordStored = true;
+      if (resolvedCharacter?.scope === "global") {
+        await appendCharacterIndex(resolvedCharacter.path, {
+          job_id: promptId,
+          at: job.submitted_at,
+          project: process.cwd(),
+          preset: preset.name,
+          output_dir: outputDir,
+          kind: inferredKind(preset),
+          ...(promptFinal === undefined ? {} : { prompt_final: truncate(promptFinal, 60) }),
+        });
+      }
     } catch (error) {
       if (options.async) throw error;
       const message = error instanceof Error ? error.message : String(error);
@@ -356,6 +472,9 @@ export const runRun = async (presetName: string, options: RunOptions, rawArgs: s
           scope,
           params: runParams,
           uploads: resolvedUploads,
+          character: job.character,
+          prompt_input: job.prompt_input,
+          prompt_final: job.prompt_final,
         },
         {
           index: runIndex,
@@ -420,6 +539,9 @@ export const runRun = async (presetName: string, options: RunOptions, rawArgs: s
         scope,
         output_dir: outputDir,
         jobs: jobSummaries,
+        ...(promptInput === undefined ? {} : { prompt_input: promptInput }),
+        ...(promptFinal === undefined ? {} : { prompt_final: promptFinal }),
+        ...(jsonCharacter ? { character: jsonCharacter } : {}),
       });
       return;
     }
@@ -441,6 +563,9 @@ export const runRun = async (presetName: string, options: RunOptions, rawArgs: s
       seed_targets: seedTargets,
       runs,
       jobs: jobSummaries,
+      ...(promptInput === undefined ? {} : { prompt_input: promptInput }),
+      ...(promptFinal === undefined ? {} : { prompt_final: promptFinal }),
+      ...(jsonCharacter ? { character: jsonCharacter } : {}),
     });
     return;
   }

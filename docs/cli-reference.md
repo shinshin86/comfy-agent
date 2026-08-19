@@ -124,7 +124,7 @@ When `/object_info` is available, inference is enhanced and cached at
 
 - a `description` for every parameter;
 - a recognized `role`, such as `prompt`, `seed`, `steps`, `guidance`, `width`,
-  `height`, `sampler`, `scheduler`, `denoise`, or `strength`;
+  `height`, `sampler`, `scheduler`, `lora`, `lora_strength`, `denoise`, or `strength`;
 - numeric hints for known roles;
 - stable aliases such as `--prompt`, `--negative`, `--steps`, `--cfg`, `--width`,
   and `--height`, plus applicable video/audio aliases such as `--length`, `--fps`,
@@ -168,26 +168,43 @@ comfy-agent run text2img_v1 --prompt "A cat" --async --json
 comfy-agent run text2img_v1 --out ./generated --timeout-seconds 600
 comfy-agent run text2img_v1 --source local --poll-interval-ms 1000
 comfy-agent run text2img_v1 --global --prompt "A cat"
+comfy-agent run portrait --character miko --form casual --json
 ```
 
 Important options:
 
-| Option | Meaning |
-|---|---|
-| `--source <local|remote|remote-catalog>` | Select the preset/workflow source. |
-| `--n <count>` | Submit multiple runs. |
-| `--seed <int|random>` / `--seed-step <int>` | Set and advance seed targets. |
-| `--out <dir>` | Override the output directory. |
-| `--poll-interval-ms <ms>` | Set history polling interval. |
-| `--timeout-seconds <sec>` | Set completion timeout. |
-| `--async` | Return after submission and persist job records. |
-| `--dry-run` | Print the patched workflow without contacting ComfyUI. |
-| `--no-preflight` | Skip server node/model validation for debugging. |
+| Option                       | Meaning                                                                     |
+| ---------------------------- | --------------------------------------------------------------------------- |
+| `--source <local\|remote\|remote-catalog>` | Select the preset/workflow source. |
+| `--n <count>`                | Submit multiple runs.                                                       |
+| `--seed <int\|random>` / `--seed-step <int>` | Set and advance seed targets. |
+| `--out <dir>`                | Override the output directory.                                              |
+| `--poll-interval-ms <ms>`    | Set history polling interval.                                               |
+| `--timeout-seconds <sec>`    | Set completion timeout.                                                     |
+| `--async`                    | Return after submission and persist job records.                            |
+| `--dry-run`                  | Print the patched workflow without contacting ComfyUI.                      |
+| `--no-preflight`             | Skip server node/model validation for debugging.                            |
+| `--character <name>`         | Inject a local-first reusable character.                                    |
+| `--form <id>`                | Select a character form (default: `default`).                               |
+| `--character-ref <index\|file>` | Select a form-compatible character reference. |
+| `--character-prompt <replace\|prefix\|off>` | Choose prompt injection mode (default: `replace`). |
+| `--lora <file>`              | Overwrite the single `role: lora` target; also works without `--character`. |
 
 `--seed` targets the first matching category: parameter name `seed`, alias `seed`,
 then `role: seed`. If that category contains multiple targets, all receive the same
 value and advance together. An explicit flag such as `--12_noise_seed 5` wins for
 that target.
+
+Character injection runs before required-input checks, seed resolution, dry-run, and
+preflight. It writes the original and injected strings as `prompt_input` and
+`prompt_final` in JSON, job records, and `run.json`. References only target uploads
+with `role: reference_image`; `input_image` and `init_image` are never filled from a
+character. A preset with multiple LoRA targets returns `LORA_TARGET_AMBIGUOUS`, while
+an occupied single target is preserved unless `--lora` is explicit.
+
+`run --dry-run --json` keeps its legacy raw-workflow shape when no character option is
+used. With `--character`, it returns `{ok, workflow, prompt_input, prompt_final,
+character}` so the injection remains inspectable.
 
 Preset parameters use their generated alias or canonical `--<node_id>_<input>` flag.
 If both are present, the later value wins. Upload flags come from `uploads.*.cli_flag`:
@@ -215,6 +232,130 @@ job's `job_id`, `prompt_id`, batch index, seed, status, and record path. Use
 Every synchronous run also writes job records, so a locally interrupted command can
 be resumed. ComfyUI history is in memory: if the server process or Colab runtime is
 restarted, the job may become `JOB_LOST` and must be submitted again.
+
+### `history`
+
+Use `history` to inspect creative work; use `jobs` for operational inspection and
+resuming submissions.
+
+```bash
+comfy-agent history
+comfy-agent history list --preset portrait --kind image --limit 20
+comfy-agent history --search "soft light" --since 7d --json
+comfy-agent history --character miko --favorite --all-scopes --json
+comfy-agent history show <job_id> --json
+comfy-agent history note <job_id> "Keep the lighting soft" --json
+comfy-agent history tag <job_id> portrait approved --json
+comfy-agent history tag <job_id> reject --reason "identity drift" --json
+comfy-agent history tag <job_id> reject --rm --json
+comfy-agent history open <job_id>
+```
+
+List filters include `--preset`, `--character`, `--kind image|video|audio`, `--status`,
+`--tag`, `--search`, `--since <ISO|7d|24h>`, `--favorite`, `--rejected`, and `--limit`
+(default 30). The default scope is local; `--global` selects global records and
+`--all-scopes` merges both. Cross-scope JSON truncates `prompt_final` to 60 characters
+unless `--full-prompts` is set.
+For a global character, `--character <name> --all-scopes` also follows that character's
+cross-project `index.jsonl`; cross-project prompts use the same 60-character default.
+
+`history show` includes the job record, `run.json`, the `verify/verify.json` summary when
+present, and absolute output paths. Full job IDs and unique prefixes are accepted.
+`history open` only prints the output directory and never opens a GUI.
+
+### `character`
+
+Character resources live independently under `.comfy-agent/characters/<name>/` (or the
+global work directory with `--global`). A character directory contains `character.yaml`,
+append-only `notes.md`, `gallery.json`, copied reference images under `refs/`, and copied
+gallery artifacts under `gallery/`. A lookup without `--global` prefers local and then
+falls back to global.
+
+```yaml
+version: 1
+name: miko
+display_name: Miko
+appearance: dark bob hair, small red hairpin, brown eyes
+triggers:
+  default: m1ko
+style: anime, soft lighting
+negative: extra fingers, text
+prompt_template: "{trigger} {appearance}, {prompt}, {style}"
+forms:
+  - id: default
+  - id: casual
+    appearance: dark bob hair, red hairpin, casual hoodie
+references:
+  - file: refs/front.png
+    role: reference_image
+    forms: [default]
+loras:
+  - file: miko_flux.safetensors
+    strength: 1
+    base: flux1
+content_rating:
+  age_depicted: teen
+  allow_nsfw: false
+privacy:
+  export_refs: false
+  export_gallery: false
+```
+
+The `default` form is mandatory and is added by `create` when omitted. Safe defaults
+include an empty default trigger, `allow_nsfw: false`, and metadata-only exports.
+Gallery additions copy job outputs into the character directory as `pending`; only
+`gallery approve` marks them `human` and sets the corresponding job record's
+`favorite` field.
+
+```bash
+comfy-agent character list [--global] [--json]
+comfy-agent character create <name> [--display-name <text>] [--appearance <text>|--appearance-file <path>] [--trigger <text>] [--style <text>] [--negative <text>] [--age <age>] [--allow-nsfw] [--tag <tags...>] [--global] [--json]
+comfy-agent character show <name> [--notes] [--gallery] [--full] [--global] [--json]
+comfy-agent character update <name> [the create metadata options] [--global] [--json]
+comfy-agent character note <name> <text> [--kit <preset-or-kit>] [--global] [--json]
+comfy-agent character ref add <name> <path> [--role <role>] [--form <id>] [--note <text>] [--global] [--json]
+comfy-agent character ref rm <name> <file> [--global] [--json]
+comfy-agent character form add <name> <id> --appearance <text> [--ref <paths...>] [--global] [--json]
+comfy-agent character lora add <name> <file> [--strength <n>] [--base <tag>] [--global] [--json]
+comfy-agent character gallery add <name> <job_id> [--output <n>] [--caption <text>] [--tag <tags...>] [--form <id>] [--global] [--json]
+comfy-agent character gallery approve <name> <gallery_ids...> [--global] [--json]
+comfy-agent character gallery rm <name> <gallery_id> [--global] [--json]
+comfy-agent character sheet <name> [--form <id>] [--out <png>] [--global] [--json]
+comfy-agent character export <name> [--out <dir>] [--with-refs] [--with-gallery] [--global] [--json]
+comfy-agent character import <dir> [--name <override>] [--global] [--force] [--json]
+comfy-agent character rm <name> --force [--global] [--json]
+```
+
+`show --notes` returns the last 4,000 characters unless `--full` is present.
+Exports always contain `character.yaml`, `notes.md`, and metadata-only `gallery.json`;
+the two `--with-*` flags opt into copied binaries. Stored metadata paths remain relative.
+Character commands return exit 2 errors such as `CHARACTER_NOT_FOUND`,
+`CHARACTER_EXISTS`, `INVALID_CHARACTER`, `CHARACTER_REF_NOT_FOUND`,
+`CHARACTER_FORM_NOT_FOUND`, `GALLERY_JOB_NOT_FOUND`, `GALLERY_ITEM_NOT_FOUND`, and
+`CHARACTER_IMPORT_CONFLICT`.
+
+`character sheet` tiles only `approved: human` gallery files. It uses the first
+extracted frame for videos, defaults to `<character-dir>/sheet.png`, returns
+`GALLERY_EMPTY` for no eligible items, and requires ffmpeg (`MISSING_TOOL`). Presets
+intended for adult content must declare a tag such as `nsfw`, `adult`, or `explicit`;
+these tags block characters whose `allow_nsfw` is false. Tag-based gating is a guard,
+not a content classifier.
+
+### `brief`
+
+Use `brief` as the single memory lookup before generating a known character:
+
+```bash
+comfy-agent brief miko --preset portrait --json
+comfy-agent brief miko --preset portrait --form casual
+```
+
+The result contains the resolved character/form and canonical appearance,
+`applicable` prompt/negative/reference/LoRA flags with reasons, an exact
+`prompt_preview`, kit notes, up to five preferred jobs (favorites first, then verified
+jobs), rejected jobs under `avoid`, human-approved gallery metadata, the last 2,000
+characters of notes, and warnings. It merges ordinary history with a global
+character's cross-project usage index.
 
 ### `jobs`
 
@@ -492,34 +633,34 @@ from `aliases`, metadata describes intent and does not change workflow execution
 
 Preset-level fields:
 
-| Field | Type | Meaning |
-|---|---|---|
-| `description` | string | What the preset does. |
-| `task` | enum | `text_to_image`, `image_to_image`, `image_edit`, `remove_background`, `inpaint`, `upscale`, `text_to_audio`, `audio_to_audio`, `audio_inpaint`, `text_to_video`, `image_to_video`, `video_to_video`, or `custom`. |
-| `tags` | string[] | Free-form discovery labels. |
+| Field         | Type     | Meaning                                                                                                                                                                                                           |
+| ------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `description` | string   | What the preset does.                                                                                                                                                                                             |
+| `task`        | enum     | `text_to_image`, `image_to_image`, `image_edit`, `remove_background`, `inpaint`, `upscale`, `text_to_audio`, `audio_to_audio`, `audio_inpaint`, `text_to_video`, `image_to_video`, `video_to_video`, or `custom`. |
+| `tags`        | string[] | Free-form discovery labels.                                                                                                                                                                                       |
 
 Parameter fields, in addition to `type`, `target`, `required`, and `default`:
 
-| Field | Type | Meaning |
-|---|---|---|
-| `description` | string | Human/agent-readable explanation. |
-| `role` | enum | `prompt`, `negative_prompt`, `seed`, `steps`, `guidance`, `width`, `height`, `sampler`, `scheduler`, `model`, `strength`, `denoise`, `advanced`, or `custom`. |
-| `aliases` | string[] | Alternate CLI flags accepted by `run`. |
-| `min` / `max` | number | Advisory numeric bounds. |
-| `choices` | array | Advisory list of allowed values. |
-| `recommended` | any | Advisory suggested value. |
+| Field         | Type     | Meaning                                                                                                                                                                                |
+| ------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `description` | string   | Human/agent-readable explanation.                                                                                                                                                      |
+| `role`        | enum     | `prompt`, `negative_prompt`, `seed`, `steps`, `guidance`, `width`, `height`, `sampler`, `scheduler`, `model`, `lora`, `lora_strength`, `strength`, `denoise`, `advanced`, or `custom`. |
+| `aliases`     | string[] | Alternate CLI flags accepted by `run`.                                                                                                                                                 |
+| `min` / `max` | number   | Advisory numeric bounds.                                                                                                                                                               |
+| `choices`     | array    | Advisory list of allowed values.                                                                                                                                                       |
+| `recommended` | any      | Advisory suggested value.                                                                                                                                                              |
 
 Upload fields:
 
-| Field | Type | Meaning |
-|---|---|---|
-| `kind` | enum | `image`, `mask`, `audio`, or `file`. |
-| `cli_flag` | string | CLI flag accepted by `run`, such as `--image` or `--audio`. |
-| `target` | object | Workflow node input that receives the uploaded filename. |
-| `description` | string | Human/agent-readable explanation. |
-| `role` | enum | `init_image`, `mask`, `reference_image`, `control_image`, `input_image`, `input_audio`, `reference_audio`, `input_file`, or `custom`. |
-| `aliases` | string[] | Alternate CLI flags accepted by `run`. |
-| `required` | boolean | Whether the upload must be provided. |
+| Field         | Type     | Meaning                                                                                                                               |
+| ------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `kind`        | enum     | `image`, `mask`, `audio`, or `file`.                                                                                                  |
+| `cli_flag`    | string   | CLI flag accepted by `run`, such as `--image` or `--audio`.                                                                           |
+| `target`      | object   | Workflow node input that receives the uploaded filename.                                                                              |
+| `description` | string   | Human/agent-readable explanation.                                                                                                     |
+| `role`        | enum     | `init_image`, `mask`, `reference_image`, `control_image`, `input_image`, `input_audio`, `reference_audio`, `input_file`, or `custom`. |
+| `aliases`     | string[] | Alternate CLI flags accepted by `run`.                                                                                                |
+| `required`    | boolean  | Whether the upload must be provided.                                                                                                  |
 
 `import` fills descriptions, recognized roles, numeric hints, and common aliases.
 Graph structure is considered before input names. It does not generate a `seed` alias;
@@ -529,9 +670,10 @@ the dedicated `--seed` resolution uses the seed role. `list --json` and
 ## JSON output
 
 Use `--json` to print JSON-only output. All commands that support it use an
-`{ "ok": ... }` envelope for success and failure. The sole exception is
-`run --dry-run --json`, which emits raw patched workflow JSON so it can be sent
-directly to ComfyUI.
+`{ "ok": ... }` envelope for success and failure. `run --dry-run --json` emits raw
+patched workflow JSON when no character option is present so it can be sent directly
+to ComfyUI. With `--character`, it returns an envelope containing `workflow`,
+`prompt_input`, `prompt_final`, and character injection details.
 
 Success example:
 
@@ -595,50 +737,50 @@ commands, and extra positional arguments.
 
 ## Typical errors
 
-| Code | Exit | Meaning and recovery |
-|---|---:|---|
-| `INVALID_USAGE` | 2 | Invalid command structure. Fix missing/unknown arguments or extra positionals; Commander failures include `details.commander_code`. |
-| `INVALID_PARAM` | 2 | Invalid option value or range. |
-| `UNSUPPORTED_RUNTIME` | 2 | Required Node.js runtime globals are unavailable. Use Node.js 22 or newer; details include `node`, `required`, and `missing`. |
-| `WORKDIR_NOT_FOUND` | 2 | No workdir exists for a command that requires one. Run `init` or a successful `connect`. |
-| `WORKDIR_NOT_WRITABLE` | 2 | The jobs directory cannot be created or written; inspect `details.path` and `details.cause`. |
-| `WORKDIR_CONFLICT` | 2 | A workdir path exists but is not a directory; inspect it or use `init --force`. |
-| `FILE_NOT_FOUND` | 2 | An input workflow, upload, analyze target, or verify target is missing. |
-| `FILE_EXISTS` | 2 | Import target or unmarked skill directory already exists; use `--force` only after checking the target. |
-| `INVALID_PRESET` | 2 | Preset YAML does not match the required structure. |
-| `PRESET_NOT_FOUND` | 2 | The requested preset is unavailable in the selected source. |
-| `PRESET_SOURCE_AMBIGUOUS` | 2 | The same preset exists locally and remotely; pass `--source`. |
-| `MISSING_REQUIRED_PARAM` | 2 | A required preset parameter is missing; `details.param` identifies it. |
-| `MISSING_REQUIRED_UPLOAD` | 2 | A required upload flag is missing. |
-| `UNKNOWN_PARAM` | 2 | A dynamic `run` flag is not defined by the preset. |
-| `SERVER_UNREACHABLE` | 3 | The server cannot be reached. Check `base_url`, start the server, or reconnect an expired tunnel. |
-| `API_ERROR` | 3 | The server was reached but a request failed; inspect the path/status details. |
-| `MISSING_NODE_ON_SERVER` | 3 | Workflow node classes are absent; inspect `details.missing_nodes`. |
-| `MISSING_MODEL_ON_SERVER` | 3 | Model files are absent; inspect `details.missing_models[].value` and match it to `colab catalog --json` assets. |
-| `EXECUTION_FAILED` | 3 | ComfyUI failed or interrupted execution. Inspect `category`, `kind`, node/exception fields, partial outputs, and output directory. Reduce resolution/steps for `oom`; retry an interruption once. |
-| `NO_OUTPUTS` | 2 | Execution completed without saved files. Add an appropriate `Save*` node. |
-| `TIMEOUT` | 3 | Completion exceeded `--timeout-seconds`; retry once with a suitable larger value. |
-| `JOB_NOT_FOUND` | 2 | No local record matches the requested job ID or prefix. |
-| `JOB_AMBIGUOUS_ID` | 2 | A job prefix matches multiple records; use a longer or full ID. |
-| `INVALID_JOB_RECORD` | 2 | A local job JSON record is malformed or unsafe. |
-| `JOB_LOST` | 3 | The job is absent from both server history and queue, commonly after a runtime restart. Re-run the preset using the stored arguments. |
-| `VERIFY_CHECKS_FAILED` | 3 | One or more explicit artifact expectations failed; inspect `details.failed` and `details.report`. |
-| `MISSING_TOOL` | 2 | An explicitly requested verify artifact needs ffmpeg; install it or remove the explicit frames/sheet request. |
-| `UNSUPPORTED_FORMAT` | 2 | A single verify target cannot be parsed by the built-in probe or ffprobe. |
-| `RESOURCE_NOT_FOUND` | 2 | A bundled package resource is missing; details contain `resource` and `path`. Reinstall the package. |
-| `PLAYBOOK_NOT_FOUND` | 2 | Unknown playbook name; `details.available` lists choices. |
-| `PLAYBOOK_SECTION_NOT_FOUND` | 2 | Unknown playbook section; `details.available` lists sections. |
-| `SKILL_AGENT_UNSUPPORTED` | 2 | Unknown install target; `details.supported` lists agent names. |
-| `SKILL_NOT_FOUND` | 2 | Unknown bundled skill; `details.available` lists skills. |
-| `SKILL_SCOPE_CONFLICT` | 2 | More than one of `--global`, `--project`, or `--dir` was selected. |
-| `SKILL_INSTALL_FAILED` | 2 | Local skill installation failed; inspect `details.path` and `details.cause`. |
-| `COLAB_KIT_NOT_FOUND` | 2 | Unknown kit name; `details.available` lists installed catalog entries. |
-| `COLAB_CATALOG_UNAVAILABLE` | 2 | The bundled catalog cannot be found. Reinstall the package. |
-| `COLAB_CATALOG_READ_FAILED` | 2 | The bundled catalog could not be read. |
-| `INVALID_COLAB_CATALOG` | 2 | The bundled catalog failed schema validation. |
-| `MISSING_API_KEY` | 2 | `analyze` needs `OPENAI_API_KEY` or `--api-key`. |
-| `UNSUPPORTED_IMAGE` | 2 | `analyze` received an unsupported image format. |
-| `OPENAI_API_ERROR` | 3 | The OpenAI request failed. |
+| Code                         | Exit | Meaning and recovery                                                                                                                                                                              |
+| ---------------------------- | ---: | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `INVALID_USAGE`              |    2 | Invalid command structure. Fix missing/unknown arguments or extra positionals; Commander failures include `details.commander_code`.                                                               |
+| `INVALID_PARAM`              |    2 | Invalid option value or range.                                                                                                                                                                    |
+| `UNSUPPORTED_RUNTIME`        |    2 | Required Node.js runtime globals are unavailable. Use Node.js 22 or newer; details include `node`, `required`, and `missing`.                                                                     |
+| `WORKDIR_NOT_FOUND`          |    2 | No workdir exists for a command that requires one. Run `init` or a successful `connect`.                                                                                                          |
+| `WORKDIR_NOT_WRITABLE`       |    2 | The jobs directory cannot be created or written; inspect `details.path` and `details.cause`.                                                                                                      |
+| `WORKDIR_CONFLICT`           |    2 | A workdir path exists but is not a directory; inspect it or use `init --force`.                                                                                                                   |
+| `FILE_NOT_FOUND`             |    2 | An input workflow, upload, analyze target, or verify target is missing.                                                                                                                           |
+| `FILE_EXISTS`                |    2 | Import target or unmarked skill directory already exists; use `--force` only after checking the target.                                                                                           |
+| `INVALID_PRESET`             |    2 | Preset YAML does not match the required structure.                                                                                                                                                |
+| `PRESET_NOT_FOUND`           |    2 | The requested preset is unavailable in the selected source.                                                                                                                                       |
+| `PRESET_SOURCE_AMBIGUOUS`    |    2 | The same preset exists locally and remotely; pass `--source`.                                                                                                                                     |
+| `MISSING_REQUIRED_PARAM`     |    2 | A required preset parameter is missing; `details.param` identifies it.                                                                                                                            |
+| `MISSING_REQUIRED_UPLOAD`    |    2 | A required upload flag is missing.                                                                                                                                                                |
+| `UNKNOWN_PARAM`              |    2 | A dynamic `run` flag is not defined by the preset.                                                                                                                                                |
+| `SERVER_UNREACHABLE`         |    3 | The server cannot be reached. Check `base_url`, start the server, or reconnect an expired tunnel.                                                                                                 |
+| `API_ERROR`                  |    3 | The server was reached but a request failed; inspect the path/status details.                                                                                                                     |
+| `MISSING_NODE_ON_SERVER`     |    3 | Workflow node classes are absent; inspect `details.missing_nodes`.                                                                                                                                |
+| `MISSING_MODEL_ON_SERVER`    |    3 | Model files are absent; inspect `details.missing_models[].value` and match it to `colab catalog --json` assets.                                                                                   |
+| `EXECUTION_FAILED`           |    3 | ComfyUI failed or interrupted execution. Inspect `category`, `kind`, node/exception fields, partial outputs, and output directory. Reduce resolution/steps for `oom`; retry an interruption once. |
+| `NO_OUTPUTS`                 |    2 | Execution completed without saved files. Add an appropriate `Save*` node.                                                                                                                         |
+| `TIMEOUT`                    |    3 | Completion exceeded `--timeout-seconds`; retry once with a suitable larger value.                                                                                                                 |
+| `JOB_NOT_FOUND`              |    2 | No local record matches the requested job ID or prefix.                                                                                                                                           |
+| `JOB_AMBIGUOUS_ID`           |    2 | A job prefix matches multiple records; use a longer or full ID.                                                                                                                                   |
+| `INVALID_JOB_RECORD`         |    2 | A local job JSON record is malformed or unsafe.                                                                                                                                                   |
+| `JOB_LOST`                   |    3 | The job is absent from both server history and queue, commonly after a runtime restart. Re-run the preset using the stored arguments.                                                             |
+| `VERIFY_CHECKS_FAILED`       |    3 | One or more explicit artifact expectations failed; inspect `details.failed` and `details.report`.                                                                                                 |
+| `MISSING_TOOL`               |    2 | An explicitly requested verify artifact needs ffmpeg; install it or remove the explicit frames/sheet request.                                                                                     |
+| `UNSUPPORTED_FORMAT`         |    2 | A single verify target cannot be parsed by the built-in probe or ffprobe.                                                                                                                         |
+| `RESOURCE_NOT_FOUND`         |    2 | A bundled package resource is missing; details contain `resource` and `path`. Reinstall the package.                                                                                              |
+| `PLAYBOOK_NOT_FOUND`         |    2 | Unknown playbook name; `details.available` lists choices.                                                                                                                                         |
+| `PLAYBOOK_SECTION_NOT_FOUND` |    2 | Unknown playbook section; `details.available` lists sections.                                                                                                                                     |
+| `SKILL_AGENT_UNSUPPORTED`    |    2 | Unknown install target; `details.supported` lists agent names.                                                                                                                                    |
+| `SKILL_NOT_FOUND`            |    2 | Unknown bundled skill; `details.available` lists skills.                                                                                                                                          |
+| `SKILL_SCOPE_CONFLICT`       |    2 | More than one of `--global`, `--project`, or `--dir` was selected.                                                                                                                                |
+| `SKILL_INSTALL_FAILED`       |    2 | Local skill installation failed; inspect `details.path` and `details.cause`.                                                                                                                      |
+| `COLAB_KIT_NOT_FOUND`        |    2 | Unknown kit name; `details.available` lists installed catalog entries.                                                                                                                            |
+| `COLAB_CATALOG_UNAVAILABLE`  |    2 | The bundled catalog cannot be found. Reinstall the package.                                                                                                                                       |
+| `COLAB_CATALOG_READ_FAILED`  |    2 | The bundled catalog could not be read.                                                                                                                                                            |
+| `INVALID_COLAB_CATALOG`      |    2 | The bundled catalog failed schema validation.                                                                                                                                                     |
+| `MISSING_API_KEY`            |    2 | `analyze` needs `OPENAI_API_KEY` or `--api-key`.                                                                                                                                                  |
+| `UNSUPPORTED_IMAGE`          |    2 | `analyze` received an unsupported image format.                                                                                                                                                   |
+| `OPENAI_API_ERROR`           |    3 | The OpenAI request failed.                                                                                                                                                                        |
 
 `run` preflights the server before submission. Use `--no-preflight` only for
 targeted debugging, because it defers missing-node/model failures to ComfyUI.

@@ -56,6 +56,10 @@ comfy-agent playbook
 にも従ってください。`--json` と構造化 error code を優先し、exit code は `0`、`2`、`3`
 だけを扱います。正典は [CLI リファレンス](./docs/cli-reference.ja.md) です。
 
+再利用する character は、生成前に必ず `brief <name> --preset <preset> --json` で確認します。
+`run <preset> --character <name>` で正典 prompt、参照画像、LoRA を注入します。
+gallery には人間が承認した出力だけを残し、reject と kit note を次の session に引き継ぎます。
+
 ## Google Colab で動かす
 
 手元に GPU がなくても、同梱 kit で Colab GPU 上に ComfyUI を立ち上げ、cloudflared
@@ -151,16 +155,20 @@ repository を別途 checkout する必要はありません。package install �
 | `connect` | ComfyUI URL を確認して記憶。 |
 | `import` | API/UI workflow JSON を local preset に変換。 |
 | `run` | preflight、submit、待機/download、または `--async` submit。 |
-| `jobs list|show|wait|prune` | 保存 job の確認と再開。 |
+| `history` | 制作 history を検索し、note・tag・reject を記録。 |
+| `character` | 再利用可能な identity、参照画像、LoRA、note、採用作を管理。 |
+| `character sheet` | 人間承認済み gallery から identity board を作成。 |
+| `brief` | 生成前に character memory と preset 適用可否を取得。 |
+| `jobs list\|show\|wait\|prune` | 保存 job の確認と再開。 |
 | `doctor` | 接続、workdir、node、model を検査。 |
 | `list` | local/remote workflow を検索。 |
 | `preset` | parameter、alias、upload、metadata を表示。 |
 | `status` | 解決済み runtime 設定を表示。 |
 | `verify` | 出力を probe し、確認用成果物を offline 作成。 |
 | `analyze` | OpenAI 画像入力で画像を評価。 |
-| `colab catalog|suggest|kit` | 同梱 Colab kit を確認・解決。 |
+| `colab catalog\|suggest\|kit` | 同梱 Colab kit を確認・解決。 |
 | `playbook` | 同梱 agent 方針 document を読む。 |
-| `skill list|install` | 対応 agent 向け同梱 skill を install。 |
+| `skill list\|install` | 対応 agent 向け同梱 skill を install。 |
 
 全 option と payload は [CLI リファレンス](./docs/cli-reference.ja.md) を参照してください。
 
@@ -178,7 +186,9 @@ CLI の終了コードは `0`（成功）、`2`（呼び出し・入力・local 
 `3`（server・実行対象・成果物の状態が期待と異なる）だけです。`--json` の成功は
 `{ "ok": true, ... }`、失敗は
 `{ "ok": false, "error": { "code": "...", "message": "...", "details": ... } }` です。
-形の唯一の例外は raw workflow JSON を返す `run --dry-run --json` です。
+`run --dry-run --json` は character option が無ければ raw workflow JSON を返し、
+`--character` 付きでは patch 後の `workflow` と character 注入 metadata を含む envelope を
+返します。
 詳細は [終了コードとエラー](./docs/cli-reference.ja.md#終了コード) を参照してください。
 
 ## ドキュメント

@@ -11,6 +11,11 @@ export type RunOptions = {
   timeoutSeconds?: string;
   baseUrl?: string;
   global?: boolean;
+  character?: string;
+  form?: string;
+  characterRef?: string;
+  characterPrompt?: "replace" | "prefix" | "off";
+  lora?: string;
   /** commander --no-preflight sets this to false; default true */
   preflight?: boolean;
 };

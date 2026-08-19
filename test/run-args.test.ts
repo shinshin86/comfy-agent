@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { CliError } from "../src/io/errors.js";
 import {
   applySeedValue,
+  assertRequiredInputs,
   extractRunPassthrough,
   parseNumeric,
   resolveDynamicArgs,
@@ -158,10 +159,6 @@ describe("resolveDynamicArgs", () => {
     );
   });
 
-  it("throws when required param is missing", () => {
-    expect(() => resolveDynamicArgs([], presetBase)).toThrow(CliError);
-  });
-
   it("throws when non-bool flag is passed without value", () => {
     expect(() => resolveDynamicArgs(["--prompt"], presetBase)).toThrow(CliError);
   });
@@ -172,7 +169,26 @@ describe("resolveDynamicArgs", () => {
     );
   });
 
-  it("throws when a required upload is missing", () => {
+});
+
+describe("assertRequiredInputs", () => {
+  it("throws the exact error when a required param is missing", () => {
+    const { params, uploads } = resolveDynamicArgs([], presetBase);
+
+    try {
+      assertRequiredInputs(presetBase, params, uploads);
+      expect.unreachable();
+    } catch (err) {
+      expect(err).toBeInstanceOf(CliError);
+      expect(err).toMatchObject({
+        code: "MISSING_REQUIRED_PARAM",
+        exitCode: 2,
+        details: { param: "prompt" },
+      });
+    }
+  });
+
+  it("throws the exact error when a required upload is missing", () => {
     const presetWithRequiredUpload: Preset = {
       ...presetBase,
       uploads: {
@@ -183,10 +199,19 @@ describe("resolveDynamicArgs", () => {
         },
       },
     };
+    const { params, uploads } = resolveDynamicArgs(["--prompt", "cat"], presetWithRequiredUpload);
 
-    expect(() => resolveDynamicArgs(["--prompt", "cat"], presetWithRequiredUpload)).toThrow(
-      CliError,
-    );
+    try {
+      assertRequiredInputs(presetWithRequiredUpload, params, uploads);
+      expect.unreachable();
+    } catch (err) {
+      expect(err).toBeInstanceOf(CliError);
+      expect(err).toMatchObject({
+        code: "MISSING_REQUIRED_UPLOAD",
+        exitCode: 2,
+        details: { upload: "init", flag: "--init-image" },
+      });
+    }
   });
 });
 

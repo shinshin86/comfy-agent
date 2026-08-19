@@ -30,6 +30,7 @@ Key invariants:
   with `comfy-agent connect <url>`, never by re-importing.
 - `comfy-agent run` preflights the server automatically; trust its error
   codes rather than probing ComfyUI endpoints by hand.
+- Before generating a known character, use `comfy-agent brief <name> --preset <preset> --json` as the single memory entry point.
 
 Model-specific prompt construction:
 
