@@ -189,6 +189,8 @@ CLI の終了コードは `0`（成功）、`2`（呼び出し・入力・local 
 `run --dry-run --json` は character option が無ければ raw workflow JSON を返し、
 `--character` 付きでは patch 後の `workflow` と character 注入 metadata を含む envelope を
 返します。
+`PROMPT_REJECTED`（exit 3）はComfyUIがworkflowを拒否した状態です。`details.error` と
+`details.node_errors` を確認し、指摘されたnode inputを修正して再実行してください。
 詳細は [終了コードとエラー](./docs/cli-reference.ja.md#終了コード) を参照してください。
 
 ## ドキュメント

@@ -418,8 +418,8 @@ comfy-agent preset text2img_v1 --source local
 comfy-agent preset text2img_v1 --source remote --base-url http://127.0.0.1:8188
 ```
 
-If the name exists in both local and remote sources, select one explicitly with
-`--source`.
+Auto source resolution uses an existing local preset without querying remote template
+endpoints. Use `--source remote` explicitly to inspect a remote preset with the same name.
 
 ### `verify`
 
@@ -755,6 +755,7 @@ commands, and extra positional arguments.
 | `UNKNOWN_PARAM`              |    2 | A dynamic `run` flag is not defined by the preset.                                                                                                                                                |
 | `SERVER_UNREACHABLE`         |    3 | The server cannot be reached. Check `base_url`, start the server, or reconnect an expired tunnel.                                                                                                 |
 | `API_ERROR`                  |    3 | The server was reached but a request failed; inspect the path/status details.                                                                                                                     |
+| `PROMPT_REJECTED`            |    3 | ComfyUI rejected `/prompt` validation. Inspect `details.error` and `details.node_errors`, correct the reported node inputs, and rerun.                                                            |
 | `MISSING_NODE_ON_SERVER`     |    3 | Workflow node classes are absent; inspect `details.missing_nodes`.                                                                                                                                |
 | `MISSING_MODEL_ON_SERVER`    |    3 | Model files are absent; inspect `details.missing_models[].value` and match it to `colab catalog --json` assets.                                                                                   |
 | `EXECUTION_FAILED`           |    3 | ComfyUI failed or interrupted execution. Inspect `category`, `kind`, node/exception fields, partial outputs, and output directory. Reduce resolution/steps for `oom`; retry an interruption once. |

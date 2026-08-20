@@ -408,7 +408,8 @@ comfy-agent preset text2img_v1 --source local
 comfy-agent preset text2img_v1 --source remote --base-url http://127.0.0.1:8188
 ```
 
-同じ名前が local と remote の両方にある場合は、`--source` で明示してください。
+auto source解決はlocal presetが存在すればremote template endpointへ接続せずlocalを使います。
+同名のremote presetを確認する場合は、`--source remote` を明示してください。
 
 ### `verify`
 
@@ -734,6 +735,7 @@ CLI が返す終了コードは `0`、`2`、`3` のみです。
 | `UNKNOWN_PARAM`              |    2 | dynamic `run` flag が preset に未定義。                                                                                                               |
 | `SERVER_UNREACHABLE`         |    3 | server に接続不能。`base_url`、server 起動、期限切れ tunnel の再接続を確認。                                                                          |
 | `API_ERROR`                  |    3 | server 到達後に request が失敗。path/status details を確認。                                                                                          |
+| `PROMPT_REJECTED`            |    3 | ComfyUIの`/prompt` validationが拒否。`details.error` と `details.node_errors` を確認し、指摘されたnode inputを修正して再実行。                         |
 | `MISSING_NODE_ON_SERVER`     |    3 | workflow node class が不足。`details.missing_nodes` を確認。                                                                                          |
 | `MISSING_MODEL_ON_SERVER`    |    3 | model file が不足。`details.missing_models[].value` を `colab catalog --json` の asset と照合。                                                       |
 | `EXECUTION_FAILED`           |    3 | ComfyUI の実行失敗・中断。`category`、`kind`、node/exception、partial output、output directory を確認。`oom` は解像度/steps を下げ、中断は1回再試行。 |

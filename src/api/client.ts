@@ -11,6 +11,11 @@ export type UploadResponse = {
   type?: string;
 };
 
+const asRecord = (value: unknown): Record<string, unknown> | null =>
+  value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+
 export class ComfyClient {
   baseUrl: string;
 
@@ -75,6 +80,28 @@ export class ComfyClient {
         body: JSON.stringify(body),
       });
       if (!res.ok) {
+        if (urlPath === "/prompt" && res.status === 400) {
+          let payload: Record<string, unknown> | null = null;
+          try {
+            payload = asRecord(await res.json());
+          } catch {
+            // Fall through to the generic API_ERROR contract for non-JSON bodies.
+          }
+          const promptError = asRecord(payload?.error);
+          const hasPromptError = typeof promptError?.type === "string";
+          const hasNodeErrors = payload !== null && "node_errors" in payload;
+          if (hasPromptError || hasNodeErrors) {
+            const message =
+              typeof promptError?.message === "string" && promptError.message.length > 0
+                ? promptError.message
+                : t("api.prompt_rejected");
+            throw new CliError("PROMPT_REJECTED", message, 3, {
+              status: 400,
+              error: payload?.error,
+              node_errors: payload?.node_errors,
+            });
+          }
+        }
         throw new CliError("API_ERROR", t("api.post_failed", { path: urlPath }), 3, {
           status: res.status,
         });

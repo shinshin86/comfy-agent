@@ -105,8 +105,7 @@ describe("Colab kit seed targets", () => {
       }
     }
 
-    // This native workflow contains a disabled RecordAudio node; its flat sibling is importable.
-    expect(importFailures).toEqual(["ltx23/video_ltx2_3_ia2v.json"]);
+    expect(importFailures).toEqual([]);
     expect(supportedKits.size).toBeGreaterThanOrEqual(33);
     expect(supportedKits.size).toBe(35);
 

@@ -446,10 +446,48 @@ const makeGraphContext = (
   return { nodes, nodeMap, links: toLinkMap(links), prefix, boundaryValues };
 };
 
+const isDisabledNode = (node: UiWorkflowNode) => node.mode === 2 || node.mode === 4;
+
 const assertExecutableMode = (node: UiWorkflowNode, type: string) => {
   const mode = node.mode ?? 0;
-  if (mode !== 0) {
+  if (mode !== 0 && mode !== 2 && mode !== 4) {
     throw new Error(t("workflow.subgraph_mode_unsupported", { type, mode: String(mode) }));
+  }
+};
+
+const assertDisabledNodesUnreferenced = (context: GraphContext) => {
+  for (const node of context.nodes) {
+    const id = nodeId(node);
+    const type = nodeType(node);
+    if (
+      id === null ||
+      !type ||
+      UI_NON_EXECUTION_NODE_TYPES.has(type) ||
+      !isDisabledNode(node)
+    ) {
+      continue;
+    }
+
+    const reference = [...context.links.values()].find((link) => {
+      if (link.originId !== id) return false;
+      if (link.targetId === -20) return true;
+      const consumer = context.nodeMap.get(link.targetId);
+      const consumerType = consumer ? nodeType(consumer) : null;
+      return Boolean(
+        consumer &&
+          consumerType &&
+          !UI_NON_EXECUTION_NODE_TYPES.has(consumerType) &&
+          !isDisabledNode(consumer),
+      );
+    });
+    if (!reference) continue;
+
+    const consumerNode = context.nodeMap.get(reference.targetId);
+    const consumer =
+      reference.targetId === -20
+        ? "subgraph output"
+        : (consumerNode && nodeType(consumerNode)) ?? String(reference.targetId);
+    throw new Error(t("workflow.disabled_node_referenced", { type, consumer }));
   }
 };
 
@@ -592,10 +630,17 @@ const convertSubgraphWorkflowToApi = (
 
   const flattenGraph = (context: GraphContext) => {
     for (const node of context.nodes) {
+      const type = nodeType(node);
+      if (!type || UI_NON_EXECUTION_NODE_TYPES.has(type)) continue;
+      assertExecutableMode(node, type);
+    }
+    assertDisabledNodesUnreferenced(context);
+
+    for (const node of context.nodes) {
       const id = nodeId(node);
       const type = nodeType(node);
       if (id === null || !type || UI_NON_EXECUTION_NODE_TYPES.has(type)) continue;
-      assertExecutableMode(node, type);
+      if (isDisabledNode(node)) continue;
 
       const definition = definitions.get(type);
       if (definition) {
