@@ -1111,6 +1111,51 @@ kits:
         size_gb: 1
     setup_minutes: 16
     composable: true
+  - name: 10eros_max
+    path: 10eros_max/
+    status: starter
+    tasks: [text_to_video, image_to_video]
+    outputs: [video]
+    gpu:
+      minimum: A100
+      recommended: A100
+    summary: 10Eros-Max MiniMax H3 fine-tune with T2V/I2V and jointly generated stereo audio.
+    setup_file: 01_setup.py
+    license_notes:
+      - The MiniMax H3 license defines an Applicable Territory that excludes the EU, UK, Republic of Korea, and USA; review both the user's location and the Colab runtime region.
+      - The 10Eros-Max card says MiniMax H3, LTX-2.3, Wan 2.2, and Krea 2 community licenses apply to transferred portions; review the combined upstream terms before use or redistribution.
+      - Review Google Colab acceptable-use policy, applicable law, safeguards, attribution, public-output disclosure, and commercial-authorization requirements before use.
+    tags: [video, audio, t2v, i2v, minimax, native_audio, finetune, int8]
+    workflows:
+      - name: 10eros_max_t2v
+        file: 10eros_max_t2v.json
+        task: text_to_video
+        output: video
+        speed: slow
+        quality: high
+        notes: 864x480, 124 frames at 24 fps by default; includes jointly generated stereo audio.
+      - name: 10eros_max_i2v
+        file: 10eros_max_i2v.json
+        task: image_to_video
+        output: video
+        speed: slow
+        quality: high
+        notes: First-frame I2V at 864x480, 124 frames and 24 fps by default; upload via --image.
+    assets:
+      - file: 10Eros_Max_h3_fl2va_beta2_pruned_int8_convrot.safetensors
+        dir: models/diffusion_models
+        size_gb: 20.197375168
+      - file: qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors
+        dir: models/text_encoders
+        size_gb: 15.687142551
+      - file: minimax_h3_video_vae_fp16.safetensors
+        dir: models/vae
+        size_gb: 5.207808496
+      - file: minimax_h3_audio_vae_fp32.safetensors
+        dir: models/vae
+        size_gb: 0.605254808
+    setup_minutes: 15
+    composable: false
   - name: wan21
     path: wan21/
     status: partial
