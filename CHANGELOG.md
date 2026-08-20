@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.0.5 - 2026-08-20
+
+### Added
+
+- Added `PROMPT_REJECTED` (exit 3): a `/prompt` HTTP 400 carrying ComfyUI validation details now reports the failing nodes and messages in `details.error` / `details.node_errors` instead of a generic `API_ERROR`.
+- Verified the Flux 1 character-LoRA workflow end to end on a Colab L4 over a cloudflared tunnel; the catalog records the verified GPU and the kit README documents the flow and timings.
+
+### Changed
+
+- `run` and `preset` no longer probe remote userdata endpoints when the source is unset and a local preset exists, removing needless requests and `REMOTE_USERDATA_FETCH_FAILED` noise; explicit `--source remote` is unchanged.
+- Workflow normalization drops muted/bypassed UI nodes (`mode` 2/4) whose outputs feed no active consumer instead of rejecting the workflow, and names the consumer when a disabled node is still referenced. Native UI exports such as the LTX-2.3 ia2v workflow now import.
+- The repository MCP configuration uses colab-mcp-go with a stable port and persistent token file so Colab browser sessions survive bridge restarts.
+
+### Fixed
+
+- Fixed the `CHARACTER_LORA_BASE_MISMATCH` warning firing for every imported preset (imported presets declare no tags).
+
 ## 0.0.4 - 2026-08-16
 
 ### Added
