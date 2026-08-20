@@ -48,6 +48,44 @@ describe("ComfyClient", () => {
     await expect(client.postJson("/prompt", { prompt: {} })).rejects.toThrow();
   });
 
+  it("returns PROMPT_REJECTED with ComfyUI validation details", async () => {
+    const error = {
+      type: "prompt_outputs_failed_validation",
+      message: "model input is invalid",
+    };
+    const nodeErrors = {
+      "9": { errors: [{ message: "Value not in list" }] },
+    };
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 400,
+      json: async () => ({ error, node_errors: nodeErrors }),
+    });
+
+    const client = new ComfyClient("http://127.0.0.1:8188");
+    await expect(client.postJson("/prompt", { prompt: {} })).rejects.toMatchObject({
+      code: "PROMPT_REJECTED",
+      exitCode: 3,
+      message: "model input is invalid",
+      details: { status: 400, error, node_errors: nodeErrors },
+    });
+  });
+
+  it("keeps unstructured prompt 400 responses as API_ERROR", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 400,
+      json: async () => ({ message: "bad request" }),
+    });
+
+    const client = new ComfyClient("http://127.0.0.1:8188");
+    await expect(client.postJson("/prompt", { prompt: {} })).rejects.toMatchObject({
+      code: "API_ERROR",
+      exitCode: 3,
+      details: { status: 400 },
+    });
+  });
+
   it("prompt sends client_id and prompt_id when provided", async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,

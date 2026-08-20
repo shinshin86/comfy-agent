@@ -189,6 +189,8 @@ or `3` (server/executed target/artifact state differs from expectations). With
 `run --dry-run --json` prints raw workflow JSON when no character option is present;
 with `--character`, it returns an envelope containing the patched `workflow` and
 character injection metadata.
+`PROMPT_REJECTED` (exit 3) means ComfyUI rejected the submitted workflow; inspect
+`details.error` and `details.node_errors`, correct the reported node inputs, and rerun.
 See [Exit codes and errors](./docs/cli-reference.md#exit-codes).
 
 ## Documentation

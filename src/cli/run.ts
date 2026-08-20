@@ -216,7 +216,11 @@ export const runRun = async (presetName: string, options: RunOptions, rawArgs: s
   let remoteError: unknown = null;
   let remoteCatalogError: unknown = null;
 
-  if (requestedSource !== "local" && requestedSource !== "remote-catalog") {
+  if (
+    requestedSource !== "local" &&
+    requestedSource !== "remote-catalog" &&
+    !(requestedSource === "auto" && localTarget)
+  ) {
     try {
       remoteTarget = await tryLoadRemoteUserdataRunTarget(presetName, client);
     } catch (err) {

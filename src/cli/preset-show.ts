@@ -162,13 +162,15 @@ export const runPresetShow = async (presetName: string, options: PresetShowOptio
   let remoteTemplate: RemoteTemplate | null = null;
   let remoteEndpoint = "";
   let remoteError: unknown = null;
-  try {
-    const remoteResult = await fetchRemoteTemplateByName(client, presetName);
-    remoteTemplate = remoteResult.template;
-    remoteEndpoint = remoteResult.endpoint;
-  } catch (err) {
-    remoteError = err;
-    if (requestedSource === "remote") throw err;
+  if (requestedSource === "remote" || (requestedSource === "auto" && !hasLocal)) {
+    try {
+      const remoteResult = await fetchRemoteTemplateByName(client, presetName);
+      remoteTemplate = remoteResult.template;
+      remoteEndpoint = remoteResult.endpoint;
+    } catch (err) {
+      remoteError = err;
+      if (requestedSource === "remote") throw err;
+    }
   }
 
   const hasRemote = Boolean(remoteTemplate);

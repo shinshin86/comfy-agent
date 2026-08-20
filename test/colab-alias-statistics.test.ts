@@ -108,7 +108,7 @@ describe("Colab kit alias coverage", () => {
       .filter((kit) => !aliasesByKit.get(kit.name)?.has("prompt"))
       .map((kit) => kit.name);
 
-    expect(importFailures).toEqual(["ltx23/video_ltx2_3_ia2v.json"]);
+    expect(importFailures).toEqual([]);
     expect(summary).toEqual({
       prompt: 34,
       negative: 25,

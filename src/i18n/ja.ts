@@ -303,6 +303,7 @@ export const messages = {
   "api.get_network_error": "GET {path} で通信エラーが発生しました。",
   "api.post_failed": "POST {path} が失敗しました。",
   "api.post_network_error": "POST {path} で通信エラーが発生しました。",
+  "api.prompt_rejected": "ComfyUI が prompt を拒否しました。",
   "workflow.node_not_found": "node_id {nodeId} が見つかりません。",
   "workflow.inputs_not_found": "node_id {nodeId} に inputs がありません。",
   "preset.yaml_parse_error": "YAML の解析に失敗しました。",
@@ -315,6 +316,8 @@ export const messages = {
     "サブグラフを展開できません。/object_info にノードクラス {type} の定義がありません。ComfyUIを更新して再度importしてください。",
   "workflow.subgraph_mode_unsupported":
     "サブグラフノード {type} を展開できません。実行モード {mode} は未対応です。",
+  "workflow.disabled_node_referenced":
+    "無効化ノード {type} は {consumer} から参照されています。",
   "workflow.subgraph_cycle": "循環するサブグラフ出力を展開できません: {id}",
   "workflow.subgraph_invalid": "ComfyUIのサブグラフ定義が不正または不完全です。",
   "run.workdir_missing":

@@ -297,6 +297,7 @@ export const messages = {
   "api.get_network_error": "Network error on GET {path}.",
   "api.post_failed": "POST {path} failed.",
   "api.post_network_error": "Network error on POST {path}.",
+  "api.prompt_rejected": "ComfyUI rejected the prompt.",
   "workflow.node_not_found": "node_id {nodeId} not found.",
   "workflow.inputs_not_found": "inputs not found for node_id {nodeId}.",
   "preset.yaml_parse_error": "Failed to parse YAML.",
@@ -309,6 +310,8 @@ export const messages = {
     "Cannot expand the subgraph because /object_info has no schema for node class {type}. Update ComfyUI and retry the import.",
   "workflow.subgraph_mode_unsupported":
     "Cannot expand subgraph node {type}: execution mode {mode} is not supported yet.",
+  "workflow.disabled_node_referenced":
+    "Disabled node {type} is referenced by {consumer}.",
   "workflow.subgraph_cycle": "Cannot expand a cyclic subgraph output: {id}.",
   "workflow.subgraph_invalid": "The ComfyUI subgraph definition is invalid or incomplete.",
   "run.workdir_missing": ".comfy-agent not found. Run comfy-agent init first.",

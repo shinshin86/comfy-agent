@@ -806,4 +806,42 @@ describe("mock ComfyUI CLI smoke", () => {
     expect(history.code, history.stderr).toBe(0);
     expect(parseJson(history)).toMatchObject({ total: 1, jobs: [{ job_id: jobId }] });
   });
+
+  it("21: run reports ComfyUI prompt validation details", async () => {
+    const server = await startServer();
+    const workdir = await createTmpWorkdir();
+    await importSmokePreset(workdir, server);
+    server.requests.length = 0;
+
+    const result = await runCli(
+      [
+        "run",
+        "smoke",
+        "--source",
+        "local",
+        "--prompt",
+        "__fail_validation",
+        "--json",
+      ],
+      cliOptions(workdir, server.baseUrl),
+    );
+    const payload = parseJson(result);
+
+    expect(result.code).toBe(3);
+    expect(payload.error).toMatchObject({
+      code: "PROMPT_REJECTED",
+      message: "mock validation failed",
+      details: {
+        status: 400,
+        error: {
+          type: "prompt_outputs_failed_validation",
+          message: "mock validation failed",
+        },
+        node_errors: {
+          "9": { errors: [{ message: "mock validation failed" }] },
+        },
+      },
+    });
+    expect(normalizedRequestPaths(server.requests)).toEqual(["/object_info", "/prompt"]);
+  });
 });
