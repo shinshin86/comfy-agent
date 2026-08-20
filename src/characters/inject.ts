@@ -213,6 +213,7 @@ export const applyCharacter = (
     }
     if (
       characterLora?.base &&
+      (preset.tags ?? []).length > 0 &&
       !(preset.tags ?? []).some((tag) => tag.toLowerCase() === characterLora.base!.toLowerCase())
     ) {
       warnings.push(

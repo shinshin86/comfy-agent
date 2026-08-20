@@ -31,9 +31,11 @@ positive prompt, `--3_guidance` = Flux distilled guidance, `--6_seed` /
 
 ## Character LoRA (flux1_dev_lora)
 
-**Status: Starter (E2E not yet performed).** This optional workflow is
-statically validated only; the verified status above applies to the base
-`flux1_dev` workflow.
+**Status: Verified E2E** (2026-08-20, Colab L4, cloudflared tunnel):
+`01_setup.py` + a user LoRA in `models/loras/` + `02_start_comfyui.py`, then
+`comfy-agent import` / `run --character` from a local machine produced
+1024px images in ~45-56s each with the character LoRA applied and identity
+held across four scenes.
 
 Place your own Flux 1 LoRA in Colab's `ComfyUI/models/loras/` directory using
 the Files upload UI or a Google Drive mount. The kit does not download or

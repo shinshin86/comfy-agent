@@ -197,6 +197,7 @@ kits:
     gpu:
       minimum: L4
       recommended: A100
+      verified: [L4]
     summary: Flux 1 dev fp8 image generation.
     setup_file: 01_setup.py
     license_notes: [Check upstream Flux dev license before use.]
