@@ -12,6 +12,7 @@ CLOUDFLARED_SHA256 = "88195157a136199a86977c122a22084dae6907480bbe3640222b7b5583
 
 import hashlib
 import os
+import shutil
 import subprocess
 import sys
 
@@ -45,7 +46,26 @@ def ensure_download(url, destination, expected_size, expected_sha256):
         else:
             print(f"Resuming partial download: {destination}")
 
-    run("wget", "-c", "-O", destination, url)
+    if shutil.which("aria2c"):
+        run(
+            "aria2c",
+            "--continue=true",
+            "--allow-overwrite=true",
+            "--auto-file-renaming=false",
+            "--file-allocation=none",
+            "--max-connection-per-server=8",
+            "--split=8",
+            "--min-split-size=10M",
+            "--console-log-level=warn",
+            "--summary-interval=30",
+            "--dir",
+            os.path.dirname(destination),
+            "--out",
+            os.path.basename(destination),
+            url,
+        )
+    else:
+        run("wget", "-c", "-O", destination, url)
     actual_size = os.path.getsize(destination)
     if actual_size != expected_size:
         raise RuntimeError(
@@ -79,6 +99,10 @@ else:
     run("git", "checkout", "--detach", COMFYUI_REVISION)
 
 run(sys.executable, "-m", "pip", "install", "-q", "-r", f"{WORKSPACE}/requirements.txt")
+
+if not shutil.which("aria2c"):
+    run("apt-get", "update", "-qq")
+    run("apt-get", "install", "-y", "-qq", "aria2")
 
 # The upstream 10Eros-Max card links this INT8 ConvRot conversion. The FL2VA
 # Beta2 variant matches ComfyUI's native H3 first/last-frame workflow while
