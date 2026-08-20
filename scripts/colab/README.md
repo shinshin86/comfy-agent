@@ -26,7 +26,7 @@ specific verification details where a kit contains multiple variants.
 | [`./z_anime/`](./z_anime/) | base verified E2E; distill-8step starter | T4+ | Z-Anime, anime-style Z-Image finetune (base + distill-8step, fp8) |
 | [`./qwen_image/`](./qwen_image/) | Starter | L4+ | Qwen-Image 2512, text-to-image |
 | [`./qwen_image_edit/`](./qwen_image_edit/) | Starter | A100 (L4 for fp8) | Qwen-Image-Edit 2511, image editing |
-| [`./flux1/`](./flux1/) | Verified E2E | L4+ / A100 | Flux 1 dev fp8 (Comfy-Org repack, no HF token); + character LoRA slot (starter) |
+| [`./flux1/`](./flux1/) | Verified E2E | L4+ / A100 | Flux 1 dev fp8 (Comfy-Org repack, no HF token); + character LoRA slot |
 | [`./flux2/`](./flux2/) | Verified E2E | A100 | Flux 2 dev, fp8mixed repack |
 | [`./hidream_i1/`](./hidream_i1/) | Verified E2E (Fast/Dev/Full fp8) | L4+ (Fast/Dev) / A100 (Full) | HiDream-I1 17B (Fast/Dev/Full fp8, MIT, no HF token) |
 | [`./hidream_o1/`](./hidream_o1/) | Verified E2E | A100 | HiDream-O1 Dev fp8, reasoning-oriented native 2K text-to-image |
