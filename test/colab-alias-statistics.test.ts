@@ -66,7 +66,7 @@ describe("Colab kit alias coverage", () => {
     const aliasesByKit = new Map<string, Set<string>>();
     const importFailures: string[] = [];
 
-    expect(catalog.kits).toHaveLength(36);
+    expect(catalog.kits).toHaveLength(37);
     for (const kit of catalog.kits) {
       const kitAliases = aliasesByKit.get(kit.name) ?? new Set<string>();
       aliasesByKit.set(kit.name, kitAliases);
@@ -110,15 +110,15 @@ describe("Colab kit alias coverage", () => {
 
     expect(importFailures).toEqual([]);
     expect(summary).toEqual({
-      prompt: 34,
+      prompt: 35,
       negative: 25,
-      steps: 33,
+      steps: 34,
       cfg: 32,
-      width: 28,
-      height: 28,
+      width: 29,
+      height: 29,
     });
     expect(withoutPrompt).toEqual(["birefnet", "seedvr2"]);
-    expect(summary.prompt).toBeGreaterThanOrEqual(33);
+    expect(summary.prompt).toBeGreaterThanOrEqual(34);
     expect(summary.steps).toBeGreaterThanOrEqual(30);
     expect(summary.cfg).toBeGreaterThanOrEqual(30);
     expect(summary.width).toBeGreaterThanOrEqual(25);

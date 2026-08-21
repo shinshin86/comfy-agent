@@ -339,6 +339,8 @@ const goalContainsName = (goal: string | undefined, name: string) => {
   return normalizedName.length > 0 && ` ${normalizedGoal} `.includes(` ${normalizedName} `);
 };
 
+const nameSpecificity = (name: string) => normalizeName(name).split(" ").filter(Boolean).length;
+
 const inferGoalHints = (goal: string | undefined) => {
   const normalized = (goal ?? "").normalize("NFKC");
   const lower = normalized.toLowerCase();
@@ -507,12 +509,20 @@ export const buildColabSuggestPayload = (
         if (haystack.includes(token)) score += 2;
       }
 
-      if (
-        goalContainsName(options.goal, kit.name) ||
-        goalContainsName(options.goal, workflow.name)
-      ) {
+      const exactNames = [kit.name, workflow.name].filter((name) =>
+        goalContainsName(options.goal, name),
+      );
+      if (exactNames.length > 0) {
         score += 60;
         reasons.push("name:exact");
+        const specificity = Math.max(...exactNames.map(nameSpecificity));
+        if (specificity > 1) {
+          // Prefer an explicitly requested compound name (for example
+          // `10eros_max`) over a shorter name contained within it (`10eros`).
+          // Status still breaks ties when name specificity is equal.
+          score += (specificity - 1) * 30;
+          reasons.push(`name:specificity:${specificity}`);
+        }
       }
 
       if (hints.wantsFast && workflow.speed === "fast") {

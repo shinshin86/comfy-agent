@@ -726,6 +726,23 @@ describe("buildColabSuggestPayload", () => {
     expect(payload.suggestions.every((item) => item.download_gb === 42.5)).toBe(true);
   });
 
+  it("prefers the explicitly named 10Eros-Max kit over the shorter 10Eros name", async () => {
+    const catalog = await loadColabCatalogFile(catalogPath);
+    const payload = buildColabSuggestPayload(catalog, {
+      goal: "10Eros Max H3 text to video with audio",
+      task: "text_to_video",
+    });
+
+    expect(payload.suggestions[0]).toMatchObject({
+      kit: "10eros_max",
+      workflow: "10eros_max_t2v",
+      status: "starter",
+      download_gb: 41.7,
+    });
+    expect(payload.suggestions[0].reasons).toContain("name:exact");
+    expect(payload.suggestions[0].reasons).toContain("name:specificity:2");
+  });
+
   it("suggests the LTX-2.3 audio-video kit when requested by name", async () => {
     const catalog = await loadColabCatalogFile(catalogPath);
     const payload = buildColabSuggestPayload(catalog, {

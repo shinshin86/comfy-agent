@@ -29,7 +29,7 @@ agent? See [For AI agents](#for-ai-agents).
 
 ## Why comfy-agent
 
-- **Verified environment catalog** — [36 kits](./scripts/colab/README.md) expose
+- **Verified environment catalog** — [37 kits](./scripts/colab/README.md) expose
   GPU, download size, setup time, license, and E2E evidence as machine-readable data.
 - **Artifacts and instructions stay local** — presets, outputs, recipes, and jobs
   survive server resets; [`connect`](./docs/cli-reference.md#connect) absorbs volatile URLs.
@@ -104,6 +104,7 @@ comfy-agent run z_image_turbo --prompt "a cat riding a bicycle"
 | Video | [`ltx23_t2v/`](./scripts/colab/ltx23_t2v/)                                 | Verified | A100        | LTX-2.3 text-to-video with generated audio            |
 | Video | [`ltx25/`](./scripts/colab/ltx25/)                                         | Verified | A100        | LTX-2.5 T2V / I2V / first-last-frame video with audio |
 | Video | [`minimax_h3/`](./scripts/colab/minimax_h3/)                               | Verified | A100        | MiniMax H3 T2V / I2V with native stereo audio         |
+| Video | [`10eros_max/`](./scripts/colab/10eros_max/)                               | Starter  | A100        | 10Eros-Max H3 T2V / I2V with native stereo audio      |
 | Video | [`sulphur2/`](./scripts/colab/sulphur2/)                                   | Verified | A100        | Sulphur-2 T2V / I2V                                   |
 | Video | [`10eros/`](./scripts/colab/10eros/)                                       | Partial  | A100        | 10Eros T2V / I2V                                      |
 | Audio | [`ace_step_1_5/`](./scripts/colab/ace_step_1_5/)                           | Partial  | T4          | ACE-Step 1.5 full songs with lyrics and vocals        |
