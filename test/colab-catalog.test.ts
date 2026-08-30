@@ -723,8 +723,8 @@ describe("buildColabSuggestPayload", () => {
     ]);
     expect(payload.suggestions.every((item) => item.kit === "minimax_h3")).toBe(true);
     expect(payload.suggestions.map((item) => item.workflow)).toContain("minimax_h3_r2v");
-    expect(payload.suggestions.every((item) => item.status === "starter")).toBe(true);
-    expect(payload.suggestions.every((item) => item.gpu.verified === undefined)).toBe(true);
+    expect(payload.suggestions.every((item) => item.status === "verified")).toBe(true);
+    expect(payload.suggestions.every((item) => item.gpu.verified?.includes("A100"))).toBe(true);
     expect(payload.suggestions.every((item) => item.download_gb === 65.4)).toBe(true);
   });
 

@@ -1,15 +1,13 @@
 # MiniMax H3 on Colab A100
 
-Starter kit for MiniMax H3 text-to-video (T2V), image-to-video (I2V), and
+Verified E2E kit for MiniMax H3 text-to-video (T2V), image-to-video (I2V), and
 reference-to-video (R2V) with native stereo audio, using ComfyUI's native H3
 nodes and `comfy-agent`.
 
-T2V and I2V completed the required Colab A100 E2E path on 2026-08-03 at the
-previous pinned ComfyUI revision. R2V is a **Starter**: its workflow, pinned
-assets, import aliases, and graph wiring are statically tested, but it has not
-completed the canonical Colab/cloudflared E2E path. The current revision also
-adds `MiniMaxH3AddGuide`, so T2V and I2V must be rerun before the whole kit can
-return to Verified E2E status.
+T2V, I2V, and R2V completed the canonical Colab A100 to local-Mac E2E path on
+2026-08-31 at the pinned revisions below. R2V was exercised with both spoken
+Japanese and an original vocal-music reference; T2V and I2V were rerun after
+the ComfyUI revision change that added `MiniMaxH3AddGuide`.
 
 Prompt writing: see [docs/minimax-h3-prompting.md](../../../docs/minimax-h3-prompting.md)
 for how to structure H3 prompts (visual timeline + audio + music in one block).
@@ -196,26 +194,39 @@ error rather than being guessed.
 
 ## Verification record
 
-Previously verified on 2026-08-03 with a Colab `NVIDIA A100-SXM4-40GB`
-runtime and ComfyUI `14b05228cef127ce529bc0c08660770d4af3e9a8`:
+Verified on 2026-08-31 with a Colab `NVIDIA A100-SXM4-40GB` runtime,
+ComfyUI `e01fb4c56b7a88149d469b99cbbfe3223d715054`, and MiniMax H3 model
+revision `4cc1d817b6184899b41293954329f576cb5ae86b`:
 
-- `01_setup.py` completed and all four pinned model checksums passed.
-- `/object_info` exposed `MiniMaxH3ImageToVideo`, `VAEDecodeAudio`,
-  `CreateVideo`, and `SaveVideo`.
-- Local `comfy-agent import` and `comfy-agent run` completed through the
-  cloudflared tunnel for both bundled workflows.
-- T2V produced 124 coherent frames at 864x480; I2V produced 124 coherent
-  frames at 480x864 while preserving the supplied subject and composition.
-- Both outputs were H.264 at 24 fps with 32 kHz stereo AAC audio. Local
-  playback and audio-level probing confirmed non-empty audio.
+- `01_setup.py` ran with both `DOWNLOAD_FL2VA` and `DOWNLOAD_REF2VA` enabled.
+  All 63.44 GB of enabled model assets and cloudflared `2026.7.2` passed the
+  pinned size and SHA-256 checks.
+- Local `comfy-agent doctor`, import, run, and verify completed through the
+  cloudflared tunnel for all three bundled workflows. Every preset reported
+  zero missing nodes and zero missing models.
+- All four outputs were H.264 at 864x480, 124 frames, 24 fps, 5.167 seconds,
+  with 32 kHz stereo AAC audio. Each `comfy-agent verify` run passed all 10
+  metadata/count/dimension/duration checks with zero warnings.
+- Spoken R2V completed in 350.687 seconds. The supplied voice reference was
+  padded with silence to the 5.16-second video budget. The output retained the
+  reference face, hair, hat, dress, and riverside setting; mouth shapes changed
+  during speech and were mostly closed during the long generated silence. H3
+  regenerated a brief sound near the end instead of preserving the padded
+  waveform exactly, consistent with the R2V behavior documented above.
+- Vocal-music R2V completed in 300.809 seconds using an original Japanese vocal
+  plus four-note accompaniment. It retained identity, produced continuous
+  singing mouth shapes and a slow push-in, and contained non-empty stereo audio
+  with structured vocal harmonics and no silence interval of 0.2 seconds or
+  longer.
+- T2V completed in 327.534 seconds with a coherent floating lantern, reflection,
+  expanding ripples, and camera push-in. The stereo track was non-empty and
+  contained the requested prominent bell-like event near 3 seconds.
+- I2V completed in 295.678 seconds while preserving the supplied subject and
+  riverside composition, with coherent gaze, blink, hair, and water motion. Its
+  intentionally soft ambience remained non-empty stereo audio.
 
-Not yet verified at the current revision:
-
-- `01_setup.py` with `DOWNLOAD_REF2VA = True` on Colab A100.
-- Local-Mac `doctor` / import / run through the cloudflared tunnel for R2V.
-- R2V output duration, non-empty audio, lip closure during silence, mouth
-  opening on dense syllables, and reference-image identity retention.
-- T2V and I2V regression runs after the ComfyUI revision change.
+The optional Ref2V Turbo LoRA, multi-reference graphs, and GPUs below A100 have
+not been E2E-verified by this record.
 
 ## Upstream drift
 
@@ -223,7 +234,7 @@ The setup pins ComfyUI at `e01fb4c56b7a88149d469b99cbbfe3223d715054`
 and the Comfy-Org model repository at
 `4cc1d817b6184899b41293954329f576cb5ae86b`. The previous ComfyUI revision
 already exposed `MiniMaxH3ReferenceToVideo`; this revision is the minimal bump
-that also exposes `MiniMaxH3AddGuide`. Because the bump changes H3 sampling
-internals, rerun T2V, I2V, and R2V before marking the kit Verified E2E. Set
+that also exposes `MiniMaxH3AddGuide`. The 2026-08-31 verification reran T2V,
+I2V, and R2V after this sampling change. Set
 `UPDATE_COMFYUI = True` only for intentional compatibility testing, then rerun
 `/object_info` and every workflow before changing the recorded revision.

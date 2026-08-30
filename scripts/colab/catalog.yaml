@@ -567,12 +567,13 @@ kits:
     composable: false
   - name: minimax_h3
     path: minimax_h3/
-    status: starter
+    status: verified
     tasks: [text_to_video, image_to_video]
     outputs: [video]
     gpu:
       minimum: A100
       recommended: A100
+      verified: [A100]
     summary: MiniMax H3 native text/image/reference-to-video generation with jointly generated stereo audio.
     setup_file: 01_setup.py
     license_notes:
@@ -613,7 +614,7 @@ kits:
         output: video
         speed: slow
         quality: high
-        notes: Starter reference-image + reference-audio workflow at 864x480, 124 frames and 24 fps; upload via --image and --audio.
+        notes: Verified reference-image + reference-audio workflow at 864x480, 124 frames and 24 fps; upload via --image and --audio.
     assets:
       - file: minimax_h3_fl2va_pruned_int8_convrot.safetensors
         dir: models/diffusion_models

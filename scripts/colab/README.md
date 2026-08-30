@@ -8,8 +8,8 @@ in `.mcp.json` at the repo root.
 
 ## Per-model starter kits
 
-The machine-readable catalog currently contains **37 kits**: 26 verified,
-6 partial, and 5 starter kits. The per-workflow notes below preserve more
+The machine-readable catalog currently contains **37 kits**: 27 verified,
+6 partial, and 4 starter kits. The per-workflow notes below preserve more
 specific verification details where a kit contains multiple variants.
 
 | Kit | Status | GPU | Notes |
@@ -41,7 +41,7 @@ specific verification details where a kit contains multiple variants.
 | [`./ltx23/`](./ltx23/) | Starter | A100 | LTX-2.3 22B i2v video |
 | [`./ltx23_t2v/`](./ltx23_t2v/) | Verified E2E | A100 | LTX-2.3 text-to-video with synchronized generated audio |
 | [`./ltx25/`](./ltx25/) | Verified E2E | A100 | LTX-2.5 native T2V/I2V/FLF2V with synchronized audio (49.99 GB; gated HF access; LTX-2.x Community License) |
-| [`./minimax_h3/`](./minimax_h3/) | Starter: current revision needs E2E; T2V/I2V passed on the previous revision | A100 | MiniMax H3 T2V/I2V plus reference image+audio R2V (42.47 GB one-family default; 65.40 GB full optional asset set; territory-restricted upstream license—review runtime region before use) |
+| [`./minimax_h3/`](./minimax_h3/) | Verified E2E (T2V/I2V/R2V) | A100 | MiniMax H3 T2V/I2V plus reference image+audio R2V (42.47 GB one-family default; 65.40 GB full optional asset set; territory-restricted upstream license—review runtime region before use) |
 | [`./10eros_max/`](./10eros_max/) | Starter | A100 | 10Eros-Max H3 T2V/I2V with native stereo audio (41.70 GB download; territory-restricted and multi-source upstream licenses—review runtime region and terms) |
 | [`./minimax_music3/`](./minimax_music3/) | Verified E2E (A100) | L4+ (A100 verified) | MiniMax Music 3 complete songs with lyrics and vocals (11.9 GB INT8 stack; Community License) |
 | [`./ace_step_1_5/`](./ace_step_1_5/) | A100 E2E verified; T4/L4 unverified | T4+ (L4 recommended) | ACE-Step 1.5 Turbo AIO, full songs with lyrics and vocals |
