@@ -709,21 +709,23 @@ describe("buildColabSuggestPayload", () => {
     });
   });
 
-  it("suggests both verified MiniMax H3 video modes with cost metadata", async () => {
+  it("suggests all MiniMax H3 video modes with full-kit cost metadata", async () => {
     const catalog = await loadColabCatalogFile(catalogPath);
     const payload = buildColabSuggestPayload(catalog, {
       goal: "minimax h3",
-      limit: 2,
+      limit: 3,
     });
 
     expect(payload.suggestions.map((item) => item.task).sort()).toEqual([
       "image_to_video",
+      "image_to_video",
       "text_to_video",
     ]);
     expect(payload.suggestions.every((item) => item.kit === "minimax_h3")).toBe(true);
-    expect(payload.suggestions.every((item) => item.status === "verified")).toBe(true);
-    expect(payload.suggestions.every((item) => item.gpu.verified?.includes("A100"))).toBe(true);
-    expect(payload.suggestions.every((item) => item.download_gb === 42.5)).toBe(true);
+    expect(payload.suggestions.map((item) => item.workflow)).toContain("minimax_h3_r2v");
+    expect(payload.suggestions.every((item) => item.status === "starter")).toBe(true);
+    expect(payload.suggestions.every((item) => item.gpu.verified === undefined)).toBe(true);
+    expect(payload.suggestions.every((item) => item.download_gb === 65.4)).toBe(true);
   });
 
   it("prefers the explicitly named 10Eros-Max kit over the shorter 10Eros name", async () => {

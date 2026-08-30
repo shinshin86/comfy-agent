@@ -567,19 +567,31 @@ kits:
     composable: false
   - name: minimax_h3
     path: minimax_h3/
-    status: verified
+    status: starter
     tasks: [text_to_video, image_to_video]
     outputs: [video]
     gpu:
       minimum: A100
       recommended: A100
-      verified: [A100]
-    summary: MiniMax H3 native text/image-to-video generation with jointly generated stereo audio.
+    summary: MiniMax H3 native text/image/reference-to-video generation with jointly generated stereo audio.
     setup_file: 01_setup.py
     license_notes:
       - The upstream MiniMax H3 license defines an Applicable Territory that excludes the EU, UK, Republic of Korea, and USA. The user must review the download/use location, including the Colab runtime region; this kit does not geolocate or block execution.
       - Review the full upstream license for commercial authorization, MiniMax H3 attribution, output-use, and acceptable-use terms before downloading or using the weights.
-    tags: [video, audio, t2v, i2v, minimax, native_audio, day_zero]
+    tags:
+      [
+        video,
+        audio,
+        t2v,
+        i2v,
+        r2v,
+        audio_reference,
+        audio_to_video,
+        lipsync,
+        minimax,
+        native_audio,
+        day_zero,
+      ]
     workflows:
       - name: minimax_h3_t2v
         file: minimax_h3_t2v.json
@@ -595,10 +607,23 @@ kits:
         speed: slow
         quality: high
         notes: First-frame I2V at 864x480, 124 frames and 24 fps by default; upload via --image.
+      - name: minimax_h3_r2v
+        file: minimax_h3_r2v.json
+        task: image_to_video
+        output: video
+        speed: slow
+        quality: high
+        notes: Starter reference-image + reference-audio workflow at 864x480, 124 frames and 24 fps; upload via --image and --audio.
     assets:
       - file: minimax_h3_fl2va_pruned_int8_convrot.safetensors
         dir: models/diffusion_models
         size_gb: 20.970379616
+      - file: minimax_h3_ref2va_pruned_int8_convrot.safetensors
+        dir: models/diffusion_models
+        size_gb: 20.970379616
+      - file: minimax_h3_ref2v_turbo_4step_v0.1_comfyui_bf16.safetensors
+        dir: models/loras
+        size_gb: 1.956193
       - file: qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors
         dir: models/text_encoders
         size_gb: 15.687142551
@@ -608,7 +633,7 @@ kits:
       - file: minimax_h3_audio_vae_fp32.safetensors
         dir: models/vae
         size_gb: 0.605254808
-    setup_minutes: 15
+    setup_minutes: 22
     composable: false
   - name: minimax_music3
     path: minimax_music3/

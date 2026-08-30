@@ -117,6 +117,13 @@ describe("inferAliases with kit workflows", () => {
       prompt: "104_prompt",
       length: "104_length",
     });
+    expect(aliasTargets(await loadWorkflow("minimax_h3/minimax_h3_r2v.json"))).toMatchObject({
+      prompt: "104_prompt",
+      width: "104_width",
+      height: "104_height",
+      length: "104_length",
+      fps: "91_fps",
+    });
     expect(
       aliasTargets(await loadWorkflow("moss_soundeffect_v2/moss_soundeffect_v2_t2a.json")),
     ).toMatchObject({

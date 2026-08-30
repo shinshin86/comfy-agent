@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Added a MiniMax H3 Ref2VA Starter workflow for reference-image and
+  reference-audio-driven video, including automatic `--image` / `--audio`
+  uploads, pinned Ref2VA and optional Turbo assets, setup toggles, prompting
+  guidance, catalog metadata, and structural/alias tests.
+
+### Changed
+
+- Updated the MiniMax H3 ComfyUI pin to the first revision containing both
+  `MiniMaxH3ReferenceToVideo` and `MiniMaxH3AddGuide`; T2V/I2V regression E2E
+  and R2V E2E remain required before the kit returns to verified status.
+
 ## 0.0.5 - 2026-08-20
 
 ### Added

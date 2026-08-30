@@ -2,14 +2,16 @@
 
 How an AI agent (Claude Code, Codex, or any orchestrator driving the
 `comfy-agent` CLI) should turn a user's request into an optimized prompt
-for the `minimax_h3` Colab kit (`minimax_h3_t2v` / `minimax_h3_i2v`
-presets, ComfyUI `MiniMaxH3ImageToVideo` node).
+for the `minimax_h3` Colab kit (`minimax_h3_t2v`, `minimax_h3_i2v`, and
+`minimax_h3_r2v` presets; ComfyUI `MiniMaxH3ImageToVideo` and
+`MiniMaxH3ReferenceToVideo` nodes).
 
 This is an original synthesis written for the single-prompt-block ComfyUI
-path. It reinterprets ideas from the upstream MiniMax prompt guide, fal.ai's
-H3 guide, and the ComfyUI tutorial (links at the bottom) — it is not a copy
-of any of them, and hosted-API-only features (multi-reference, video/audio
-references) are intentionally out of scope.
+path. It reinterprets ideas from the upstream MiniMax base and full-reference
+prompt guides, fal.ai's H3 guide, and the ComfyUI tutorial (links at the
+bottom) — it is not a copy of any of them. The bundled R2V preset exposes one
+reference image and one standalone reference-audio clip; broader multi-image
+and reference-video graphs remain outside this guide's worked examples.
 
 ## Mental model
 
@@ -123,6 +125,28 @@ Compute `S.SS` from the **aligned** frame count, not the raw `length` input:
 ComfyUI snaps any `length` up to the 17k+5 grid, so the last frame sits at
 `(aligned_length − 1) / 24` seconds (e.g. `length` 124 → 123 / 24 = 5.13).
 
+For R2V, name each reference and assign its job on the first line. The bundled
+preset connects one image followed by one standalone audio clip, so their tags
+are `<Picture 1>` and `<Audio 1>`. Keep one blank line before the same three
+fields used by T2V/I2V:
+
+```text
+<Picture 1> defines the subject's identity and appearance. <Audio 1> provides the vocal performance and timing; synchronize the subject's mouth to it.
+
+integrated_multimodal_description: [Shot 1] Preserve the subject from <Picture 1>. The subject (S1) faces the camera and says: <d>[Japanese] ここに実際の台詞を入れる。</d> Match the delivery and lip timing to <Audio 1>. ...
+
+overall_soundscape: Use the vocal performance referenced by <Audio 1>; no added environmental noise.
+
+non_diegetic_music: N/A
+```
+
+Connection order determines the numeric tags. State whether each reference
+drives identity, style, motion, camera, voice, timing, or another concrete
+property. For exact lip-sync work, transcribe the reference dialogue or lyrics
+inside `<d>[Language] ...</d>` and give its speaker a stable `(S1)` ID. H3
+regenerates the audio rather than copying the input waveform; replace the output
+track afterward when the original recording must be preserved exactly.
+
 Plainer prose blocks with `Audio:` / `Music:` labels also generate coherent
 results — the bundled workflows' default prompts are plain prose and passed
 the kit's E2E verification — but no side-by-side comparison against the
@@ -145,7 +169,7 @@ the model rushes, drops instructions, or slideshows. When a user asks for
 more story than the duration holds, either raise `length` or split into
 multiple runs — say so instead of cramming.
 
-## T2V vs I2V
+## T2V vs I2V vs R2V
 
 **T2V** (`minimax_h3_t2v`): you own everything; the more completely the four
 layers are filled in, the more predictable the result.
@@ -170,6 +194,15 @@ it, write the prompt as a convergence: starting state → the observable
 intermediate changes → differences narrowing → landing exactly on the final
 frame. Prefer one continuous shot; cuts between two fixed endpoints tend to
 break the interpolation.
+
+**R2V** (`minimax_h3_r2v`, reference image and audio supplied): the picture is
+an identity/appearance reference, not automatically the first frame, and the
+audio supplies reference timing/performance. Assign both roles explicitly on
+the first line. Favor a front-facing or three-quarter portrait with a visible,
+unoccluded mouth; use a clean vocal-only stem for songs when possible. Keep the
+video frame budget close to the audio duration. Standalone reference audio must
+be 2–15 seconds per clip and no more than 15 seconds total; the bundled workflow
+accepts one clip even though Ref2VA supports up to three.
 
 ## Dialogue and on-screen text
 
@@ -245,7 +278,12 @@ hard cuts.
 | `--104_width` / `--104_height` | canvas | multiples of 32. The model's native canvas is a **768 px short edge with total area capped at 768×1344 px** (~1.03 MP) — a pixel-area budget, not per-axis limits, so extreme ratios can run the long edge past 1344. Start from the bundled 864x480. |
 | `--15_noise_seed` | seed | fix it while iterating the prompt |
 | `--image` | first frame (I2V only) | enables the anchor pattern |
+| `--image` + `--audio` | references (R2V only) | one identity/appearance image plus one 2–15 s standalone audio clip |
 | `--timeout-seconds` | e.g. 1800 | A100 runs are minutes-long |
+
+`--prompt`, `--width`, `--height`, and `--length` are import-generated aliases
+for the `--104_*` flags. The dedicated `--seed` run option targets
+`15.noise_seed` and can be used instead of `--15_noise_seed`.
 
 ## Iteration protocol
 
@@ -291,6 +329,10 @@ non_diegetic_music: A sparse piano motif over a quiet ambient pad, unhurried, fa
 
 - MiniMax official prompt writing guide:
   <https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/docs/VIDEO_PROMPT_WRITING_GUIDE_base_en.md>
+- MiniMax official full-reference prompt writing guide:
+  <https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/docs/VIDEO_PROMPT_WRITING_GUIDE_ref_en.md>
+- MiniMax H3 model card (reference count and duration limits):
+  <https://huggingface.co/MiniMaxAI/MiniMax-H3>
 - fal.ai MiniMax H3 prompting guide:
   <https://fal.ai/learn/devs/minimax-h3-prompting-guide>
 - ComfyUI MiniMax H3 tutorial:

@@ -102,7 +102,7 @@ comfy-agent run z_image_turbo --prompt "a cat riding a bicycle"
 | 動画 | [`ltx23/`](./scripts/colab/ltx23/) | Starter | A100 | LTX-2.3 画像 / 画像＋音声→動画 |
 | 動画 | [`ltx23_t2v/`](./scripts/colab/ltx23_t2v/) | 検証済み | A100 | LTX-2.3 音声付きテキスト→動画 |
 | 動画 | [`ltx25/`](./scripts/colab/ltx25/) | 検証済み | A100 | LTX-2.5 T2V / I2V / 始終端フレーム＋音声 |
-| 動画 | [`minimax_h3/`](./scripts/colab/minimax_h3/) | 検証済み | A100 | MiniMax H3 T2V / I2V＋ステレオ音声 |
+| 動画 | [`minimax_h3/`](./scripts/colab/minimax_h3/) | Starter | A100 | MiniMax H3 T2V / I2V / 参照画像＋音声R2V |
 | 動画 | [`10eros_max/`](./scripts/colab/10eros_max/) | Starter | A100 | 10Eros-Max H3 T2V / I2V＋ステレオ音声 |
 | 動画 | [`sulphur2/`](./scripts/colab/sulphur2/) | 検証済み | A100 | Sulphur-2 T2V / I2V |
 | 動画 | [`10eros/`](./scripts/colab/10eros/) | 一部検証 | A100 | 10Eros T2V / I2V |
