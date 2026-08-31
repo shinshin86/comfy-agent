@@ -28,7 +28,7 @@ GPU が無い場合は [Google Colab で動かす](#google-colab-で動かす)�
 
 ## Why comfy-agent
 
-- **検証済み環境 catalog** — [37 kit](./scripts/colab/README.md) の GPU、download 量、
+- **検証済み環境 catalog** — [38 kit](./scripts/colab/README.md) の GPU、download 量、
   setup 時間、license、E2E 証拠を機械可読データで提供します。
 - **成果物と手順はローカルに保存** — preset、output、recipe、job は server reset 後も残り、
   [`connect`](./docs/cli-reference.ja.md#connect) が揮発 URL を吸収します。
@@ -103,6 +103,7 @@ comfy-agent run z_image_turbo --prompt "a cat riding a bicycle"
 | 動画 | [`ltx23_t2v/`](./scripts/colab/ltx23_t2v/) | 検証済み | A100 | LTX-2.3 音声付きテキスト→動画 |
 | 動画 | [`ltx25/`](./scripts/colab/ltx25/) | 検証済み | A100 | LTX-2.5 T2V / I2V / 始終端フレーム＋音声 |
 | 動画 | [`minimax_h3/`](./scripts/colab/minimax_h3/) | 検証済み | A100 | MiniMax H3 T2V / I2V / 参照画像＋音声R2V |
+| 動画 | [`minimax_h3_fast/`](./scripts/colab/minimax_h3_fast/) | Starter | A100 | FastH3 4-forward T2VA＋必須VSA |
 | 動画 | [`10eros_max/`](./scripts/colab/10eros_max/) | Starter | A100 | 10Eros-Max H3 T2V / I2V＋ステレオ音声 |
 | 動画 | [`sulphur2/`](./scripts/colab/sulphur2/) | 検証済み | A100 | Sulphur-2 T2V / I2V |
 | 動画 | [`10eros/`](./scripts/colab/10eros/) | 一部検証 | A100 | 10Eros T2V / I2V |

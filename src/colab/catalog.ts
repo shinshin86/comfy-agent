@@ -108,6 +108,7 @@ export const ColabKitSchema = z
       })
       .strict(),
     summary: z.string().min(1),
+    aliases: z.array(z.string().min(1)).min(1).optional(),
     setup_file: RelativePathSchema.default("01_setup.py"),
     workflows: z.array(ColabWorkflowSchema).min(1),
     license_notes: z.array(z.string()).optional(),
@@ -240,6 +241,7 @@ const sortCatalog = (catalog: ColabCatalog): ColabCatalog => ({
           capabilities: cloneCapabilities(workflow.capabilities),
         })),
       license_notes: kit.license_notes ? [...kit.license_notes] : undefined,
+      aliases: kit.aliases ? [...kit.aliases] : undefined,
       tags: kit.tags ? [...kit.tags] : undefined,
       assets: kit.assets ? kit.assets.map((asset) => ({ ...asset })) : undefined,
     })),
@@ -385,6 +387,7 @@ const workflowOutput = (workflow: ColabKit["workflows"][number]) =>
 const textForKit = (kit: ColabKit, workflow: ColabKit["workflows"][number]) =>
   [
     kit.name,
+    ...(kit.aliases ?? []),
     kit.summary,
     kit.status,
     kit.gpu.minimum,
@@ -509,7 +512,7 @@ export const buildColabSuggestPayload = (
         if (haystack.includes(token)) score += 2;
       }
 
-      const exactNames = [kit.name, workflow.name].filter((name) =>
+      const exactNames = [kit.name, ...(kit.aliases ?? []), workflow.name].filter((name) =>
         goalContainsName(options.goal, name),
       );
       if (exactNames.length > 0) {
