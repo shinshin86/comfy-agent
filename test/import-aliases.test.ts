@@ -102,6 +102,20 @@ describe("buildPresetTemplate aliases", () => {
     expect(aliases).not.toContain("seed");
   });
 
+  it("imports MiniMax H3 R2V with image/audio uploads and stable controls", async () => {
+    const preset = await buildFixturePreset("minimax_h3/minimax_h3_r2v.json");
+
+    expect(preset.uploads).toMatchObject({
+      image: { cli_flag: "--image", target: { node_id: "114", input: "image" } },
+      audio: { cli_flag: "--audio", target: { node_id: "115", input: "audio" } },
+    });
+    expect(preset.parameters?.["104_prompt"]?.aliases).toEqual(["prompt"]);
+    expect(preset.parameters?.["104_width"]?.aliases).toEqual(["width"]);
+    expect(preset.parameters?.["104_height"]?.aliases).toEqual(["height"]);
+    expect(preset.parameters?.["104_length"]?.aliases).toEqual(["length"]);
+    expect(preset.parameters?.["15_noise_seed"]?.role).toBe("seed");
+  });
+
   it("adds inferred alias provenance to the import JSON payload", async () => {
     const workflow = await loadWorkflow("z_image/z_image_turbo.json");
     const presetTemplate = buildPresetTemplate("fixture", "z_image_turbo.json", workflow, null);
@@ -215,6 +229,18 @@ describe("generated alias YAML", () => {
 
   it("matches MiniMax H3", async () => {
     expect(aliasYaml(await buildFixturePreset("minimax_h3/minimax_h3_t2v.json")))
+      .toMatchInlineSnapshot(`
+        "steps: 9_steps
+        fps: 91_fps
+        prompt: 104_prompt
+        width: 104_width
+        height: 104_height
+        length: 104_length"
+      `);
+  });
+
+  it("matches MiniMax H3 R2V", async () => {
+    expect(aliasYaml(await buildFixturePreset("minimax_h3/minimax_h3_r2v.json")))
       .toMatchInlineSnapshot(`
         "steps: 9_steps
         fps: 91_fps

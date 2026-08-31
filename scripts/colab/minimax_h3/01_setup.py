@@ -3,9 +3,12 @@
 
 USE_GOOGLE_DRIVE = False
 UPDATE_COMFYUI = False
+DOWNLOAD_FL2VA = True
+DOWNLOAD_REF2VA = False
+DOWNLOAD_REF2V_TURBO_LORA = False
 
-COMFYUI_REVISION = "14b05228cef127ce529bc0c08660770d4af3e9a8"
-MODEL_REVISION = "fd70b39279d1ae6eb214c903f53e1bec3af19a77"
+COMFYUI_REVISION = "e01fb4c56b7a88149d469b99cbbfe3223d715054"
+MODEL_REVISION = "4cc1d817b6184899b41293954329f576cb5ae86b"
 CLOUDFLARED_VERSION = "2026.7.2"
 CLOUDFLARED_SHA256 = "88195157a136199a86977c122a22084dae6907480bbe3640222b7b55834afc3a"
 
@@ -79,12 +82,10 @@ else:
 
 run(sys.executable, "-m", "pip", "install", "-q", "-r", f"{WORKSPACE}/requirements.txt")
 
+if not DOWNLOAD_FL2VA and not DOWNLOAD_REF2VA:
+    raise ValueError("Enable DOWNLOAD_FL2VA, DOWNLOAD_REF2VA, or both")
+
 MODEL_FILES = [
-    (
-        "diffusion_models/minimax_h3_fl2va_pruned_int8_convrot.safetensors",
-        20970379616,
-        "e889202c41dafb67b10d67b97f0d8541508036a6090af23425a5c2615d03c47a",
-    ),
     (
         "text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
         15687142551,
@@ -101,6 +102,35 @@ MODEL_FILES = [
         "8e505d95dd1561d47abd43d4238fd40d9bb1ae9e147ed0a4cba778d76ae4db48",
     ),
 ]
+
+if DOWNLOAD_REF2VA:
+    MODEL_FILES.insert(
+        0,
+        (
+            "diffusion_models/minimax_h3_ref2va_pruned_int8_convrot.safetensors",
+            20970379616,
+            "9255f52b6677845ad238f20dfaafa94727053694127ab7f255c048f0f9365779",
+        ),
+    )
+
+if DOWNLOAD_FL2VA:
+    MODEL_FILES.insert(
+        0,
+        (
+            "diffusion_models/minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+            20970379616,
+            "e889202c41dafb67b10d67b97f0d8541508036a6090af23425a5c2615d03c47a",
+        ),
+    )
+
+if DOWNLOAD_REF2V_TURBO_LORA:
+    MODEL_FILES.append(
+        (
+            "loras/minimax_h3_ref2v_turbo_4step_v0.1_comfyui_bf16.safetensors",
+            1956193000,
+            "5b9ab5ade15d0775676d01a907268a69a1468dc6033b3b0d3ded5502f3ebb84c",
+        )
+    )
 
 for relative_path, expected_size, expected_sha256 in MODEL_FILES:
     ensure_download(
@@ -122,5 +152,9 @@ run("dpkg", "-i", cloudflared_deb)
 print(f"Setup complete. WORKSPACE = {WORKSPACE}")
 print(f"ComfyUI revision = {COMFYUI_REVISION if not UPDATE_COMFYUI else 'latest master'}")
 print(f"MiniMax H3 model revision = {MODEL_REVISION}")
-print("Model download size = 42.47 GB (decimal)")
+print(f"DOWNLOAD_FL2VA = {DOWNLOAD_FL2VA}")
+print(f"DOWNLOAD_REF2VA = {DOWNLOAD_REF2VA}")
+print(f"DOWNLOAD_REF2V_TURBO_LORA = {DOWNLOAD_REF2V_TURBO_LORA}")
+download_size_gb = sum(item[1] for item in MODEL_FILES) / 1_000_000_000
+print(f"Model download size = {download_size_gb:.2f} GB (decimal)")
 print(f"cloudflared version = {CLOUDFLARED_VERSION}")

@@ -34,7 +34,8 @@ Key invariants:
 
 Model-specific prompt construction:
 
-- **MiniMax H3** (`minimax_h3_t2v` / `minimax_h3_i2v`): read
+- **MiniMax H3** (`minimax_h3_t2v` / `minimax_h3_i2v` /
+  `minimax_h3_r2v`): read
   [docs/minimax-h3-prompting.md](docs/minimax-h3-prompting.md) before
   composing `--104_prompt`. H3 generates video + stereo audio in one pass;
   the prompt must direct both, rendered in the official three-field format
