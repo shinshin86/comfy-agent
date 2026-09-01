@@ -81,16 +81,17 @@ describe("FastH3 Colab kit", () => {
     });
   });
 
-  it("documents Starter status and stops short of claiming Colab E2E verification", async () => {
+  it("documents the completed A100 E2E verification", async () => {
     const readme = await fs.readFile(path.join(kitDir, "README.md"), "utf-8");
 
-    expect(readme).toContain("not E2E verified yet");
+    expect(readme).toContain("Verified E2E kit");
+    expect(readme).toContain("NVIDIA A100-SXM4-40GB");
     expect(readme).toContain("T2VA only");
     expect(readme).toContain(
       "Do not run these steps until an A100 verification session has been approved",
     );
-    expect(readme).toContain("- [ ] `01_setup.py` completes on Colab A100");
-    expect(readme).not.toContain("Verified E2E kit");
+    expect(readme).toContain("- [x] `01_setup.py` completed");
+    expect(readme).toContain("chunked qkv producer on 50 blocks");
   });
 
   it.each(["fasth3", "Fast H3"])("is discoverable by its public name: %s", async (goal) => {
@@ -102,7 +103,7 @@ describe("FastH3 Colab kit", () => {
     expect(payload.suggestions[0]).toMatchObject({
       kit: "minimax_h3_fast",
       workflow: "minimax_h3_fast_t2v",
-      status: "starter",
+      status: "verified",
     });
     expect(payload.suggestions[0].reasons).toContain("name:exact");
   });

@@ -638,7 +638,7 @@ kits:
     composable: false
   - name: minimax_h3_fast
     path: minimax_h3_fast/
-    status: starter
+    status: verified
     aliases: [fasth3, fast_h3]
     tasks: [text_to_video]
     outputs: [video]

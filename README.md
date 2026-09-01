@@ -104,7 +104,7 @@ comfy-agent run z_image_turbo --prompt "a cat riding a bicycle"
 | Video | [`ltx23_t2v/`](./scripts/colab/ltx23_t2v/)                                 | Verified | A100        | LTX-2.3 text-to-video with generated audio            |
 | Video | [`ltx25/`](./scripts/colab/ltx25/)                                         | Verified | A100        | LTX-2.5 T2V / I2V / first-last-frame video with audio |
 | Video | [`minimax_h3/`](./scripts/colab/minimax_h3/)                               | Verified | A100        | MiniMax H3 T2V / I2V / reference image+audio R2V      |
-| Video | [`minimax_h3_fast/`](./scripts/colab/minimax_h3_fast/)                     | Starter  | A100        | FastH3 four-forward T2VA with mandatory VSA           |
+| Video | [`minimax_h3_fast/`](./scripts/colab/minimax_h3_fast/)                     | Verified | A100        | FastH3 four-forward T2VA with mandatory VSA           |
 | Video | [`10eros_max/`](./scripts/colab/10eros_max/)                               | Starter  | A100        | 10Eros-Max H3 T2V / I2V with native stereo audio      |
 | Video | [`sulphur2/`](./scripts/colab/sulphur2/)                                   | Verified | A100        | Sulphur-2 T2V / I2V                                   |
 | Video | [`10eros/`](./scripts/colab/10eros/)                                       | Partial  | A100        | 10Eros T2V / I2V                                      |

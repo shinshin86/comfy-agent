@@ -1,13 +1,11 @@
 # FastH3 Preview v1 on Colab A100
 
-Starter kit for FastH3 Preview v1 text-to-video-and-audio (T2VA) through
+Verified E2E kit for FastH3 Preview v1 text-to-video-and-audio (T2VA) through
 ComfyUI and `comfy-agent`. It uses Kijai's experimental INT8 ConvRot repack of
 the recommended four-forward VSA/Data-Free checkpoint.
 
-This kit is **not E2E verified yet**. Its files and pins can be validated
-locally, but it must remain Starter until the canonical Colab A100 →
-cloudflared → local `comfy-agent` flow has produced and visually/audibly
-verified an output.
+Status: **Verified E2E on Colab A100.** The canonical Colab A100 → cloudflared
+→ local `comfy-agent` flow produced a visually and audibly inspected output.
 
 Upstream references:
 
@@ -110,16 +108,26 @@ Useful generated flags include `--104_width`, `--104_height`,
 `--104_length`, `--9_steps`, and `--92_filename_prefix`. Keep four steps and
 the VSA node's locked inputs unchanged for the initial verification.
 
-## Required E2E verification before promotion
+## E2E verification record
 
-- [ ] `01_setup.py` completes on Colab A100, including the native CUDA test.
-- [ ] `02_start_comfyui.py` produces a usable cloudflared URL.
-- [ ] Local `comfy-agent doctor` reports the connection and preset preflight OK.
-- [ ] Local `comfy-agent import` creates the preset.
-- [ ] Local `comfy-agent run` completes through the tunnel.
-- [ ] Logs show the VSA producer on all 50 blocks and no kernel fallback.
-- [ ] The local output is a playable 124-frame video with stereo audio.
-- [ ] Extracted frames and the audio track have been inspected.
+Verified on 2026-09-01 with a Colab `NVIDIA A100-SXM4-40GB` runtime and the
+canonical local Mac → cloudflared → Colab flow:
 
-Until every item is observed in one canonical run, keep this kit marked
-Starter and do not describe it as verified.
+- [x] `01_setup.py` completed, including the native BF16 CUDA Sol-Attn test,
+  pinned revisions and hashes, and the 50/50 gate-compress checkpoint check.
+- [x] `02_start_comfyui.py` produced a usable trycloudflare URL.
+- [x] Local `comfy-agent doctor` connected through the tunnel; the preset
+  preflight reported no missing nodes or models.
+- [x] Local `comfy-agent import` used live server object info and created the
+  preset.
+- [x] Local `comfy-agent run` completed through the tunnel in 151.039 seconds
+  and downloaded one MP4 to the local output directory.
+- [x] Logs reported `chunked qkv producer on 50 blocks` and a 15,521-token VSA
+  producer path at `topk=0.100`, with no kernel failure or dense fallback.
+- [x] The output was H.264 at 864×480, 124 frames, 24 fps, and 5.167 seconds,
+  with 32 kHz stereo AAC audio.
+- [x] Six extracted frames showed a stable paper lantern, expanding water
+  ripples, and a slow push-in without unwanted people, text, or watermarks.
+  The extracted stereo track had no 0.3-second interval below -50 dB, its
+  waveform showed distinct events across the clip, and local playback exited
+  successfully.
