@@ -636,6 +636,44 @@ kits:
         size_gb: 0.605254808
     setup_minutes: 22
     composable: false
+  - name: minimax_h3_fast
+    path: minimax_h3_fast/
+    status: verified
+    aliases: [fasth3, fast_h3]
+    tasks: [text_to_video]
+    outputs: [video]
+    gpu:
+      minimum: A100
+      recommended: A100
+    summary: Experimental FastH3 Preview v1 four-forward T2VA with native stereo audio and mandatory VSA.
+    setup_file: 01_setup.py
+    license_notes:
+      - FastH3 inherits the MiniMax H3 Community License. Review the full current upstream terms, including territory, commercial authorization, attribution, output-use, and acceptable-use requirements.
+      - The ComfyUI integration is experimental and pins a Draft PR plus a source-built CUDA kernel. Use a fresh runtime and do not treat dense fallback as a valid FastH3 result.
+    tags: [video, audio, t2v, t2va, minimax, native_audio, fast, vsa, experimental]
+    workflows:
+      - name: minimax_h3_fast_t2v
+        file: minimax_h3_fast_t2v.json
+        task: text_to_video
+        output: video
+        speed: fast
+        quality: high
+        notes: T2VA only; 864x480, 124 frames at 24 fps with four transformer forwards and mandatory 90%-sparse VSA.
+    assets:
+      - file: minimax_h3_fastvideo_vsa_datafree_1300step_4step_int8_convrot.safetensors
+        dir: models/diffusion_models
+        size_gb: 22.89859492
+      - file: qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors
+        dir: models/text_encoders
+        size_gb: 15.687142551
+      - file: minimax_h3_video_vae_fp16.safetensors
+        dir: models/vae
+        size_gb: 5.207808496
+      - file: minimax_h3_audio_vae_fp32.safetensors
+        dir: models/vae
+        size_gb: 0.605254808
+    setup_minutes: 35
+    composable: false
   - name: minimax_music3
     path: minimax_music3/
     status: verified
