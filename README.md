@@ -29,7 +29,7 @@ agent? See [For AI agents](#for-ai-agents).
 
 ## Why comfy-agent
 
-- **Verified environment catalog** — [38 kits](./scripts/colab/README.md) expose
+- **Verified environment catalog** — [39 kits](./scripts/colab/README.md) expose
   GPU, download size, setup time, license, and E2E evidence as machine-readable data.
 - **Artifacts and instructions stay local** — presets, outputs, recipes, and jobs
   survive server resets; [`connect`](./docs/cli-reference.md#connect) absorbs volatile URLs.
@@ -114,6 +114,7 @@ comfy-agent run z_image_turbo --prompt "a cat riding a bicycle"
 | Audio | [`stable_audio3/`](./scripts/colab/stable_audio3/)                         | Verified | L4          | Stable Audio 3 Medium music and sound effects         |
 | Audio | [`moss_soundeffect_v2/`](./scripts/colab/moss_soundeffect_v2/)             | Verified | A100        | MOSS-SoundEffect v2 48 kHz sound effects              |
 | Combo | [`music_video/`](./scripts/colab/music_video/)                             | Verified | A100        | Song + keyframes + video clips music-video recipe     |
+| Combo | [`krea2_h3/`](./scripts/colab/krea2_h3/)                                 | Starter  | A100        | Krea 2 keyframes + MiniMax H3 I2V / lip-sync R2V      |
 
 Statuses are evidence levels, not model quality: **Verified** passed the complete
 Colab-to-local flow, **Partial** passed only some GPUs or workflow variants, and

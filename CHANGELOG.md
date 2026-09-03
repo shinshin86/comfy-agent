@@ -4,6 +4,9 @@
 
 ### Added
 
+- Added a Starter `krea2_h3` Colab combo kit that generates 864x480 Krea 2
+  Turbo keyframes and chains them into MiniMax H3 FL2VA or Ref2VA video with
+  native stereo audio, pinned assets, recipe guidance, and import tests.
 - Added a MiniMax H3 Ref2VA workflow for reference-image and
   reference-audio-driven video, including automatic `--image` / `--audio`
   uploads, pinned Ref2VA and optional Turbo assets, setup toggles, prompting

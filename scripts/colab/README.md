@@ -8,8 +8,8 @@ in `.mcp.json` at the repo root.
 
 ## Per-model starter kits
 
-The machine-readable catalog currently contains **38 kits**: 27 verified,
-6 partial, and 5 starter kits. The per-workflow notes below preserve more
+The machine-readable catalog currently contains **39 kits**: 27 verified,
+6 partial, and 6 starter kits. The per-workflow notes below preserve more
 specific verification details where a kit contains multiple variants.
 
 | Kit | Status | GPU | Notes |
@@ -50,6 +50,7 @@ specific verification details where a kit contains multiple variants.
 | [`./stable_audio3/`](./stable_audio3/) | Verified E2E | L4+ | Stable Audio 3 Medium, music and sound effects |
 | [`./moss_soundeffect_v2/`](./moss_soundeffect_v2/) | Verified E2E | A100 | MOSS-SoundEffect v2.0, 48 kHz text-to-sound effects |
 | [`./music_video/`](./music_video/) | Verified E2E | A100 | Combo kit: ACE-Step 1.5 songs + Z-Image keyframes + Wan 2.2 TI2V 5B clips on one runtime (see `recipes/music-video/`) |
+| [`./krea2_h3/`](./krea2_h3/) | Starter | A100 | Combo kit: Krea 2 Turbo 864x480 keyframes + MiniMax H3 I2V/R2V with native stereo audio (82.08 GB; H3 territory-restricted upstream license—review runtime region; see `recipes/krea2-h3/`) |
 | [`./sulphur2/`](./sulphur2/) | Verified E2E (i2v + t2v, A100) | A100 | Sulphur-2, uncensored LTX-2.3 fine-tune (fp8mixed) — review Colab AUP |
 | [`./10eros/`](./10eros/) | i2v Verified E2E; t2v starter | A100 | 10Eros, uncensored LTX-2.3 fine-tune on Sulphur-2-base (fp8mixed_learned; own abliterated Gemma encoder) — review Colab AUP |
 
