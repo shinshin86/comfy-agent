@@ -105,12 +105,12 @@ describe("Krea 2 + MiniMax H3 combo Colab kit", () => {
     expect(r2v.parameters?.["15_noise_seed"]?.role).toBe("seed");
   });
 
-  it("registers the Starter combo kit and returns sorted workflows", async () => {
+  it("registers the verified combo kit and returns sorted workflows", async () => {
     const catalog = await loadColabCatalogFile(path.join(colabDir, "catalog.yaml"));
     const kit = catalog.kits.find((entry) => entry.name === "krea2_h3");
 
     expect(kit).toMatchObject({
-      status: "starter",
+      status: "verified",
       tasks: ["text_to_image", "image_to_video"],
       outputs: ["image", "video"],
       gpu: { minimum: "A100", recommended: "A100" },

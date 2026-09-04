@@ -1,8 +1,9 @@
 # krea2_h3 — Krea 2 keyframes + MiniMax H3 video
 
-**Status: Starter.** This combo kit has not completed the canonical Colab
-E2E flow. It must remain Starter until every item in the verification
-checklist below is recorded from one A100 run.
+**Status: Verified E2E** (A100, 2026-09-05 — full canonical flow: Colab
+setup → cloudflared tunnel → local `comfy-agent connect`/`import`/`run`
+for the keyframe, the I2V chain, and lip-sync R2V; see the verification
+record below).
 
 One A100 Colab runtime provides three linked workflows:
 
@@ -21,7 +22,8 @@ One A100 Colab runtime provides three linked workflows:
 
 ## Setup and import
 
-1. Select an A100 Colab runtime and run `01_setup.py` in one cell (~40 min).
+1. Select an A100 Colab runtime and run `01_setup.py` in one cell
+   (1206 s measured on a fast runtime; downloads dominate).
 2. Run [`../02_start_comfyui.py`](../02_start_comfyui.py) in the next cell.
 3. On the local machine, connect and import all three workflows:
 
@@ -93,12 +95,31 @@ For candidate selection, I2V/R2V choice, and bounded retakes, follow
 - Review the H3 license for commercial authorization, attribution, output-use,
   and acceptable-use terms. This kit does not geolocate the user or block execution.
 
-## Verification checklist
+## Verification record
 
-- [ ] `01_setup.py` completes on an A100 Colab runtime
-- [ ] `02_start_comfyui.py` writes a usable URL to `/content/comfy_url.txt`
-- [ ] `comfy-agent doctor` reports `connection: OK` from the local machine
-- [ ] all three `comfy-agent import` commands generate preset YAML files
-- [ ] `comfy-agent run k2h3_keyframe` saves an image under the local `.comfy-agent/outputs/`
-- [ ] `comfy-agent run k2h3_i2v` saves a video with stereo audio locally
-- [ ] `comfy-agent run k2h3_r2v` saves a lip-synced video with stereo audio locally
+Verified on 2026-09-05 with a Colab `NVIDIA A100-SXM4-40GB` runtime
+(CUDA 13.0) over a cloudflared trycloudflare tunnel, driving comfy-agent
+from a local macOS working tree in a single run-through:
+
+- [x] `01_setup.py` completed with both H3 families enabled
+      (82.08 GB, 1206 s) at the pinned ComfyUI and model revisions
+- [x] `02_start_comfyui.py` wrote a usable URL to `/content/comfy_url.txt`
+- [x] local `comfy-agent doctor` → `connection: OK`
+- [x] all three presets imported; `doctor --preset` passed for each —
+      including `k2h3_keyframe`, confirming the H3-pinned ComfyUI
+      revision serves the Krea 2 graph
+- [x] `k2h3_keyframe` generated an 864x480 PNG (about 76 s) saved under
+      the local `.comfy-agent/outputs/`; `verify --expect-kind image` passed
+- [x] the keyframe chained into `k2h3_i2v` via `--image` (372.7 s):
+      H.264 864x480, 124 frames at 24 fps with AAC stereo audio;
+      `verify --expect-kind video` passed
+- [x] the same keyframe plus a 5.3 s locally synthesized Japanese voice
+      WAV drove `k2h3_r2v` via `--image` + `--audio` (361.8 s): a stereo
+      AAC video saved locally, `verify` passed, and frame review showed
+      the subject holding identity while articulating distinct mouth
+      shapes across the speech
+
+Notes: the runtime egress region was outside the H3 excluded territories —
+review yours before use. Lip sync was reviewed from extracted frames
+against the active voice track; phoneme-exact audio alignment was not
+separately measured.
