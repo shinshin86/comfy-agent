@@ -47,13 +47,6 @@ def setup(profile, ref2va=False):
         dirty = subprocess.check_output(["git", "-C", str(workspace), "status", "--porcelain", "--untracked-files=no"], text=True).strip()
         if origin != "https://github.com/Comfy-Org/ComfyUI.git" or dirty:
             raise RuntimeError("Refusing to update an unexpected or modified ComfyUI checkout")
-    drive_latents = None
-    if profile == "motion":
-        # Persist only AV latents. Model downloads stay on the runtime disk.
-        from google.colab import drive
-        drive.mount("/content/drive")
-        drive_latents = Path("/content/drive/MyDrive/comfy-agent-h3/latents")
-        drive_latents.mkdir(parents=True, exist_ok=True)
     url = f"https://raw.githubusercontent.com/shinshin86/comfy-agent/{BASE_REPO_REVISION}/scripts/colab/minimax_h3/01_setup.py"
     source_bytes = urllib.request.urlopen(url, timeout=60).read()
     if hashlib.sha256(source_bytes).hexdigest() != BASE_SETUP_SHA256:
@@ -74,15 +67,11 @@ def setup(profile, ref2va=False):
     elif profile == "motion":
         install_node("NikoDemon80/ComfyUI-H3-Motion-Context", MOTION_REVISION,
                      workspace / "custom_nodes/ComfyUI-H3-Motion-Context")
+        # Runtime-local only; never request Google Drive access.
         target = workspace / "output/h3_context"
-        target.parent.mkdir(parents=True, exist_ok=True)
         if target.is_symlink():
-            if target.resolve() != drive_latents.resolve():
-                raise RuntimeError("Existing latent symlink points elsewhere")
-        elif target.exists():
-            raise RuntimeError("Existing h3_context directory: preserve/migrate it before rerunning setup")
-        else:
-            target.symlink_to(drive_latents, target_is_directory=True)
+            raise RuntimeError("Refusing an external latent symlink; use a fresh runtime")
+        target.mkdir(parents=True, exist_ok=True)
     elif profile == "vdn":
         install_node("Saganaki22/ComfyUI-VDN-H3", VDN_REVISION,
                      workspace / "custom_nodes/ComfyUI-VDN-H3")

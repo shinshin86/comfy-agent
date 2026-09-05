@@ -6,8 +6,8 @@ cost, license, compatibility and verification rules.
 
 Use a fresh A100 high-RAM runtime. Set `PROFILE` in `01_setup.py` to `guide`, `sns`,
 or `motion`, run it, then run [the shared launcher](../02_start_comfyui.py).
-Connect locally with the printed `comfy-agent connect` command. Motion prompts
-for Google Drive authorization and persists latents across runtime resets.
+Connect locally with the printed `comfy-agent connect` command. Motion stores
+latents on the Colab runtime disk and never requests Google Drive access. Latents survive a ComfyUI process restart, but not a runtime reset.
 Set `REF2VA=True` only for `minimax_h3_motion_r2v`; this downloads Ref2VA instead
 of FL2VA. All profiles are isolated from the original H3 checkout. Do not run
 this installer on an active normal H3 or FastH3 runtime.
@@ -74,11 +74,12 @@ python3 scripts/colab/minimax_h3_extensions/chain.py assemble --state .comfy-age
 clips with 32 kHz stereo audio, refuses an existing output, and does not certify
 perceptual continuity. Run `comfy-agent verify` and inspect the combined file.
 
-Each chain gets a unique Drive folder. Reconnect to a new motion runtime with the
-same mounted Drive account and rerun `next` with the same local state. The previous
-clip is loaded from its explicit numbered latent slot; missing files fail.
-No directory scanning for "latest" and no automatic fallback to pixels is used.
-Keep both the local state/results and Drive latents for restart.
+Each chain gets a unique runtime-local latent folder. Reconnect to the same
+motion runtime and rerun `next` with the same local state after a ComfyUI process
+restart. The previous clip is loaded from its explicit numbered latent slot;
+missing files fail. No directory scanning for "latest" and no automatic fallback
+to pixels is used. Keep the local state/results. A Colab runtime reset deletes
+the server latents and requires starting a new chain; no Drive access is used.
 
 Failures do not advance clip indices. A process crash or network failure may leave
 a server job running: inspect `runs/<index>/*.log` and `comfy-agent jobs` first.

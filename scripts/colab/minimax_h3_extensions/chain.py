@@ -1,6 +1,6 @@
 """Local, one-clip-at-a-time H3 chain runner; uses comfy-agent, never /prompt.
 
-The motion setup must mount the same Drive latent folder after a runtime reset.
+Motion latents live on the Colab runtime disk; a runtime reset prevents resume.
 Inspect each returned clip before calling next again. No UI Chain node is used.
 """
 import argparse

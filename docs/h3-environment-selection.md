@@ -61,11 +61,11 @@ Allow installation/working disk beyond the weights (60 GB for extensions, 65 GB
 for VDN are starting allowances, not measured peak usage).
 
 Normal startup: setup cell + shared launcher cell + paste one connect command.
-Motion additionally requires Drive mount authorization. Its AV latent files live
-under `MyDrive/comfy-agent-h3/latents/<chain-id>/`; only that directory is persisted,
-not all model weights. On a new runtime, rerun the same profile and mount the same
-Drive account before continuing the local state file. A missing latent is an error,
-not permission to restart the chain from an MP4 or silently use no context.
+Motion stores AV latents under the runtime's `ComfyUI/output/h3_context/<chain-id>/`.
+No Google Drive access is requested. Reconnecting or restarting ComfyUI on the
+same runtime can resume with the local state file. A Colab runtime reset deletes
+these latents, so the chain cannot resume after that reset. A missing latent is
+an error, not permission to restart from an MP4 or silently use no context.
 
 ## Verification gates
 
@@ -80,7 +80,8 @@ frames and audio using [the agent playbook](agent-playbook.md).
   effect, identity, artifacts, motion and audio. Check unloaded/unmatched LoRA keys.
 - Guide: supply a visibly distinctive anchor, test last and intermediate positions.
 - Motion: inspect three clips, trimmed boundaries and untrimmed audio if probing;
-  check 24 fps / 32 kHz stereo, accumulated duration, and Drive-backed restart.
+  check 24 fps / 32 kHz stereo and accumulated duration. Restart and persistence
+  checks are outside the generation smoke test.
   At 124 frames, clip 1 delivers 124 frames; later clips deliver 102 after trimming
   22. Three clips therefore total 328/24 = 13.667 seconds, not 15.5 seconds.
 - VDN: verify one standalone 8-step T2V, record setup/load/sampling/decode/total

@@ -90,6 +90,7 @@ Context only when the user's creative intent calls for it; installation alone
 never enables a feature. Explain the chosen profile before setup. Use the
 existing FastH3 kit only for compatible T2V speed requests; VDN is explicit-only.
 New extension and VDN kits are Starter until canonical Colab E2E verification.
-Motion chains persist latents on Drive and advance one inspected clip at a time
+Motion chains use runtime-local temporary latents, request no Drive access,
+and advance one inspected clip at a time
 using the local chain helper. Do not silently replace missing references or a
 failed continuation with ordinary T2V.
