@@ -149,3 +149,12 @@ all variants, so the sum is the worst case, not always the default path.
   uses the Stability AI Community License and its T5Gemma encoder uses the
   Gemma Terms of Use. ACE-Step's original and Comfy-Org repack metadata declare
   different permissive licenses, so review both before redistribution.
+
+## Optional H3 starters
+
+- [H3 extensions](./minimax_h3_extensions/): opt-in SNS LoRA, Guide and persistent motion/audio continuation.
+- [VDN H3](./minimax_h3_vdn/): explicit-only standalone 8-step T2V experiment.
+
+Both are Starter (Colab E2E unverified), require a fresh A100 runtime, and leave
+the existing normal H3 and FastH3 kits unchanged. See
+[selection and verification policy](../../docs/h3-environment-selection.md).
