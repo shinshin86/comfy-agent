@@ -429,6 +429,71 @@ kits:
         size_gb: 0.3
     setup_minutes: 8
     composable: true
+  - name: krea2_h3
+    path: krea2_h3/
+    status: verified
+    tasks: [text_to_image, image_to_video]
+    outputs: [image, video]
+    gpu:
+      minimum: A100
+      recommended: A100
+      verified: [A100]
+    summary: Combo kit for Krea 2 Turbo keyframes chained into MiniMax H3 FL2VA or Ref2VA video with native stereo audio.
+    setup_file: 01_setup.py
+    license_notes:
+      - Krea 2 uses the Krea community license; contact opensource@krea.ai for commercial use and review the full upstream terms.
+      - The upstream MiniMax H3 license defines an Applicable Territory that excludes the EU, UK, Republic of Korea, and USA. The user must review the download/use location, including the Colab runtime region; this kit does not geolocate or block execution.
+      - Review the full upstream MiniMax H3 license for commercial authorization, attribution, output-use, and acceptable-use terms before downloading or using the weights.
+    tags: [combo, image, video, audio, keyframe, i2v, r2v, lip_sync, krea2, minimax]
+    workflows:
+      - name: k2h3_keyframe
+        file: krea2_turbo.json
+        task: text_to_image
+        output: image
+        speed: fast
+        quality: high
+        notes: Generate Krea 2 keyframes at 864x480 to match the MiniMax H3 canvas.
+      - name: k2h3_i2v
+        file: minimax_h3_i2v.json
+        task: image_to_video
+        output: video
+        speed: slow
+        quality: high
+        notes: MiniMax H3 FL2VA at 864x480 with native stereo audio; upload the Krea 2 keyframe via --image.
+      - name: k2h3_r2v
+        file: minimax_h3_r2v.json
+        task: image_to_video
+        output: video
+        speed: slow
+        quality: high
+        notes: MiniMax H3 Ref2VA lip sync at 864x480; upload a reference image via --image and 2-15 second reference audio via --audio.
+    assets:
+      - file: krea2_turbo_fp8_scaled.safetensors
+        dir: models/diffusion_models
+        size_gb: 13.141730784
+      - file: qwen3vl_4b_fp8_scaled.safetensors
+        dir: models/text_encoders
+        size_gb: 5.242467968
+      - file: qwen_image_vae.safetensors
+        dir: models/vae
+        size_gb: 0.253806246
+      - file: minimax_h3_fl2va_pruned_int8_convrot.safetensors
+        dir: models/diffusion_models
+        size_gb: 20.970379616
+      - file: minimax_h3_ref2va_pruned_int8_convrot.safetensors
+        dir: models/diffusion_models
+        size_gb: 20.970379616
+      - file: qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors
+        dir: models/text_encoders
+        size_gb: 15.687142551
+      - file: minimax_h3_video_vae_fp16.safetensors
+        dir: models/vae
+        size_gb: 5.207808496
+      - file: minimax_h3_audio_vae_fp32.safetensors
+        dir: models/vae
+        size_gb: 0.605254808
+    setup_minutes: 20
+    composable: false
   - name: ltx23
     path: ltx23/
     status: starter
