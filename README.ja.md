@@ -28,7 +28,7 @@ GPU が無い場合は [Google Colab で動かす](#google-colab-で動かす)�
 
 ## Why comfy-agent
 
-- **検証済み環境 catalog** — [38 kit](./scripts/colab/README.md) の GPU、download 量、
+- **検証済み環境 catalog** — [39 kit](./scripts/colab/README.md) の GPU、download 量、
   setup 時間、license、E2E 証拠を機械可読データで提供します。
 - **成果物と手順はローカルに保存** — preset、output、recipe、job は server reset 後も残り、
   [`connect`](./docs/cli-reference.ja.md#connect) が揮発 URL を吸収します。
@@ -113,6 +113,7 @@ comfy-agent run z_image_turbo --prompt "a cat riding a bicycle"
 | 音声 | [`stable_audio3/`](./scripts/colab/stable_audio3/) | 検証済み | L4 | Stable Audio 3 Medium 音楽・効果音 |
 | 音声 | [`moss_soundeffect_v2/`](./scripts/colab/moss_soundeffect_v2/) | 検証済み | A100 | MOSS-SoundEffect v2 48 kHz効果音 |
 | 複合 | [`music_video/`](./scripts/colab/music_video/) | 検証済み | A100 | 楽曲＋キーフレーム＋動画クリップのMVレシピ |
+| 複合 | [`krea2_h3/`](./scripts/colab/krea2_h3/) | 検証済み | A100 | Krea 2キーフレーム＋MiniMax H3 I2V / リップシンクR2V |
 
 状態は model 品質ではなく検証証拠です。**検証済み**は Colab から local CLI までの
 全 flow を通過、**一部検証**は一部 GPU または workflow variant のみ通過、
