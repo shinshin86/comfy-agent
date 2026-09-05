@@ -64,12 +64,12 @@ const inferFixtureObjectInfo = (raw: unknown): WorkflowObjectInfo => {
 };
 
 describe("Colab kit seed targets", () => {
-  it("applies --seed to imported presets for at least 35 of 38 kits", async () => {
+  it("applies --seed to imported presets for at least 37 of 40 kits", async () => {
     const catalog = await loadColabCatalogFile(catalogPath);
     const supportedKits = new Set<string>();
     const importFailures: string[] = [];
 
-    expect(catalog.kits).toHaveLength(38);
+    expect(catalog.kits).toHaveLength(40);
     for (const kit of catalog.kits) {
       for (const workflowEntry of kit.workflows) {
         const relativePath = path.posix.join(kit.path, workflowEntry.file);
@@ -106,8 +106,8 @@ describe("Colab kit seed targets", () => {
     }
 
     expect(importFailures).toEqual([]);
-    expect(supportedKits.size).toBeGreaterThanOrEqual(35);
-    expect(supportedKits.size).toBe(37);
+    expect(supportedKits.size).toBeGreaterThanOrEqual(37);
+    expect(supportedKits.size).toBe(39);
 
     const kitsWithoutSeed = catalog.kits
       .filter((kit) => !supportedKits.has(kit.name))

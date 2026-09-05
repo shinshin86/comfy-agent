@@ -213,3 +213,13 @@ Comfy Agent is available under the [MIT License](./LICENSE).
 ## Command reference
 
 For complete command documentation, see [docs/cli-reference.md](./docs/cli-reference.md).
+
+
+### Optional H3 profiles (Starter)
+
+- [H3 extensions](./scripts/colab/minimax_h3_extensions/): SNS LoRA, Guide, motion/audio continuation.
+- [VDN H3](./scripts/colab/minimax_h3_vdn/): explicit-only efficiency experiment.
+
+Ordinary H3/FastH3 stay unchanged; extensions are opt-in. The new kits are not Colab E2E verified.
+
+[H3 selection and compatibility](docs/h3-environment-selection.md)

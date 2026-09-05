@@ -213,3 +213,13 @@ Comfy Agent は [MIT License](./LICENSE) で提供します。
 ## Command reference
 
 全 command の詳細は [docs/cli-reference.ja.md](./docs/cli-reference.ja.md) を参照してください。
+
+
+### Optional H3 profiles (Starter)
+
+- [H3 extensions](./scripts/colab/minimax_h3_extensions/): SNS LoRA, Guide, motion/audio continuation.
+- [VDN H3](./scripts/colab/minimax_h3_vdn/): explicit-only efficiency experiment.
+
+既存の通常H3／FastH3は変更せず、追加機能は用途に応じて選択します。新キットはColab E2E未検証です。
+
+[H3 selection and compatibility](docs/h3-environment-selection.md)

@@ -81,3 +81,15 @@ looked at.
 - After `verify`, add only human-selected work to the gallery, then approve only on human confirmation.
 - Tag failures `reject --reason`; store kit-specific learning with `character note --kit`.
 - Ask the human to place missing LoRAs in `models/loras/`; export only when requested.
+
+## H3 intent routing
+
+For H3 generation, read [H3 environment selection](../../../docs/h3-environment-selection.md).
+Ordinary H3 remains the default. Choose SNS LoRA, image/audio Guide or Motion
+Context only when the user's creative intent calls for it; installation alone
+never enables a feature. Explain the chosen profile before setup. Use the
+existing FastH3 kit only for compatible T2V speed requests; VDN is explicit-only.
+New extension and VDN kits are Starter until canonical Colab E2E verification.
+Motion chains persist latents on Drive and advance one inspected clip at a time
+using the local chain helper. Do not silently replace missing references or a
+failed continuation with ordinary T2V.

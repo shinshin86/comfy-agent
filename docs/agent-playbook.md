@@ -54,6 +54,14 @@ Produce a **blueprint** first, in this order:
 While waiting for an environment to boot, do connection-independent work:
 prompt design, scene splitting, parameter tables, output directories.
 
+### H3 intent selection
+
+For H3 work, read [H3 environment selection](h3-environment-selection.md).
+Ordinary H3 stays the default. Select opt-in SNS style, Guide or Motion Context
+from creative intent and actual inputs; installing nodes never opts the user in.
+Use VDN only when explicitly requested. New extension/VDN kits remain Starter
+until canonical Colab E2E and perceptual verification are recorded.
+
 ## 2. Environment model
 
 - The CLI state that matters lives **locally and persistently**:

@@ -1402,3 +1402,130 @@ kits:
         size_gb: 8
     setup_minutes: 9
     composable: true
+
+
+  - name: minimax_h3_extensions
+    path: minimax_h3_extensions/
+    status: starter
+    tasks: [text_to_video, image_to_video]
+    outputs: [video]
+    gpu:
+      minimum: A100
+      recommended: A100
+    summary: Opt-in H3 SNS style, guide and motion continuation profiles; ordinary H3 is unchanged.
+    setup_file: 01_setup.py
+    setup_minutes: 25
+    composable: false
+    license_notes:
+      - Same MiniMax H3 Community License as the base kit; review use/download location including the Colab runtime region.
+      - Motion Context code is GPL-3.0; SNS LoRA is Apache-2.0. Neither replaces the base model license.
+    tags: [video, minimax, extensions]
+    workflows:
+      - name: minimax_h3_sns_t2v
+        file: minimax_h3_sns_t2v.json
+        task: text_to_video
+        output: video
+        capabilities: [lora]
+        speed: slow
+        quality: unknown
+        notes: PROFILE=sns; optional 310 MB style LoRA, not a universal quality improvement.
+      - name: minimax_h3_sns_i2v
+        file: minimax_h3_sns_i2v.json
+        task: image_to_video
+        output: video
+        capabilities: [lora]
+        speed: slow
+        quality: unknown
+        notes: PROFILE=sns; first image via --image, strength via --120_strength_model.
+      - name: minimax_h3_guide
+        file: minimax_h3_guide.json
+        task: image_to_video
+        output: video
+        speed: slow
+        quality: unknown
+        notes: PROFILE=guide; --image anchors at --120_frame_idx (default -1 means last frame).
+      - name: minimax_h3_guide_audio
+        file: minimax_h3_guide_audio.json
+        task: text_to_video
+        output: video
+        speed: slow
+        quality: unknown
+        notes: PROFILE=guide; --audio anchors at --120_frame_idx. Set 0 or an intermediate frame for audio.
+      - name: minimax_h3_guide_av
+        file: minimax_h3_guide_av.json
+        task: image_to_video
+        output: video
+        speed: slow
+        quality: unknown
+        notes: PROFILE=guide; --audio plus --image anchors at --120_frame_idx. Set 0 or an intermediate frame for audio.
+      - name: minimax_h3_motion_t2v
+        file: minimax_h3_motion_t2v.json
+        task: text_to_video
+        output: video
+        speed: slow
+        quality: unknown
+        notes: PROFILE=motion; Drive mount persists AV latents. Use chain.py locally, inspect each clip before next.
+      - name: minimax_h3_motion_r2v
+        file: minimax_h3_motion_r2v.json
+        task: image_to_video
+        output: video
+        speed: slow
+        quality: unknown
+        notes: PROFILE=motion and REF2VA=True; --image and --audio references. Separate Ref2VA base download replaces FL2VA.
+    assets:
+      - file: minimax_h3_fl2va_pruned_int8_convrot.safetensors
+        dir: models/diffusion_models
+        size_gb: 20.970379616
+      - file: qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors
+        dir: models/text_encoders
+        size_gb: 15.687142551
+      - file: minimax_h3_video_vae_fp16.safetensors
+        dir: models/vae
+        size_gb: 5.207808496
+      - file: minimax_h3_audio_vae_fp32.safetensors
+        dir: models/vae
+        size_gb: 0.605254808
+      - file: ig_tiktok_aesthetic_h3_lora_v1_500.safetensors
+        dir: models/loras
+        size_gb: 0.310168824
+  - name: minimax_h3_vdn
+    path: minimax_h3_vdn/
+    status: starter
+    aliases: [vdn_h3]
+    tasks: [text_to_video]
+    outputs: [video]
+    gpu:
+      minimum: A100
+      recommended: A100
+    summary: Explicit-only VDN H3 8-step T2V experiment; speed and quality on A100 are unverified.
+    setup_file: 01_setup.py
+    setup_minutes: 30
+    composable: false
+    license_notes:
+      - MiniMax H3 Community License applies to base and VDN weights; review use/download location including the Colab runtime region.
+      - ComfyUI VDN port is Apache-2.0. Do not stack with FastH3, Scheduled Sol Attention, or other Turbo LoRAs.
+    tags: [video, minimax, vdn, experimental]
+    workflows:
+      - name: minimax_h3_vdn_t2v
+        file: minimax_h3_vdn_t2v.json
+        task: text_to_video
+        output: video
+        speed: unknown
+        quality: unknown
+        notes: Eight steps, merge, streamed branch, grouped attention; no speed/quality improvement claim.
+    assets:
+      - file: minimax_h3_fl2va_pruned_int8_convrot.safetensors
+        dir: models/diffusion_models
+        size_gb: 20.970379616
+      - file: qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors
+        dir: models/text_encoders
+        size_gb: 15.687142551
+      - file: minimax_h3_video_vae_fp16.safetensors
+        dir: models/vae
+        size_gb: 5.207808496
+      - file: minimax_h3_audio_vae_fp32.safetensors
+        dir: models/vae
+        size_gb: 0.605254808
+      - file: stage-dmd-step-250
+        dir: models/vdn
+        size_gb: 5.464957032

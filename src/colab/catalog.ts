@@ -5,6 +5,7 @@ import { z } from "zod";
 import { CliError } from "../io/errors.js";
 import { t } from "../i18n/index.js";
 import { RESOURCES, resourcePath } from "../io/resources.js";
+import { H3_EXTENSION_WORKFLOWS, selectH3Workflow } from "./h3-routing.js";
 
 const RelativePathSchema = z
   .string()
@@ -482,10 +483,17 @@ export const buildColabSuggestPayload = (
   const primaryOutput = options.output ?? inferPrimaryOutput(hints);
   const limit = Math.max(1, Math.floor(options.limit ?? 5));
 
+  const anotherKitNamed = sorted.kits.some(
+    (kit) =>
+      !kit.name.startsWith("minimax_h3") &&
+      [kit.name, ...(kit.aliases ?? [])].some((name) => goalContainsName(options.goal, name)),
+  );
+  const h3Workflow = anotherKitNamed ? undefined : selectH3Workflow(options.goal);
   const suggestions: ColabSuggestion[] = [];
   const alternativeCandidates: ColabSuggestion[] = [];
   for (const kit of sorted.kits) {
     for (const workflow of kit.workflows) {
+      if (H3_EXTENSION_WORKFLOWS.has(workflow.name) && workflow.name !== h3Workflow) continue;
       if (options.task && workflow.task !== options.task) continue;
       const output = workflowOutput(workflow);
       if (!output) continue;
@@ -501,6 +509,10 @@ export const buildColabSuggestPayload = (
 
       let score = STATUS_WEIGHT[kit.status];
       const reasons: string[] = [`status:${kit.status}`];
+      if (workflow.name === h3Workflow) {
+        score += 200;
+        reasons.push("intent:h3:" + workflow.name);
+      }
       const haystack = textForKit(kit, workflow);
       const unmetRequirements: string[] = [];
       const audioCapabilities = asAudioCapabilities(workflow.capabilities);
