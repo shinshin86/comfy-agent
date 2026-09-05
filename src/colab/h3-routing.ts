@@ -44,7 +44,7 @@ export const selectH3Workflow = (goal: string | undefined): string | undefined =
       text,
     );
   const sns =
-    /(?:sns|instagram|tiktok)[\sの]*(?:風|っぽ|style|aesthetic)|(?:sns|instagram|tiktok).*撮影風/.test(
+    /(?:sns|instagram|tiktok)[\sの]*(?:風|っぽ|style|aesthetic|lora)|(?:sns|instagram|tiktok).*撮影風/.test(
       text,
     );
   const noLora = /lora\s*(?:なし|不要|以外|を使わ|は使わ)|without\s+(?:a\s+)?lora/.test(text);

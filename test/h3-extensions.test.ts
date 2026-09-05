@@ -24,6 +24,7 @@ describe("H3 intent isolation", () => {
     ["H3で画像を動かして", "minimax_h3_i2v"],
     ["H3で参照音声と画像を使って速く動画を作って", "minimax_h3_r2v"],
     ["H3でSNS風の動画", "minimax_h3_sns_t2v"],
+    ["H3 SNS LoRA selfie vlog image to video", "minimax_h3_sns_i2v"],
     ["H3で画像からTikTok風の動画", "minimax_h3_sns_i2v"],
     ["H3でTikTokに投稿する動画", "minimax_h3_t2v"],
     ["H3でSNS風、LoRAは使わない", "minimax_h3_t2v"],

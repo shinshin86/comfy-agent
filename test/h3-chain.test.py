@@ -48,6 +48,7 @@ class ChainTests(unittest.TestCase):
             self.assertEqual(args[args.index("--120_clip_index")+1], str(index))
             self.assertEqual(args[args.index("--122_clip_index")+1], str(index+1))
             self.assertEqual(args[args.index("--15_noise_seed")+1], str(42+index))
+            self.assertNotIn("--121_context_length", args)
         self.assertAlmostEqual(sum(c["expected_duration"] for c in self.state["clips"]), 328/24)
         self.assertEqual(self.run_next(), {"complete": True, "clips": 3})
         self.assertEqual(len([c for c in self.calls if c[1] == "run"]), 3)

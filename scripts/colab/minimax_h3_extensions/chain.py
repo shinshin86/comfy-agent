@@ -105,12 +105,13 @@ def next_clip(state_path, state, cli, retry_pending=False):
         directory.mkdir(parents=True, exist_ok=True)
         state["pending"] = index + 1
         write_json(state_path, state)
+        # Keep the bundled context defaults: the video length is a string enum,
+        # and CLI JSON coercion would turn an unquoted override into a number.
         args = [cli, "run", plan["preset"], "--104_prompt", plan["prompts"][index],
                 "--104_width", str(plan["width"]), "--104_height", str(plan["height"]),
                 "--104_length", str(plan["length"]), "--15_noise_seed", str(plan["seed"] + index),
                 "--120_latent_path", state["latent_folder"], "--120_clip_index", str(index),
                 "--122_filename_prefix", state["latent_folder"] + "/clip", "--122_clip_index", str(index+1),
-                "--121_context_length", "22", "--121_audio_context_length", "24",
                 "--out", str(directory), "--timeout-seconds", "3600", "--json"]
         for name in plan["references"]:
             args += ["--" + name, plan[name]]

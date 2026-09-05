@@ -1,8 +1,8 @@
 # VDN H3 8-step T2V on Colab A100
 
 **Starter — not Verified E2E.** An explicit experiment in generation efficiency,
-not a quality upgrade or a replacement for ordinary H3/FastH3. No A100 speed or
-VRAM result has been measured. See [selection policy](../../../docs/h3-environment-selection.md).
+not a quality upgrade or a replacement for ordinary H3/FastH3. See the [measured Colab smoke tests](../../../docs/h3-colab-validation.md) and
+[selection policy](../../../docs/h3-environment-selection.md).
 
 Use a fresh A100 high-RAM runtime. Run `01_setup.py`, then
 [the shared launcher](../02_start_comfyui.py), and connect locally using the
@@ -26,6 +26,12 @@ steps, VDN Turbo adapter enabled, `lora_mode=merge`, streamed branch weights,
 grouped attention, retained buffers off. Do not stack FastH3, Scheduled Sol
 Attention, community Turbo LoRAs, SNS LoRA or Motion Context on this starter.
 No I2V/R2V claims are made by this kit.
+
+The pruned base uses collapsed AdaLN curves. In this merge-mode smoke test,
+the port warned that 51 adapter deltas could not be merged and were skipped.
+This is a partial adapter application, not full equivalence to the upstream
+Diffusers model. The preset remains experimental; it does not silently install
+additional Turbo nodes to work around that limitation.
 
 At short lengths VDN may use dense attention fallback because its local window
 covers the whole clip. The initial 124-frame smoke test establishes execution,

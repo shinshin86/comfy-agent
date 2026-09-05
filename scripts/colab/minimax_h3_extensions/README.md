@@ -1,6 +1,8 @@
 # Optional H3 profiles on Colab A100
 
-**Starter — not Verified E2E.** Ordinary H3 remains unchanged. See
+**Starter — not all variants Verified E2E.** See the
+[Colab smoke-test results](../../../docs/h3-colab-validation.md) for exercised
+profiles. Ordinary H3 remains unchanged. See
 [environment selection](../../../docs/h3-environment-selection.md) for intent,
 cost, license, compatibility and verification rules.
 

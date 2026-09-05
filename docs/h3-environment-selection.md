@@ -67,6 +67,9 @@ same runtime can resume with the local state file. A Colab runtime reset deletes
 these latents, so the chain cannot resume after that reset. A missing latent is
 an error, not permission to restart from an MP4 or silently use no context.
 
+See [the measured Colab smoke tests](h3-colab-validation.md) for the tested
+profiles and remaining limits.
+
 ## Verification gates
 
 Before promoting any new kit, follow [CLAUDE.md](../CLAUDE.md): Colab setup,
