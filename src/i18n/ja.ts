@@ -296,7 +296,7 @@ export const messages = {
   "colab.catalog_invalid": "Colab catalog の形式が不正です。",
   "colab.invalid_task": "task は対応している Colab catalog task を指定してください。",
   "colab.invalid_output": "output は image/video/audio のいずれかを指定してください。",
-  "colab.invalid_gpu": "gpu は T4/L4/A100 のいずれかを指定してください。",
+  "colab.invalid_gpu": "gpu は T4/L4/A100/G4 のいずれかを指定してください。",
   "colab.invalid_limit": "limit は1以上の整数で指定してください。",
   "colab.kit_not_found": "Colab kit {name} が見つかりません。",
   "api.get_failed": "GET {path} が失敗しました。",

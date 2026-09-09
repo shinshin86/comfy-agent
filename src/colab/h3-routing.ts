@@ -1,3 +1,5 @@
+export const H3_TURBO_WORKFLOWS = new Set(["minimax_h3_turbo_t2v", "minimax_h3_turbo_i2v"]);
+
 /** Intent routing for H3 only. Installing an extension never opts a user into it. */
 export const H3_EXTENSION_WORKFLOWS = new Set([
   "minimax_h3_sns_t2v",
@@ -12,6 +14,7 @@ export const H3_EXTENSION_WORKFLOWS = new Set([
 
 const H3_WORKFLOWS = [
   ...H3_EXTENSION_WORKFLOWS,
+  ...H3_TURBO_WORKFLOWS,
   "minimax_h3_fast_t2v",
   "minimax_h3_t2v",
   "minimax_h3_i2v",
@@ -60,6 +63,10 @@ export const selectH3Workflow = (goal: string | undefined): string | undefined =
   }
   if (references) return "minimax_h3_r2v";
   if (sns && !noLora) return image ? "minimax_h3_sns_i2v" : "minimax_h3_sns_t2v";
+  const turbo =
+    /turbo|ターボ/.test(text) &&
+    !/(?:turbo|ターボ)\s*(?:なし|不要|以外|を使わ|は使わ)|without\s+turbo/.test(text);
+  if (turbo && !noLora) return image ? "minimax_h3_turbo_i2v" : "minimax_h3_turbo_t2v";
   if (image) return "minimax_h3_i2v";
   if (/fasth3|fast[ _-]*h3|fast|quick|高速|速く|速度優先/.test(text)) return "minimax_h3_fast_t2v";
   return "minimax_h3_t2v";
