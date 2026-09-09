@@ -5,7 +5,7 @@ import { z } from "zod";
 import { CliError } from "../io/errors.js";
 import { t } from "../i18n/index.js";
 import { RESOURCES, resourcePath } from "../io/resources.js";
-import { H3_EXTENSION_WORKFLOWS, selectH3Workflow } from "./h3-routing.js";
+import { H3_EXTENSION_WORKFLOWS, H3_TURBO_WORKFLOWS, selectH3Workflow } from "./h3-routing.js";
 
 const RelativePathSchema = z
   .string()
@@ -38,7 +38,7 @@ const TaskSchema = z.enum([
 const OutputSchema = z.enum(["image", "video", "audio"]);
 export type ColabTask = z.infer<typeof TaskSchema>;
 export type ColabOutput = z.infer<typeof OutputSchema>;
-export const COLAB_GPUS = ["T4", "L4", "A100"] as const;
+export const COLAB_GPUS = ["T4", "L4", "A100", "G4"] as const;
 export type ColabGpu = (typeof COLAB_GPUS)[number];
 
 const AudioKindSchema = z.enum(["music", "sound_effect", "speech", "mixed"]);
@@ -111,6 +111,7 @@ export const ColabKitSchema = z
     summary: z.string().min(1),
     aliases: z.array(z.string().min(1)).min(1).optional(),
     setup_file: RelativePathSchema.default("01_setup.py"),
+    launcher_file: RelativePathSchema.optional(),
     workflows: z.array(ColabWorkflowSchema).min(1),
     license_notes: z.array(z.string()).optional(),
     tags: z.array(z.string()).optional(),
@@ -313,6 +314,7 @@ const GPU_RANK: Record<ColabGpu, number> = {
   T4: 0,
   L4: 1,
   A100: 2,
+  G4: 3,
 };
 
 export const normalizeColabGpu = (value: string | undefined): ColabGpu | undefined => {
@@ -352,7 +354,7 @@ const inferGoalHints = (goal: string | undefined) => {
   const parallelMedia =
     /\b(?:music|audio)\s*(?:and|&|\+)\s*(?:video|movie)\b/.test(lower) ||
     /(?:音楽|音声)\s*(?:と|＆|&|\+)\s*(?:動画|映像)/.test(normalized);
-  const requestedGpu = normalizeColabGpu(lower.match(/\b(t4|l4|a100)\b/)?.[1]);
+  const requestedGpu = normalizeColabGpu(lower.match(/\b(t4|l4|a100|g4)\b/)?.[1]);
   return {
     wantsFast: /\b(fast|quick|speedy|rapid)\b/.test(lower) || /高速|速く/.test(normalized),
     wantsAnime: /\b(anime|manga)\b/.test(lower) || /アニメ|漫画/.test(normalized),
@@ -493,7 +495,11 @@ export const buildColabSuggestPayload = (
   const alternativeCandidates: ColabSuggestion[] = [];
   for (const kit of sorted.kits) {
     for (const workflow of kit.workflows) {
-      if (H3_EXTENSION_WORKFLOWS.has(workflow.name) && workflow.name !== h3Workflow) continue;
+      if (
+        (H3_EXTENSION_WORKFLOWS.has(workflow.name) || H3_TURBO_WORKFLOWS.has(workflow.name)) &&
+        workflow.name !== h3Workflow
+      )
+        continue;
       if (options.task && workflow.task !== options.task) continue;
       const output = workflowOutput(workflow);
       if (!output) continue;

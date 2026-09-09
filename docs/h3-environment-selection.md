@@ -38,6 +38,7 @@ Python dependencies and GPU memory are still shared within a Colab runtime.
 | Anchor audio, or image + audio | `minimax_h3_extensions` / `minimax_h3_guide_audio` or `_av` | `PROFILE="guide"` |
 | Continue motion and sound | `minimax_h3_extensions` / `minimax_h3_motion_t2v` | `PROFILE="motion"` |
 | Continue with image + audio references | `minimax_h3_extensions` / `minimax_h3_motion_r2v` | `PROFILE="motion"`, `REF2VA=True` |
+| Explicit H3 Turbo T2V / I2V | `minimax_h3_turbo` / `minimax_h3_turbo_t2v` or `_i2v` | Fresh runtime, G4 recommended; dedicated launcher; Starter |
 | Fast T2V draft | Existing `minimax_h3_fast` | Existing dedicated setup |
 | Explicit VDN experiment | `minimax_h3_vdn` / `minimax_h3_vdn_t2v` | Dedicated setup |
 
@@ -52,7 +53,7 @@ visible, prepare a separate experimental graph if needed, and label it unverifie
 
 ## Cost and state
 
-All new profiles target A100 high-RAM; no T4/L4 verification is claimed.
+Extension/VDN profiles target A100 high-RAM; no T4/L4 verification is claimed.
 A fresh guide or motion runtime downloads about 42.47 GB of base assets. SNS
 adds 0.310 GB; VDN adds 5.465 GB. Motion R2V uses Ref2VA instead of FL2VA (same
 base download volume), not both. The extension catalog's asset total is the SNS
@@ -111,3 +112,17 @@ All H3-derived weights remain subject to the
 including territory and commercial-use conditions. Review the runtime's download
 and use location as well as the user's location; adapter/code licenses do not
 replace the base license.
+
+## Opt-in 768p Turbo kit
+
+The separate [Turbo kit](../scripts/colab/minimax_h3_turbo/README.md) adds
+LightX2V FL2VA 768p four-step LoRA for T2V and first-frame I2V. Explicit
+`H3 Turbo` / `H3 ターボ` selects it; ordinary H3 and generic FastH3 routing
+remain unchanged. Reference audio still selects ordinary R2V: this Turbo kit
+does not implement Ref2VA, Guide, SNS or Motion combinations. LoRA exclusions
+are respected. Use its own `02_start_comfyui.py`, as returned by `colab kit`;
+the shared launcher does not enable SageAttention. A100 T2V/I2V E2E paths are
+measured at about 74–86 seconds through server MP4 save after warmup; see the
+[validation report](../scripts/colab/minimax_h3_turbo/VERIFICATION.md). Audio
+listening/quality acceptance is pending; G4 is untested. No 39-second guarantee
+is made.

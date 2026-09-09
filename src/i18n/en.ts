@@ -290,7 +290,7 @@ export const messages = {
   "colab.catalog_invalid": "Invalid Colab catalog format.",
   "colab.invalid_task": "task must be a supported Colab catalog task.",
   "colab.invalid_output": "output must be image/video/audio.",
-  "colab.invalid_gpu": "gpu must be T4/L4/A100.",
+  "colab.invalid_gpu": "gpu must be T4/L4/A100/G4.",
   "colab.invalid_limit": "limit must be an integer >= 1.",
   "colab.kit_not_found": "Colab kit {name} was not found.",
   "api.get_failed": "GET {path} failed.",

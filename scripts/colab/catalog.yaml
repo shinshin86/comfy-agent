@@ -701,6 +701,55 @@ kits:
         size_gb: 0.605254808
     setup_minutes: 22
     composable: false
+  - name: minimax_h3_turbo
+    path: minimax_h3_turbo/
+    status: starter
+    aliases: [h3_turbo]
+    tasks: [text_to_video, image_to_video]
+    outputs: [video]
+    gpu:
+      minimum: A100
+      recommended: G4
+    summary: MiniMax H3 FL2VA 768p Turbo LoRA with four-step T2V/I2V, native audio and SageAttention; A100 T2V/I2V measured, audio listening review pending.
+    setup_file: 01_setup.py
+    launcher_file: 02_start_comfyui.py
+    tags: [video, audio, t2v, i2v, minimax, turbo, lora, native_audio]
+    license_notes:
+      - MiniMax H3 Community License applies, including Applicable Territory and commercial-use terms. Review the Colab runtime region before use.
+      - LightX2V adapter and SageAttention have their own licenses; these do not replace the base model license. Fresh runtime required. A100 server execution measured at 74–86 seconds after warmup; G4 and speech quality are unverified.
+    workflows:
+      - name: minimax_h3_turbo_t2v
+        file: minimax_h3_turbo_t2v.json
+        task: text_to_video
+        output: video
+        speed: fast
+        quality: unknown
+        notes: Opt-in 1344x768, 124 frames, 24 fps; four-step 768p LoRA, video/audio shift 6/3, Euler/simple. A100 warm server execution 74–75 seconds; see kit verification report.
+      - name: minimax_h3_turbo_i2v
+        file: minimax_h3_turbo_i2v.json
+        task: image_to_video
+        output: video
+        speed: fast
+        quality: unknown
+        notes: Same Turbo schedule with a first-frame --image upload. No R2V or extension combinations.
+    assets:
+      - file: minimax_h3_fl2va_pruned_int8_convrot.safetensors
+        dir: models/diffusion_models
+        size_gb: 20.970379616
+      - file: minimax_h3_fl2v_turbo_4step_v1.0_768p_comfyui_bf16.safetensors
+        dir: models/loras
+        size_gb: 1.956192992
+      - file: qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors
+        dir: models/text_encoders
+        size_gb: 15.687142551
+      - file: minimax_h3_video_vae_fp16.safetensors
+        dir: models/vae
+        size_gb: 5.207808496
+      - file: minimax_h3_audio_vae_fp32.safetensors
+        dir: models/vae
+        size_gb: 0.605254808
+    setup_minutes: 35
+    composable: false
   - name: minimax_h3_fast
     path: minimax_h3_fast/
     status: verified

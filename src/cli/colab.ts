@@ -155,7 +155,9 @@ export const runColabKit = async (name: string, options: ColabKitOptions) => {
   const kitRelative = path.posix.join(RESOURCES.colabDir, kit.path.replace(/\/+$/, ""));
   const dir = resourcePath(kitRelative);
   const setup = await requireKitResource(path.posix.join(kitRelative, kit.setup_file));
-  const launcher = await requireKitResource(RESOURCES.launcher);
+  const launcher = await requireKitResource(
+    kit.launcher_file ? path.posix.join(kitRelative, kit.launcher_file) : RESOURCES.launcher,
+  );
   const workflows = Object.fromEntries(
     await Promise.all(
       kit.workflows.map(async (workflow) => [
