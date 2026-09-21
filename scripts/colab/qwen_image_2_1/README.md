@@ -1,11 +1,31 @@
 # Qwen-Image 2.1 on Colab
 
-> **Status: Starter.** The kit is statically validated (workflow JSON
-> imports cleanly into `comfy-agent`, filenames and node schemas checked
-> against ComfyUI master) but has **not** yet been run end-to-end from a
-> local Mac over a cloudflared tunnel. It becomes *Verified E2E* only
-> after `01_setup.py` → `02_start_comfyui.py` → `comfy-agent doctor` /
-> `import` / `run` → local output file has been observed in one run.
+> **Status: Verified E2E (Colab L4, int8 convrot).** The full path —
+> `01_setup.py` → `02_start_comfyui.py` → cloudflared → local-Mac
+> `comfy-agent doctor` / `import` / `run` → image saved under
+> `.comfy-agent/outputs/` — was exercised end-to-end on 2026-09-21 on an
+> **NVIDIA L4 (23 GB, compute capability 8.9)** runtime reporting ComfyUI
+> **0.37.0** from master. All three bundled workflows plus the RGBA path
+> were run from the local Mac in that session.
+
+## Verification record (2026-09-21, L4)
+
+| Leg | Result |
+|---|---|
+| `01_setup.py` | Completed. The nightly guard found `TextEncodeQwenImage21` / `QwenImage21Cache`; 17.3 GB downloaded in ~6 min (DiT 6.8 GB in 43 s, text encoder 8.7 GB in 4 m 39 s, VAE 644 MB in 7 s). |
+| `02_start_comfyui.py` | Wrote a working `trycloudflare.com` URL to `/content/comfy_url.txt`. |
+| `comfy-agent doctor` | `connection: OK` from the local Mac. |
+| `comfy-agent import` | Generated presets for all three workflows. |
+| `qwen_image_2_1_t2i` | 1024x1024, 25 steps. In-image text ("COMFY AGENT") rendered correctly. |
+| RGBA path | The prompt-wrapped run produced a real alpha channel: PNG colour type 6, 76.6% of pixels effectively transparent (alpha <= 4), 22.4% opaque, 1.0% edge antialiasing. |
+| `qwen_image_2_1_edit` | Background replaced as instructed; subject, steam and in-image text preserved. The API-format `images.image_1` key works. |
+| `qwen_image_2_1_edit_2ref` | Second reference composited into the scene with a contact shadow; `images.image_2` works. |
+
+Notes from that run: int8 convrot loaded and sampled fine on L4 (Ada,
+`torch._int_mm`), and `/system_stats` reported 10.6 GB of free VRAM with
+the stack loaded, so the L4 minimum has real headroom. Prompts asking for
+a flat vector or poster style tended to come back photographic — steer
+style explicitly when that matters.
 
 Qwen-Image 2.1 is Alibaba's unified **text-to-image + instruction-editing**
 model: one 7B visual-generation core (32 single-stream DiT layers, mixed
@@ -40,6 +60,9 @@ So this kit tracks **master**, not a stable tag:
   these workflows yet.
 - `COMFYUI_COMMIT` in `01_setup.py` pins the checkout to a fixed revision
   if a master regression breaks the kit. Leave it empty to follow master.
+  The 2026-09-21 verification ran master as of that morning, which reported
+  version **0.37.0**; the exact commit SHA was not captured during that run,
+  so the pin is left empty rather than recording a revision we did not check.
 
 No custom nodes are needed — every node in the bundled workflows ships
 with ComfyUI core.

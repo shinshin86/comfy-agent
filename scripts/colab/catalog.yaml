@@ -1032,12 +1032,13 @@ kits:
     composable: true
   - name: qwen_image_2_1
     path: qwen_image_2_1/
-    status: starter
+    status: verified
     tasks: [text_to_image, image_edit]
     outputs: [image]
     gpu:
       minimum: L4
       recommended: A100
+      verified: [L4]
     summary: Qwen-Image 2.1 unified text-to-image and instruction editing with native 2K and RGBA output. Requires ComfyUI master/nightly.
     setup_file: 01_setup.py
     aliases: [qwen_image_21, qwen-image-2.1, Qwen-Image 2.1]
@@ -1091,7 +1092,7 @@ kits:
       - file: qwen_image_2.1_vae_bf16.safetensors
         dir: models/vae
         size_gb: 0.7
-    setup_minutes: 16
+    setup_minutes: 8
     composable: true
   - name: qwen_image_edit
     path: qwen_image_edit/
