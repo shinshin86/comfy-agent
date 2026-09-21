@@ -1,10 +1,62 @@
 # Anima-Light-Lavender on Colab
 
-> **Status: Starter.** The workflow imports cleanly into `comfy-agent` and
-> the wiring matches the upstream reference, but no Colab end-to-end run
-> has been recorded yet. It becomes *Verified E2E* only after
-> `01_setup.py` → `02_start_comfyui.py` → `comfy-agent doctor` / `import`
-> / `run` → local output file has been observed in one run-through.
+> **Status: Verified E2E (Colab T4, 2026-09-21).** The full path —
+> `01_setup.py` → `02_start_comfyui.py` → cloudflared → local-Mac
+> `comfy-agent doctor` / `import` / `run` → image saved under
+> `.comfy-agent/outputs/` — was exercised end-to-end on a **Tesla T4
+> (15 GB, compute capability 7.5)** runtime, from a fresh notebook.
+
+## Verification record (2026-09-21, T4)
+
+| Leg | Result |
+|---|---|
+| `01_setup.py` | Completed on a fresh T4 runtime. 5.6 GB downloaded in about a minute (model 3.9 GB at 92 MB/s, text encoder 1.11 GB, VAE 242 MB). |
+| `02_start_comfyui.py` | Wrote a working `trycloudflare.com` URL to `/content/comfy_url.txt`. |
+| `comfy-agent doctor` | `connection: OK` from the local Mac. |
+| `comfy-agent import` | Generated the preset with `--prompt`, `--negative`, `--steps`, `--cfg`, `--width`, `--height` and `--seed`. |
+| `comfy-agent run` | Correct 1152x1536 image matching the bundled caption, about 5 s/step (~2 min for 25 steps). |
+
+## Known quirk: a black image means NaN, not an empty prompt
+
+During that session one caption — a long character description, roughly
+700 characters of `image_description` — came back as a **fully black PNG**
+(all RGB channels 0) on seeds 88, 89 and 90. It is prompt-dependent, not
+seed-dependent: the bundled caption renders fine on the same runtime, and
+the failing caption failed on every seed tried.
+
+Nothing raises an error. The ComfyUI log shows the decode casting NaN:
+
+```
+model weight dtype torch.float16, manual cast: None
+/content/ComfyUI/nodes.py:1699: RuntimeWarning: invalid value encountered in cast
+  img = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
+```
+
+Starting ComfyUI with **`--fp32-unet`** fixed it. The same caption was
+re-run on all three seeds under fp32 on the same runtime:
+
+| Run | fp16 (default) | fp32 (`--fp32-unet`) |
+|---|---|---|
+| seed 88 | black | correct image |
+| seed 89 | black | correct image |
+| seed 90 | black | correct image |
+
+No NaN warning appeared in any of the fp32 runs. The cost is speed: about
+22 s/step (566 s for 25 steps at 1152x1536) versus 5 s/step in fp16.
+
+```python
+!cd /content/ComfyUI && python main.py --dont-print-server --listen 127.0.0.1 --port 8188 --fp32-unet
+```
+
+So if a prompt gives you a black image, re-run it under `--fp32-unet`
+rather than assuming the prompt was rejected — that turned every failing
+run in this session into a correct one.
+
+What is **not** established: how often this happens (only two captions
+were tried, one of which failed), what exactly triggers it, and whether
+the fp16 dtype is really the mechanism — all that is measured is that
+`--fp32-unet` fixes it. T4 remains the kit's verified and recommended
+GPU; this is a quirk to recognise, not a reason to demand a bigger one.
 
 Post-train of Anima Base v1.0 by Johnny-Z, focused on understanding
 **natural-language descriptions at the 512-token scale**. The architecture

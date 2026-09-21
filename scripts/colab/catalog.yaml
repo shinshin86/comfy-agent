@@ -63,12 +63,13 @@ kits:
     composable: true
   - name: anima_light_lavender
     path: anima_light_lavender/
-    status: starter
+    status: verified
     tasks: [text_to_image]
     outputs: [image]
     gpu:
       minimum: T4
       recommended: T4
+      verified: [T4]
     summary: Anima-Light-Lavender, anime text-to-image post-train of Anima Base tuned for long natural-language captions.
     setup_file: 01_setup.py
     aliases: [light_lavender, Anima Light Lavender]
@@ -83,6 +84,9 @@ kits:
           Structured JSON caption inlined into CLIPTextEncode (core nodes only,
           no comfyui-zako-pe needed). Negative prompt stays empty per the model
           card; euler / simple / 25 steps / cfg 4.0 / 1152x1536 with CFGZeroStar.
+          One long caption decoded to an all-black PNG on T4 across three
+          seeds; the same caption rendered correctly with ComfyUI started
+          as --fp32-unet. See the kit README before chasing a black output.
     license_notes:
       - >-
         CircleStone Labs Non-Commercial License v1.0, inherited from Anima Base;
