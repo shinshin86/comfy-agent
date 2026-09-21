@@ -84,6 +84,7 @@ comfy-agent run z_image_turbo --prompt "a cat riding a bicycle"
 | 画像 | [`z_anime/`](./scripts/colab/z_anime/) | 一部検証 | T4 | Z-Anime base / distilled 画像生成 |
 | 画像 | [`qwen_image/`](./scripts/colab/qwen_image/) | Starter | L4 | Qwen-Image テキスト→画像 |
 | 画像 | [`qwen_image_edit/`](./scripts/colab/qwen_image_edit/) | Starter | L4 | Qwen-Image-Edit 指示ベース画像編集 |
+| 画像 | [`qwen_image_2_1/`](./scripts/colab/qwen_image_2_1/) | Starter | L4 | Qwen-Image 2.1 画像生成＋編集 (ComfyUI nightly 必須) |
 | 画像 | [`boogu/`](./scripts/colab/boogu/) | 検証済み | L4 | Boogu-Image Turbo テキスト→画像 |
 | 画像 | [`krea2/`](./scripts/colab/krea2/) | 検証済み | L4 | Krea 2 Turbo テキスト→画像 |
 | 画像 | [`flux1/`](./scripts/colab/flux1/) | 検証済み | L4 | Flux 1 dev テキスト→画像 |

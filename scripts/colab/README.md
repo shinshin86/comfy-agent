@@ -8,8 +8,8 @@ in `.mcp.json` at the repo root.
 
 ## Per-model starter kits
 
-The machine-readable catalog currently contains **43 kits**: 30 verified,
-6 partial, and 7 starter kits. The per-workflow notes below preserve more
+The machine-readable catalog currently contains **44 kits**: 30 verified,
+6 partial, and 8 starter kits. The per-workflow notes below preserve more
 specific verification details where a kit contains multiple variants.
 
 | Kit | Status | GPU | Notes |
@@ -26,6 +26,7 @@ specific verification details where a kit contains multiple variants.
 | [`./z_anime/`](./z_anime/) | base verified E2E; distill-8step starter | T4+ | Z-Anime, anime-style Z-Image finetune (base + distill-8step, fp8) |
 | [`./qwen_image/`](./qwen_image/) | Starter | L4+ | Qwen-Image 2512, text-to-image |
 | [`./qwen_image_edit/`](./qwen_image_edit/) | Starter | A100 (L4 for fp8) | Qwen-Image-Edit 2511, image editing |
+| [`./qwen_image_2_1/`](./qwen_image_2_1/) | Starter | L4+ / A100 | Qwen-Image 2.1 unified text-to-image + instruction editing, native 2K and RGBA (int8 convrot default, ~17.3 GB; **ComfyUI master/nightly only**; Qwen Research License — research/evaluation use only) |
 | [`./flux1/`](./flux1/) | Verified E2E | L4+ / A100 | Flux 1 dev fp8 (Comfy-Org repack, no HF token); + character LoRA slot |
 | [`./flux2/`](./flux2/) | Verified E2E | A100 | Flux 2 dev, fp8mixed repack |
 | [`./hidream_i1/`](./hidream_i1/) | Verified E2E (Fast/Dev/Full fp8) | L4+ (Fast/Dev) / A100 (Full) | HiDream-I1 17B (Fast/Dev/Full fp8, MIT, no HF token) |
