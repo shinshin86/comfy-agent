@@ -61,6 +61,48 @@ kits:
         size_gb: 0.3
     setup_minutes: 5
     composable: true
+  - name: anima_light_lavender
+    path: anima_light_lavender/
+    status: starter
+    tasks: [text_to_image]
+    outputs: [image]
+    gpu:
+      minimum: T4
+      recommended: T4
+    summary: Anima-Light-Lavender, anime text-to-image post-train of Anima Base tuned for long natural-language captions.
+    setup_file: 01_setup.py
+    aliases: [light_lavender, Anima Light Lavender]
+    tags: [image, anime, natural_language_prompt]
+    workflows:
+      - name: anima_light_lavender
+        file: anima_light_lavender.json
+        task: text_to_image
+        speed: medium
+        quality: high
+        notes: >-
+          Structured JSON caption inlined into CLIPTextEncode (core nodes only,
+          no comfyui-zako-pe needed). Negative prompt stays empty per the model
+          card; euler / simple / 25 steps / cfg 4.0 / 1152x1536 with CFGZeroStar.
+    license_notes:
+      - >-
+        CircleStone Labs Non-Commercial License v1.0, inherited from Anima Base;
+        also subject to the NVIDIA Open Model License Agreement as a
+        Cosmos-Predict2 derivative. Non-commercial use only.
+    assets:
+      - file: anima-light-lavender.safetensors
+        dir: models/diffusion_models
+        size_gb: 4.2
+      - file: anima-light-lavender_mxfp8.safetensors
+        dir: models/diffusion_models
+        size_gb: 2.8
+      - file: qwen_3_06b_base.safetensors
+        dir: models/text_encoders
+        size_gb: 1.2
+      - file: qwen_image_vae.safetensors
+        dir: models/vae
+        size_gb: 0.3
+    setup_minutes: 5
+    composable: true
   - name: anima_pencil
     path: anima_pencil/
     status: verified
