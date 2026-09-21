@@ -61,6 +61,52 @@ kits:
         size_gb: 0.3
     setup_minutes: 5
     composable: true
+  - name: anima_light_lavender
+    path: anima_light_lavender/
+    status: verified
+    tasks: [text_to_image]
+    outputs: [image]
+    gpu:
+      minimum: T4
+      recommended: T4
+      verified: [T4]
+    summary: Anima-Light-Lavender, anime text-to-image post-train of Anima Base tuned for long natural-language captions.
+    setup_file: 01_setup.py
+    aliases: [light_lavender, Anima Light Lavender]
+    tags: [image, anime, natural_language_prompt]
+    workflows:
+      - name: anima_light_lavender
+        file: anima_light_lavender.json
+        task: text_to_image
+        speed: medium
+        quality: high
+        notes: >-
+          Structured JSON caption inlined into CLIPTextEncode (core nodes only,
+          no comfyui-zako-pe needed). Negative prompt stays empty per the model
+          card; euler / simple / 25 steps / cfg 4.0 / 1152x1536 with CFGZeroStar.
+          One long caption decoded to an all-black PNG on T4 across three
+          seeds; the same caption rendered correctly with ComfyUI started
+          as --fp32-unet. See the kit README before chasing a black output.
+    license_notes:
+      - >-
+        CircleStone Labs Non-Commercial License v1.0, inherited from Anima Base;
+        also subject to the NVIDIA Open Model License Agreement as a
+        Cosmos-Predict2 derivative. Non-commercial use only.
+    assets:
+      - file: anima-light-lavender.safetensors
+        dir: models/diffusion_models
+        size_gb: 4.2
+      - file: anima-light-lavender_mxfp8.safetensors
+        dir: models/diffusion_models
+        size_gb: 2.8
+      - file: qwen_3_06b_base.safetensors
+        dir: models/text_encoders
+        size_gb: 1.2
+      - file: qwen_image_vae.safetensors
+        dir: models/vae
+        size_gb: 0.3
+    setup_minutes: 5
+    composable: true
   - name: anima_pencil
     path: anima_pencil/
     status: verified
@@ -987,6 +1033,70 @@ kits:
         dir: models/loras
         size_gb: 1.7
     setup_minutes: 22
+    composable: true
+  - name: qwen_image_2_1
+    path: qwen_image_2_1/
+    status: verified
+    tasks: [text_to_image, image_edit]
+    outputs: [image]
+    gpu:
+      minimum: L4
+      recommended: A100
+      verified: [L4]
+    summary: Qwen-Image 2.1 unified text-to-image and instruction editing with native 2K and RGBA output. Requires ComfyUI master/nightly.
+    setup_file: 01_setup.py
+    aliases: [qwen_image_21, qwen-image-2.1, Qwen-Image 2.1]
+    tags: [image, image_edit, rgba, transparent, text_rendering, day0]
+    workflows:
+      - name: qwen_image_2_1_t2i
+        file: qwen_image_2_1_t2i.json
+        task: text_to_image
+        speed: medium
+        quality: high
+        notes: >-
+          Native 2K (set width/height to 2048) and transparent PNG output by
+          wrapping the prompt in the RGBA phrasing documented in the kit README.
+      - name: qwen_image_2_1_edit
+        file: qwen_image_2_1_edit.json
+        task: image_edit
+        speed: medium
+        quality: high
+        notes: Single source image; upload with --image.
+      - name: qwen_image_2_1_edit_2ref
+        file: qwen_image_2_1_edit_2ref.json
+        task: image_edit
+        speed: medium
+        quality: high
+        notes: >-
+          Source image plus one reference image (--image / --image-2), addressed
+          in the prompt as <image1> and <image2>. Up to 10 references are
+          supported by adding more images.image_N inputs.
+    license_notes:
+      - >-
+        Qwen Research License - research or evaluation use only; commercial use
+        requires a separate license from the model owner. Attribution ("Built
+        with Qwen") applies to distributed derivatives. Review upstream terms.
+      - Different terms from the Apache-2.0 qwen_image kit despite the shared family name.
+    assets:
+      - file: qwen_image_2.1_int8_convrot.safetensors
+        dir: models/diffusion_models
+        size_gb: 7.3
+      - file: qwen_image_2.1_bf16.safetensors
+        dir: models/diffusion_models
+        size_gb: 14.2
+      - file: qwen3vl_8b_int8_convrot.safetensors
+        dir: models/text_encoders
+        size_gb: 9.4
+      - file: qwen3vl_8b_bf16.safetensors
+        dir: models/text_encoders
+        size_gb: 17.5
+      - file: qwen3vl_8b_w4a8.safetensors
+        dir: models/text_encoders
+        size_gb: 6.3
+      - file: qwen_image_2.1_vae_bf16.safetensors
+        dir: models/vae
+        size_gb: 0.7
+    setup_minutes: 8
     composable: true
   - name: qwen_image_edit
     path: qwen_image_edit/

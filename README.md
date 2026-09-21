@@ -82,9 +82,11 @@ comfy-agent run z_image_turbo --prompt "a cat riding a bicycle"
 | Image | [`anima/`](./scripts/colab/anima/)                                         | Verified | T4          | Anima Base v1.0 anime text-to-image                   |
 | Image | [`ooo_anima/`](./scripts/colab/ooo_anima/)                                 | Verified | T4          | OOO_Anima v10 anime text-to-image                     |
 | Image | [`anima_pencil/`](./scripts/colab/anima_pencil/)                           | Verified | T4          | anima_pencil v2 anime text-to-image                   |
+| Image | [`anima_light_lavender/`](./scripts/colab/anima_light_lavender/)           | Verified | T4          | Anima-Light-Lavender anime text-to-image              |
 | Image | [`z_anime/`](./scripts/colab/z_anime/)                                     | Partial  | T4          | Z-Anime base / distilled text-to-image                |
 | Image | [`qwen_image/`](./scripts/colab/qwen_image/)                               | Starter  | L4          | Qwen-Image text-to-image                              |
 | Image | [`qwen_image_edit/`](./scripts/colab/qwen_image_edit/)                     | Starter  | L4          | Qwen-Image-Edit instruction-based editing             |
+| Image | [`qwen_image_2_1/`](./scripts/colab/qwen_image_2_1/)                       | Verified | L4          | Qwen-Image 2.1 text-to-image + editing (nightly)      |
 | Image | [`boogu/`](./scripts/colab/boogu/)                                         | Verified | L4          | Boogu-Image Turbo text-to-image                       |
 | Image | [`krea2/`](./scripts/colab/krea2/)                                         | Verified | L4          | Krea 2 Turbo text-to-image                            |
 | Image | [`flux1/`](./scripts/colab/flux1/)                                         | Verified | L4          | Flux 1 dev text-to-image                              |

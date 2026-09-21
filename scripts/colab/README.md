@@ -8,7 +8,7 @@ in `.mcp.json` at the repo root.
 
 ## Per-model starter kits
 
-The machine-readable catalog currently contains **43 kits**: 30 verified,
+The machine-readable catalog currently contains **45 kits**: 32 verified,
 6 partial, and 7 starter kits. The per-workflow notes below preserve more
 specific verification details where a kit contains multiple variants.
 
@@ -22,10 +22,12 @@ specific verification details where a kit contains multiple variants.
 | [`./anima/`](./anima/) | Verified E2E | T4+ | Anima Base v1.0, anime-style Qwen-Image finetune |
 | [`./ooo_anima/`](./ooo_anima/) | Verified E2E | T4+ | OOO_Anima v10, Anima Base finetune (non-commercial) |
 | [`./anima_pencil/`](./anima_pencil/) | Verified E2E | T4+ | anima_pencil v2.0.0, Anima-based anime merge (non-commercial; HF mirror, no CivitAI token) |
+| [`./anima_light_lavender/`](./anima_light_lavender/) | Verified E2E (T4) | T4+ | Anima-Light-Lavender, Anima Base post-train for long natural-language captions (structured JSON caption, core nodes only; a black output means NaN — see the kit README; non-commercial: CircleStone Labs + NVIDIA Open Model License) |
 | [`./animegen_t2v/`](./animegen_t2v/) | Lightning verified E2E; plain starter | A100 | AnimeGen-T2V anime text-to-video, Wan 2.2 T2V A14B fine-tune (Apache-2.0; + optional 8-step Lightning LoRA) |
 | [`./z_anime/`](./z_anime/) | base verified E2E; distill-8step starter | T4+ | Z-Anime, anime-style Z-Image finetune (base + distill-8step, fp8) |
 | [`./qwen_image/`](./qwen_image/) | Starter | L4+ | Qwen-Image 2512, text-to-image |
 | [`./qwen_image_edit/`](./qwen_image_edit/) | Starter | A100 (L4 for fp8) | Qwen-Image-Edit 2511, image editing |
+| [`./qwen_image_2_1/`](./qwen_image_2_1/) | Verified E2E (L4) | L4+ / A100 | Qwen-Image 2.1 unified text-to-image + instruction editing, native 2K and RGBA (int8 convrot default, ~17.3 GB; **ComfyUI master/nightly only**; Qwen Research License — research/evaluation use only) |
 | [`./flux1/`](./flux1/) | Verified E2E | L4+ / A100 | Flux 1 dev fp8 (Comfy-Org repack, no HF token); + character LoRA slot |
 | [`./flux2/`](./flux2/) | Verified E2E | A100 | Flux 2 dev, fp8mixed repack |
 | [`./hidream_i1/`](./hidream_i1/) | Verified E2E (Fast/Dev/Full fp8) | L4+ (Fast/Dev) / A100 (Full) | HiDream-I1 17B (Fast/Dev/Full fp8, MIT, no HF token) |
