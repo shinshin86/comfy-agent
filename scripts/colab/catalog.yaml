@@ -1098,6 +1098,58 @@ kits:
         size_gb: 0.7
     setup_minutes: 8
     composable: true
+  - name: qwen_image_2_1_gguf
+    path: qwen_image_2_1_gguf/
+    status: verified
+    tasks: [text_to_image, image_edit]
+    outputs: [image]
+    gpu:
+      minimum: L4
+      recommended: L4
+      verified: [L4]
+    summary: Qwen-Image 2.1 GGUF UC-Q4_K_M text-to-image and editing via ComfyUI-GGUF; requires ComfyUI master/nightly. UC weight changes are not documented by the publisher.
+    setup_file: 01_setup.py
+    aliases: [qwen_image_21_gguf, qwen-image-2.1-gguf]
+    tags: [image, image_edit, gguf, qwen]
+    workflows:
+      - name: qwen_image_2_1_gguf_t2i
+        file: qwen_image_2_1_gguf_t2i.json
+        task: text_to_image
+        speed: unknown
+        quality: unknown
+        notes: UC-Q4_K_M GGUF diffusion weights with the Qwen3-VL int8 encoder and Qwen-Image 2.1 VAE.
+      - name: qwen_image_2_1_gguf_edit
+        file: qwen_image_2_1_gguf_edit.json
+        task: image_edit
+        speed: unknown
+        quality: unknown
+        notes: Single source image; upload with --image.
+      - name: qwen_image_2_1_gguf_edit_2ref
+        file: qwen_image_2_1_gguf_edit_2ref.json
+        task: image_edit
+        speed: unknown
+        quality: unknown
+        notes: Source and reference images; upload with --image and --image-2.
+    license_notes:
+      - >-
+        Qwen Research License: research or evaluation use only. Commercial use
+        requires a separate license from the model owner. Review upstream terms.
+      - >-
+        UC is the publisher's filename label. The model card does not document
+        a fine-tune or establish how these weights differ from the base model.
+      - Review Google Colab's Acceptable Use Policy for intended prompts and outputs.
+    assets:
+      - file: qwen-image-2.1-UC-Q4_K_M.gguf
+        dir: models/diffusion_models
+        size_gb: 4.6
+      - file: qwen3vl_8b_int8_convrot.safetensors
+        dir: models/text_encoders
+        size_gb: 9.4
+      - file: qwen_image_2.1_vae_bf16.safetensors
+        dir: models/vae
+        size_gb: 0.7
+    setup_minutes: 10
+    composable: true
   - name: qwen_image_edit
     path: qwen_image_edit/
     status: starter
