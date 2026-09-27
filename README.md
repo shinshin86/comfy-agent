@@ -87,7 +87,7 @@ comfy-agent run z_image_turbo --prompt "a cat riding a bicycle"
 | Image | [`qwen_image/`](./scripts/colab/qwen_image/)                               | Starter  | L4          | Qwen-Image text-to-image                              |
 | Image | [`qwen_image_edit/`](./scripts/colab/qwen_image_edit/)                     | Starter  | L4          | Qwen-Image-Edit instruction-based editing             |
 | Image | [`qwen_image_2_1/`](./scripts/colab/qwen_image_2_1/)                       | Verified | L4          | Qwen-Image 2.1 text-to-image + editing (nightly)      |
-| Image | [`qwen_image_2_1_gguf/`](./scripts/colab/qwen_image_2_1_gguf/)             | Verified | L4          | Qwen-Image 2.1 UC-Q4_K_M GGUF (UC claim unverified)   |
+| Image | [`qwen_image_2_1_gguf_uc/`](./scripts/colab/qwen_image_2_1_gguf_uc/)          | Verified | L4          | Qwen-Image 2.1 UC-Q4_K_M GGUF (UC claim unverified)   |
 | Image | [`qwen_image_2_1_gguf_base/`](./scripts/colab/qwen_image_2_1_gguf_base/)   | Partial  | L4          | Qwen-Image 2.1 base Q4_K_M GGUF (T2I verified)        |
 | Image | [`boogu/`](./scripts/colab/boogu/)                                         | Verified | L4          | Boogu-Image Turbo text-to-image                       |
 | Image | [`krea2/`](./scripts/colab/krea2/)                                         | Verified | L4          | Krea 2 Turbo text-to-image                            |

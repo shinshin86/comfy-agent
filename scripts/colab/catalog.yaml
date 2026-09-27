@@ -1098,8 +1098,8 @@ kits:
         size_gb: 0.7
     setup_minutes: 8
     composable: true
-  - name: qwen_image_2_1_gguf
-    path: qwen_image_2_1_gguf/
+  - name: qwen_image_2_1_gguf_uc
+    path: qwen_image_2_1_gguf_uc/
     status: verified
     tasks: [text_to_image, image_edit]
     outputs: [image]
@@ -1109,23 +1109,23 @@ kits:
       verified: [L4]
     summary: Qwen-Image 2.1 GGUF UC-Q4_K_M text-to-image and editing via ComfyUI-GGUF; requires ComfyUI master/nightly. UC weight changes are not documented by the publisher.
     setup_file: 01_setup.py
-    aliases: [qwen_image_21_gguf, qwen-image-2.1-gguf]
+    aliases: [qwen_image_2_1_gguf, qwen_image_21_gguf, qwen-image-2.1-gguf, qwen_image_21_gguf_uc, qwen-image-2.1-gguf-uc]
     tags: [image, image_edit, gguf, qwen]
     workflows:
-      - name: qwen_image_2_1_gguf_t2i
-        file: qwen_image_2_1_gguf_t2i.json
+      - name: qwen_image_2_1_gguf_uc_t2i
+        file: qwen_image_2_1_gguf_uc_t2i.json
         task: text_to_image
         speed: unknown
         quality: unknown
         notes: UC-Q4_K_M GGUF diffusion weights with the Qwen3-VL int8 encoder and Qwen-Image 2.1 VAE.
-      - name: qwen_image_2_1_gguf_edit
-        file: qwen_image_2_1_gguf_edit.json
+      - name: qwen_image_2_1_gguf_uc_edit
+        file: qwen_image_2_1_gguf_uc_edit.json
         task: image_edit
         speed: unknown
         quality: unknown
         notes: Single source image; upload with --image.
-      - name: qwen_image_2_1_gguf_edit_2ref
-        file: qwen_image_2_1_gguf_edit_2ref.json
+      - name: qwen_image_2_1_gguf_uc_edit_2ref
+        file: qwen_image_2_1_gguf_uc_edit_2ref.json
         task: image_edit
         speed: unknown
         quality: unknown

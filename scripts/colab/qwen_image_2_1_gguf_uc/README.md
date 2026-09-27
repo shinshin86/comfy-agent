@@ -11,6 +11,10 @@ the existing [safetensors kit](../qwen_image_2_1/) and its verified workflows
 unchanged. ComfyUI **master/nightly** is required for the native Qwen-Image 2.1
 text-encoding and cache nodes.
 
+The catalog keeps the older unqualified kit names as aliases for this UC kit.
+For new selections, use the explicit `qwen_image_2_1_gguf_uc` or
+`qwen_image_2_1_gguf_base` name.
+
 ## What the UC file is
 
 `Q4_K_M` is a GGUF quantization format. `UC` is the publisher's filename label;
@@ -56,8 +60,8 @@ to another repository, setup stops and asks you to resolve that conflict.
 5. Import a workflow and generate an image locally:
 
    ```bash
-   comfy-agent import ./scripts/colab/qwen_image_2_1_gguf/qwen_image_2_1_gguf_t2i.json --name qwen21_gguf_t2i
-   comfy-agent run qwen21_gguf_t2i --prompt "A ceramic teapot on a wooden table" --seed 7
+   comfy-agent import ./scripts/colab/qwen_image_2_1_gguf_uc/qwen_image_2_1_gguf_uc_t2i.json --name qwen21_gguf_uc_t2i
+   comfy-agent run qwen21_gguf_uc_t2i --prompt "A ceramic teapot on a wooden table" --seed 7
    ```
 
 The tunnel URL changes when Colab restarts. Local presets and outputs remain
@@ -67,9 +71,9 @@ under `.comfy-agent/`; reconnect to the new URL without re-importing.
 
 | File | Task | Input |
 |---|---|---|
-| `qwen_image_2_1_gguf_t2i.json` | Text to image | `--prompt`, optional size and seed |
-| `qwen_image_2_1_gguf_edit.json` | Image edit | `--image` and `--prompt` |
-| `qwen_image_2_1_gguf_edit_2ref.json` | Two-image edit | `--image`, `--image-2`, and `--prompt` |
+| `qwen_image_2_1_gguf_uc_t2i.json` | Text to image | `--prompt`, optional size and seed |
+| `qwen_image_2_1_gguf_uc_edit.json` | Image edit | `--image` and `--prompt` |
+| `qwen_image_2_1_gguf_uc_edit_2ref.json` | Two-image edit | `--image`, `--image-2`, and `--prompt` |
 
 These API workflows use the same `TextEncodeQwenImage21`, `CLIPLoader`, VAE,
 sampler, and edit structure as the verified safetensors kit. Node `1` is
