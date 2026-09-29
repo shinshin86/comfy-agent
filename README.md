@@ -108,6 +108,7 @@ comfy-agent run z_image_turbo --prompt "a cat riding a bicycle"
 | Video | [`ltx23_t2v/`](./scripts/colab/ltx23_t2v/)                                 | Verified | A100        | LTX-2.3 text-to-video with generated audio            |
 | Video | [`ltx25/`](./scripts/colab/ltx25/)                                         | Verified | A100        | LTX-2.5 T2V / I2V / first-last-frame video with audio |
 | Video | [`minimax_h3/`](./scripts/colab/minimax_h3/)                               | Verified | A100        | MiniMax H3 T2V / I2V / reference image+audio R2V      |
+| Video | [`minimax_h3_character_swap/`](./scripts/colab/minimax_h3_character_swap/) | Verified E2E (A100) | A100 | Replaced one person in static and walking source clips; exact motion fidelity and LoRA benefit unverified |
 | Video | [`lynnreal_omni/`](./scripts/colab/lynnreal_omni/) | Verified E2E (video) | A100 40GB | Standard INT8 T2V/I2V, 640×384 / 56 frames; audio metadata checked; 69.30 GB |
 | Video | [`minimax_h3_turbo/`](./scripts/colab/minimax_h3_turbo/) | Starter | G4 recommended | 768p Turbo LoRA, 4-step T2V/I2V; A100 measured, audio review pending |
 | Video | [`minimax_h3_fast/`](./scripts/colab/minimax_h3_fast/)                     | Verified | A100        | FastH3 four-forward T2VA with mandatory VSA           |

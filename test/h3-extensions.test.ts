@@ -12,7 +12,11 @@ import { H3_EXTENSION_WORKFLOWS, selectH3Workflow } from "../src/colab/h3-routin
 type Graph = Record<string, { class_type: string; inputs: Record<string, unknown> }>;
 const root = process.cwd();
 const readGraph = async (name: string): Promise<Graph> => {
-  const kit = name.includes("_vdn_") ? "minimax_h3_vdn" : "minimax_h3_extensions";
+  const kit = name.includes("_vdn_")
+    ? "minimax_h3_vdn"
+    : name === "minimax_h3_character_swap"
+      ? "minimax_h3_character_swap"
+      : "minimax_h3_extensions";
   return JSON.parse(
     await fs.readFile(path.join(root, "scripts/colab", kit, name + ".json"), "utf8"),
   );
@@ -25,6 +29,10 @@ describe("H3 intent isolation", () => {
     ["H3で参照音声と画像を使って速く動画を作って", "minimax_h3_r2v"],
     ["H3でSNS風の動画", "minimax_h3_sns_t2v"],
     ["H3 SNS LoRA selfie vlog image to video", "minimax_h3_sns_i2v"],
+    ["H3 character swap LoRA", "minimax_h3_character_swap"],
+    ["H3でキャラクター置換", "minimax_h3_character_swap"],
+    ["H3で人物を別キャラに置き換え", "minimax_h3_character_swap"],
+    ["H3でキャラクター置換、LoRAなし", "minimax_h3_t2v"],
     ["H3で画像からTikTok風の動画", "minimax_h3_sns_i2v"],
     ["H3でTikTokに投稿する動画", "minimax_h3_t2v"],
     ["H3でSNS風、LoRAは使わない", "minimax_h3_t2v"],
@@ -66,6 +74,16 @@ describe("H3 intent isolation", () => {
       status: "verified",
     });
   });
+
+  it("suggests the Character Swap workflow only when explicitly requested", async () => {
+    const catalog = await loadColabCatalogFile(path.join(root, "scripts/colab/catalog.yaml"));
+    const requested = buildColabSuggestPayload(catalog, { goal: "H3でキャラクター置換" });
+    expect(requested.suggestions[0]).toMatchObject({
+      workflow: "minimax_h3_character_swap",
+      status: "verified",
+      task: "video_to_video",
+    });
+  });
 });
 
 describe("H3 extension graphs", () => {
@@ -84,7 +102,7 @@ describe("H3 extension graphs", () => {
       expect(graph["91"].inputs.fps).toBe(24);
       expect(graph["92"].class_type).toBe("SaveVideo");
       expect(graph["6"].inputs.unet_name).toBe(
-        name.endsWith("r2v")
+        name.endsWith("r2v") || name === "minimax_h3_character_swap"
           ? "minimax_h3_ref2va_pruned_int8_convrot.safetensors"
           : "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
       );
@@ -132,13 +150,15 @@ describe("H3 extension graphs", () => {
         .map((u) => u.cli_flag)
         .sort();
       const expected =
-        name.endsWith("r2v") || name.endsWith("guide_av")
-          ? ["--audio", "--image"]
-          : name.endsWith("guide_audio")
-            ? ["--audio"]
-            : name.endsWith("i2v") || name.endsWith("_guide")
-              ? ["--image"]
-              : [];
+        name === "minimax_h3_character_swap"
+          ? ["--image", "--video"]
+          : name.endsWith("r2v") || name.endsWith("guide_av")
+            ? ["--audio", "--image"]
+            : name.endsWith("guide_audio")
+              ? ["--audio"]
+              : name.endsWith("i2v") || name.endsWith("_guide")
+                ? ["--image"]
+                : [];
       expect(uploads, name).toEqual(expected);
       if (!name.includes("motion")) continue;
       const args = resolveDynamicArgs(
