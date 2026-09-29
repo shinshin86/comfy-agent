@@ -1,0 +1,139 @@
+{
+  "6": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "minimax_h3_ref2va_pruned_int8_convrot.safetensors",
+      "weight_dtype": "default"
+    }
+  },
+  "9": {
+    "class_type": "BasicScheduler",
+    "inputs": {
+      "model": ["120", 0],
+      "scheduler": "simple",
+      "steps": 20,
+      "denoise": 1
+    }
+  },
+  "10": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": ["14", 0],
+      "vae": ["11", 0]
+    }
+  },
+  "11": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "minimax_h3_video_vae_fp16.safetensors"
+    }
+  },
+  "13": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+      "clip_name": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+      "type": "minimax",
+      "device": "default"
+    }
+  },
+  "14": {
+    "class_type": "SamplerCustomAdvanced",
+    "inputs": {
+      "noise": ["15", 0],
+      "guider": ["16", 0],
+      "sampler": ["17", 0],
+      "sigmas": ["9", 0],
+      "latent_image": ["104", 1]
+    }
+  },
+  "15": {
+    "class_type": "RandomNoise",
+    "inputs": {
+      "noise_seed": 42
+    }
+  },
+  "16": {
+    "class_type": "BasicGuider",
+    "inputs": {
+      "model": ["120", 0],
+      "conditioning": ["104", 0]
+    }
+  },
+  "17": {
+    "class_type": "KSamplerSelect",
+    "inputs": {
+      "sampler_name": "res_multistep"
+    }
+  },
+  "23": {
+    "class_type": "VAEDecodeAudio",
+    "inputs": {
+      "samples": ["14", 0],
+      "vae": ["24", 0]
+    }
+  },
+  "24": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "minimax_h3_audio_vae_fp32.safetensors"
+    }
+  },
+  "91": {
+    "class_type": "CreateVideo",
+    "inputs": {
+      "images": ["10", 0],
+      "audio": ["23", 0],
+      "fps": 24
+    }
+  },
+  "92": {
+    "class_type": "SaveVideo",
+    "inputs": {
+      "video": ["91", 0],
+      "filename_prefix": "video/MiniMax_H3_Character_Swap",
+      "format": "auto",
+      "codec": "auto"
+    }
+  },
+  "104": {
+    "class_type": "MiniMaxH3ReferenceToVideo",
+    "inputs": {
+      "clip": ["13", 0],
+      "vae": ["11", 0],
+      "audio_vae": ["24", 0],
+      "ref_images.ref_image_0": ["114", 0],
+      "ref_videos.ref_video_0": ["116", 0],
+      "prompt": "<Video 1> is the source scene. <Picture 1> defines the replacement character. Replace only the person in the blue jacket in <Video 1> with the character in <Picture 1>.\n\nintegrated_multimodal_description: [Shot 1] A single continuous shot following <Video 1>. Keep the source camera, background, lighting, objects, and all other people. Give the selected person the identity, outfit, and art style from <Picture 1>. Match the selected person's position, scale, pose, and movement. Do not show the reference image or its background.\n\noverall_soundscape: Generate natural ambience appropriate to <Video 1>; exact preservation of its original audio is not required.\n\nnon_diegetic_music: N/A",
+      "width": 864,
+      "height": 480,
+      "length": 124,
+      "ref_image_size": "match"
+    }
+  },
+  "114": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "input.png"
+    }
+  },
+  "115": {
+    "class_type": "LoadVideo",
+    "inputs": {
+      "file": "source.mp4"
+    }
+  },
+  "116": {
+    "class_type": "GetVideoComponents",
+    "inputs": {
+      "video": ["115", 0]
+    }
+  },
+  "120": {
+    "class_type": "LoraLoaderModelOnly",
+    "inputs": {
+      "model": ["6", 0],
+      "lora_name": "h3_character_swap_pro4500_1000.safetensors",
+      "strength_model": 1.0
+    }
+  }
+}

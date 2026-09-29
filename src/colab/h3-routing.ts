@@ -10,6 +10,7 @@ export const H3_EXTENSION_WORKFLOWS = new Set([
   "minimax_h3_motion_t2v",
   "minimax_h3_motion_r2v",
   "minimax_h3_vdn_t2v",
+  "minimax_h3_character_swap",
 ]);
 
 const H3_WORKFLOWS = [
@@ -51,6 +52,11 @@ export const selectH3Workflow = (goal: string | undefined): string | undefined =
       text,
     );
   const noLora = /lora\s*(?:なし|不要|以外|を使わ|は使わ)|without\s+(?:a\s+)?lora/.test(text);
+  const characterSwap =
+    /character[\s_-]*swap|キャラクター(?:の)?(?:入れ替え|差し替え|置換)|キャラ(?:の)?(?:入れ替え|差し替え|置換)|人物を別(?:キャラ|人物)に(?:置き換え|差し替え|変換)/.test(
+      text,
+    );
+  if (characterSwap && !noLora) return "minimax_h3_character_swap";
   if (motion) return references ? "minimax_h3_motion_r2v" : "minimax_h3_motion_t2v";
   if (guide) {
     const audioGuide = /audio|音声|音を/.test(text);

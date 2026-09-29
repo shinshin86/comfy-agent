@@ -8,7 +8,7 @@ in `.mcp.json` at the repo root.
 
 ## Per-model starter kits
 
-The machine-readable catalog currently contains **47 kits**: 33 verified,
+The machine-readable catalog currently contains **48 kits**: 34 verified,
 7 partial, and 7 starter kits. The per-workflow notes below preserve more
 specific verification details where a kit contains multiple variants.
 
@@ -46,6 +46,7 @@ specific verification details where a kit contains multiple variants.
 | [`./ltx23_t2v/`](./ltx23_t2v/) | Verified E2E | A100 | LTX-2.3 text-to-video with synchronized generated audio |
 | [`./ltx25/`](./ltx25/) | Verified E2E | A100 | LTX-2.5 native T2V/I2V/FLF2V with synchronized audio (49.99 GB; gated HF access; LTX-2.x Community License) |
 | [`./minimax_h3/`](./minimax_h3/) | Verified E2E (T2V/I2V/R2V) | A100 | MiniMax H3 T2V/I2V plus reference image+audio R2V (42.47 GB one-family default; 65.40 GB full optional asset set; territory-restricted upstream license—review runtime region before use) |
+| [`./minimax_h3_character_swap/`](./minimax_h3_character_swap/) | Verified E2E (A100) | A100 | MiniMax H3 Ref2VA Character Swap LoRA, source video + replacement image (42.63 GB; 24 fps, one short shot; static and walking clips tested; exact motion fidelity and LoRA benefit unverified; audio listening unverified; territory-restricted upstream license) |
 | [`./lynnreal_omni/`](./lynnreal_omni/) | Verified E2E (T2V/I2V video) | A100 40GB | Standard INT8, 640×384 / 56 frames; audio metadata checked, listening unverified; 69.30 GB, dedicated launcher |
 | [`./minimax_h3_turbo/`](./minimax_h3_turbo/) | Starter | A100 measured; G4 untested | 768p FL2VA Turbo LoRA, 4-step T2V/I2V + audio, SageAttention; dedicated launcher |
 | [`./minimax_h3_fast/`](./minimax_h3_fast/) | Verified E2E | A100 | FastH3 Preview v1 four-forward T2VA with mandatory 90%-sparse VSA (44.40 GB; Draft ComfyUI pin + source-built CUDA kernel; no FL2VA/Ref2VA) |

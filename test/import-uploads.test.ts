@@ -49,6 +49,28 @@ describe("buildPresetTemplate upload inference", () => {
     expect(preset.parameters).toHaveProperty("4_text");
   });
 
+  it("maps the core LoadVideo.file input to --video without exposing file as a parameter", () => {
+    const preset = buildPresetTemplate(
+      "video_demo",
+      "video_demo.json",
+      {
+        "1": { class_type: "LoadVideo", inputs: { file: "source.mp4" } },
+      },
+      null,
+    );
+
+    expect(preset.uploads).toMatchObject({
+      video: {
+        kind: "file",
+        cli_flag: "--video",
+        target: { node_id: "1", input: "file" },
+        role: "input_video",
+        required: true,
+      },
+    });
+    expect(preset.parameters ?? {}).not.toHaveProperty("1_file");
+  });
+
   it("allocates stable numbered flags for multiple inputs of one media type", () => {
     const preset = buildPresetTemplate(
       "references",

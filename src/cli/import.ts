@@ -175,8 +175,9 @@ const inferUpload = (classType: string | undefined, inputName: string): Inferred
   }
 
   if (
-    normalizedInput === "video" &&
-    (normalizedClass === "loadvideo" || normalizedClass.endsWith("_loadvideo"))
+    (normalizedInput === "video" &&
+      (normalizedClass === "loadvideo" || normalizedClass.endsWith("_loadvideo"))) ||
+    (normalizedInput === "file" && normalizedClass === "loadvideo")
   ) {
     return {
       baseName: "video",

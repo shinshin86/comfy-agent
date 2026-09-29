@@ -747,6 +747,47 @@ kits:
         size_gb: 0.605254808
     setup_minutes: 22
     composable: false
+  - name: minimax_h3_character_swap
+    path: minimax_h3_character_swap/
+    status: verified
+    tasks: [video_to_video]
+    outputs: [video]
+    gpu:
+      minimum: A100
+      recommended: A100
+    summary: MiniMax H3 Ref2VA Character Swap LoRA replaces one person in a short source video using a reference image.
+    setup_file: 01_setup.py
+    license_notes:
+      - The Character Swap LoRA and MiniMax H3 base use the MiniMax H3 Community License; review the Colab runtime region and intended use before downloading or using either.
+      - The standard territory excludes the EU, UK, Republic of Korea, and USA. Identity replacement also requires appropriate rights and consent.
+    tags: [video, video_to_video, character_swap, lora, minimax, h3, ref2va]
+    workflows:
+      - name: minimax_h3_character_swap
+        file: minimax_h3_character_swap.json
+        task: video_to_video
+        output: video
+        capabilities: [lora]
+        speed: slow
+        quality: unknown
+        notes: A100 E2E verified with a looped static source and a real walking clip at 864x480 and 124 frames. Original audio is not preserved. The walking clip followed the subject's position and gait approximately, but exact motion fidelity is unverified. LoRA strength 0 gave a similar swap on the static clip, so incremental LoRA benefit is unverified.
+    assets:
+      - file: minimax_h3_ref2va_pruned_int8_convrot.safetensors
+        dir: models/diffusion_models
+        size_gb: 20.970379616
+      - file: qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors
+        dir: models/text_encoders
+        size_gb: 15.687142551
+      - file: minimax_h3_video_vae_fp16.safetensors
+        dir: models/vae
+        size_gb: 5.207808496
+      - file: minimax_h3_audio_vae_fp32.safetensors
+        dir: models/vae
+        size_gb: 0.605254808
+      - file: h3_character_swap_pro4500_1000.safetensors
+        dir: models/loras
+        size_gb: 0.15511032
+    setup_minutes: 23
+    composable: false
   - name: minimax_h3_turbo
     path: minimax_h3_turbo/
     status: starter
