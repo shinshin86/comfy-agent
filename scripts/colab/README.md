@@ -8,8 +8,8 @@ in `.mcp.json` at the repo root.
 
 ## Per-model starter kits
 
-The machine-readable catalog currently contains **48 kits**: 34 verified,
-7 partial, and 7 starter kits. The per-workflow notes below preserve more
+The machine-readable catalog currently contains **49 kits**: 34 verified,
+8 partial, and 7 starter kits. The per-workflow notes below preserve more
 specific verification details where a kit contains multiple variants.
 
 | Kit | Status | GPU | Notes |
@@ -26,6 +26,7 @@ specific verification details where a kit contains multiple variants.
 | [`./animegen_t2v/`](./animegen_t2v/) | Lightning verified E2E; plain starter | A100 | AnimeGen-T2V anime text-to-video, Wan 2.2 T2V A14B fine-tune (Apache-2.0; + optional 8-step Lightning LoRA) |
 | [`./z_anime/`](./z_anime/) | base verified E2E; distill-8step starter | T4+ | Z-Anime, anime-style Z-Image finetune (base + distill-8step, fp8) |
 | [`./qwen_image/`](./qwen_image/) | Starter | L4+ | Qwen-Image 2512, text-to-image |
+| [`./ming_image/`](./ming_image/) | Partial | A100 40GB, high RAM | Ming-Image-0.1-Design INT8, opaque 1024/2048 Colab E2E passed; 2048 cutout passed, 1024 alpha checks failed; Japanese text errors (25.94 GB; ComfyUI v0.38.0 pinned; MIT) |
 | [`./qwen_image_edit/`](./qwen_image_edit/) | Starter | A100 (L4 for fp8) | Qwen-Image-Edit 2511, image editing |
 | [`./qwen_image_2_1/`](./qwen_image_2_1/) | Verified E2E (L4) | L4+ / A100 | Qwen-Image 2.1 unified text-to-image + instruction editing, native 2K and RGBA (int8 convrot default, ~17.3 GB; **ComfyUI master/nightly only**; Qwen Research License — research/evaluation use only) |
 | [`./qwen_image_2_1_gguf_uc/`](./qwen_image_2_1_gguf_uc/) | Verified E2E (L4) | L4+ | Qwen-Image 2.1 UC-Q4_K_M GGUF (~14.6 GB including encoder and VAE; ComfyUI nightly + leejet/ComfyUI-GGUF; UC weight differences unverified; Qwen Research License) |

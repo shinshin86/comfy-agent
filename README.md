@@ -29,7 +29,7 @@ agent? See [For AI agents](#for-ai-agents).
 
 ## Why comfy-agent
 
-- **Verified environment catalog** — [39 kits](./scripts/colab/README.md) expose
+- **Verified environment catalog** — [49 kits](./scripts/colab/README.md) expose
   GPU, download size, setup time, license, and E2E evidence as machine-readable data.
 - **Artifacts and instructions stay local** — presets, outputs, recipes, and jobs
   survive server resets; [`connect`](./docs/cli-reference.md#connect) absorbs volatile URLs.
@@ -85,6 +85,7 @@ comfy-agent run z_image_turbo --prompt "a cat riding a bicycle"
 | Image | [`anima_light_lavender/`](./scripts/colab/anima_light_lavender/)           | Verified | T4          | Anima-Light-Lavender anime text-to-image              |
 | Image | [`z_anime/`](./scripts/colab/z_anime/)                                     | Partial  | T4          | Z-Anime base / distilled text-to-image                |
 | Image | [`qwen_image/`](./scripts/colab/qwen_image/)                               | Starter  | L4          | Qwen-Image text-to-image                              |
+| Image | [`ming_image/`](./scripts/colab/ming_image/)                               | Partial  | A100 40GB, high RAM | Ming-Image Design INT8, opaque 1024/2048 E2E passed; text/alpha limitations |
 | Image | [`qwen_image_edit/`](./scripts/colab/qwen_image_edit/)                     | Starter  | L4          | Qwen-Image-Edit instruction-based editing             |
 | Image | [`qwen_image_2_1/`](./scripts/colab/qwen_image_2_1/)                       | Verified | L4          | Qwen-Image 2.1 text-to-image + editing (nightly)      |
 | Image | [`qwen_image_2_1_gguf_uc/`](./scripts/colab/qwen_image_2_1_gguf_uc/)          | Verified | L4          | Qwen-Image 2.1 UC-Q4_K_M GGUF (UC claim unverified)   |

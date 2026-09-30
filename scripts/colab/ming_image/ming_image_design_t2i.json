@@ -1,0 +1,84 @@
+{
+  "1": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "ming_image_0.1_design_int8_convrot.safetensors",
+      "weight_dtype": "default"
+    }
+  },
+  "2": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+      "clip_name": "ming_image_0.1_ling_mini_2.0_int8_convrot.safetensors",
+      "type": "qwen_image",
+      "device": "default"
+    }
+  },
+  "3": {
+    "class_type": "VAELoader",
+    "inputs": { "vae_name": "ming_image_vae_bf16.safetensors" }
+  },
+  "4": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "A clean poster for a summer illustration exhibition. A young adult woman in a blue dress stands beside a large sunflower. Cream background, navy typography reading \"SUMMER DAYS\" at the top, restrained yellow accents, clear visual hierarchy.",
+      "clip": ["2", 0]
+    }
+  },
+  "5": {
+    "class_type": "PrimitiveInt",
+    "inputs": { "value": 1024 }
+  },
+  "6": {
+    "class_type": "PrimitiveInt",
+    "inputs": { "value": 1024 }
+  },
+  "7": {
+    "class_type": "ModelSamplingFlux",
+    "inputs": {
+      "model": ["1", 0],
+      "max_shift": 1.15,
+      "base_shift": 0.5,
+      "width": ["5", 0],
+      "height": ["6", 0]
+    }
+  },
+  "8": {
+    "class_type": "EmptyLatentImage",
+    "inputs": { "width": ["5", 0], "height": ["6", 0], "batch_size": 1 }
+  },
+  "9": {
+    "class_type": "BasicScheduler",
+    "inputs": { "model": ["7", 0], "scheduler": "simple", "steps": 12, "denoise": 1.0 }
+  },
+  "10": {
+    "class_type": "BasicGuider",
+    "inputs": { "model": ["7", 0], "conditioning": ["4", 0] }
+  },
+  "11": {
+    "class_type": "KSamplerSelect",
+    "inputs": { "sampler_name": "euler" }
+  },
+  "12": {
+    "class_type": "RandomNoise",
+    "inputs": { "noise_seed": 42 }
+  },
+  "13": {
+    "class_type": "SamplerCustomAdvanced",
+    "inputs": {
+      "noise": ["12", 0],
+      "guider": ["10", 0],
+      "sampler": ["11", 0],
+      "sigmas": ["9", 0],
+      "latent_image": ["8", 0]
+    }
+  },
+  "14": {
+    "class_type": "VAEDecode",
+    "inputs": { "samples": ["13", 0], "vae": ["3", 0] }
+  },
+  "15": {
+    "class_type": "SaveImage",
+    "inputs": { "images": ["14", 0], "filename_prefix": "Ming_Image_Design" }
+  }
+}
