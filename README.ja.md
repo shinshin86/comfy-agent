@@ -28,7 +28,7 @@ GPU が無い場合は [Google Colab で動かす](#google-colab-で動かす)�
 
 ## Why comfy-agent
 
-- **検証済み環境 catalog** — [39 kit](./scripts/colab/README.md) の GPU、download 量、
+- **検証済み環境 catalog** — [49 kit](./scripts/colab/README.md) の GPU、download 量、
   setup 時間、license、E2E 証拠を機械可読データで提供します。
 - **成果物と手順はローカルに保存** — preset、output、recipe、job は server reset 後も残り、
   [`connect`](./docs/cli-reference.ja.md#connect) が揮発 URL を吸収します。
@@ -84,6 +84,7 @@ comfy-agent run z_image_turbo --prompt "a cat riding a bicycle"
 | 画像 | [`anima_light_lavender/`](./scripts/colab/anima_light_lavender/) | 検証済み | T4 | Anima-Light-Lavender アニメ画像生成（長文キャプション向け） |
 | 画像 | [`z_anime/`](./scripts/colab/z_anime/) | 一部検証 | T4 | Z-Anime base / distilled 画像生成 |
 | 画像 | [`qwen_image/`](./scripts/colab/qwen_image/) | Starter | L4 | Qwen-Image テキスト→画像 |
+| 画像 | [`ming_image/`](./scripts/colab/ming_image/) | Partial | A100 40GB・高RAM | Ming-Image Design INT8。1024/2048画像・2048透過のColab E2E確認済み。日本語に誤字、1024透過は不合格 |
 | 画像 | [`qwen_image_edit/`](./scripts/colab/qwen_image_edit/) | Starter | L4 | Qwen-Image-Edit 指示ベース画像編集 |
 | 画像 | [`qwen_image_2_1/`](./scripts/colab/qwen_image_2_1/) | 検証済み | L4 | Qwen-Image 2.1 画像生成＋編集 (ComfyUI nightly 必須) |
 | 画像 | [`qwen_image_2_1_gguf_uc/`](./scripts/colab/qwen_image_2_1_gguf_uc/) | 検証済み | L4 | Qwen-Image 2.1 UC-Q4_K_M GGUF（UC重みの差異は未確認） |

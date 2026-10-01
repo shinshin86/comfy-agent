@@ -1075,6 +1075,46 @@ kits:
         size_gb: 1.7
     setup_minutes: 22
     composable: true
+  - name: ming_image
+    path: ming_image/
+    status: partial
+    tasks: [text_to_image]
+    outputs: [image]
+    gpu:
+      minimum: A100
+      recommended: A100
+      verified: [A100]
+    summary: Ming-Image-0.1-Design INT8 text-to-image for posters and UI layouts. Opaque 1024/2048 Colab E2E passed on A100 40GB; Japanese text errors; 2048 cutout passed, 1024 alpha checks failed.
+    setup_file: 01_setup.py
+    aliases: [Ming-Image-0.1-Design, ming_image_design, Ming Image]
+    tags: [image, design, poster, ui, text_rendering, json_prompt, rgba, transparent]
+    workflows:
+      - name: ming_image_design_t2i
+        file: ming_image_design_t2i.json
+        task: text_to_image
+        speed: unknown
+        quality: unknown
+        notes: >-
+          ComfyUI v0.38.0 pinned, 1024 default, 12-step Euler/simple with CFG 1.
+          Literal natural-language or structured JSON prompt. Official RGBA prefixes
+          are experimental: 2048 cutout passed, both 1024 trials failed alpha checks.
+          A100 40GB+, system RAM 64GB+ and 60GB free disk are planning targets,
+          not measured minimums. Opaque 1024 and 2048 passed;
+          Japanese headings contained errors. Start cutout tests at 2048 and verify alpha. No prompt enhancer or Layer model.
+    license_notes:
+      - Original inclusionAI model and Comfy-Org repack declare MIT; weights are downloaded at runtime.
+    assets:
+      - file: ming_image_0.1_design_int8_convrot.safetensors
+        dir: models/diffusion_models
+        size_gb: 6.175239953
+      - file: ming_image_0.1_ling_mini_2.0_int8_convrot.safetensors
+        dir: models/text_encoders
+        size_gb: 19.507670525
+      - file: ming_image_vae_bf16.safetensors
+        dir: models/vae
+        size_gb: 0.253816696
+    setup_minutes: 10
+    composable: false
   - name: qwen_image_2_1
     path: qwen_image_2_1/
     status: verified
