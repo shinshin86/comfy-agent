@@ -2,10 +2,12 @@
 
 `comfy-agent studio` starts a local web page (http://127.0.0.1:8790/ by default)
 that shows the production state of the current folder: generated outputs,
-characters, plans, and requests. **The studio has no model of its own.** You,
-the agent session running in this folder, make every creative and technical
-decision. The page displays those decisions and records the user's selections
-and feedback into the same `.comfy-agent/` files you read.
+characters, plans, and requests. **The studio has no model of its own.** The
+agent session makes creative and technical decisions; the user can also
+re-run a recorded job with edits through the normal CLI. The page displays
+those decisions and records selections and feedback into the same
+`.comfy-agent/` files you read. Job routes and feedback are limited to jobs in
+this folder's local workdir. Global characters and presets can still be shown.
 
 ```
 agent session ──(comfy-agent CLI)──> ComfyUI
@@ -20,9 +22,11 @@ agent session ──(comfy-agent CLI)──> ComfyUI
 ## 1. Receive requests
 
 The user writes a request in the studio and either copies it into your session
-or sends it to the inbox. Both carry the same text: the request, a
-`request_id`, an optional character, and the absolute paths of selected
-outputs.
+or sends it to the inbox. Both carry the request, an optional character, and
+the selected output IDs. The copied prompt also includes resolved output
+paths. Copying previews a request without storing it; its `request_id` is
+`(preview)`, so omit `request_id` when writing a plan for that draft. Sending
+stores a real request ID that the plan can reference.
 
 - To react to sent requests live, run `comfy-agent studio inbox --follow` in a
   background monitor (for example Claude Code's Monitor tool). Each new request
@@ -36,6 +40,35 @@ Before deciding anything, read the context the request points to:
   its prompt, parameters, notes, tags, and `reject_reason`.
 - `comfy-agent history list --favorite --json` and `--rejected` for the
   user's past preferences.
+
+## Re-run an existing job
+
+Selecting an output shows **Re-run with these settings**. Studio replays the
+recorded parameters through `comfy-agent run`, with the user's edits and
+choice of a new or original seed. This supports local presets, including
+jobs with uploaded inputs such as i2i, i2v, and r2v. Jobs whose workflow came
+from the remote server cannot be replayed this way. A missing or invalid
+preset must be restored before re-running.
+
+For each recorded input slot still defined in the preset, Studio chooses:
+
+1. A compatible gallery output the user picked via **+ Use** and selected in
+   the input dropdown. Image/mask slots accept images; audio slots accept
+   audio; file slots accept any output kind.
+2. The recorded local original, if it is still available.
+3. The copy downloaded from ComfyUI's input folder into
+   `.comfy-agent/cache/studio-inputs/`.
+
+If both the local original and server copy are gone, the run fails; select a
+replacement input or restore the original. Downloads use separate cache
+files per run. Keep those files when they are recorded as the inputs of
+later jobs.
+
+Each re-run can generate 1–4 outputs, and Studio permits at most two active
+re-runs, including input preparation. A third request returns HTTP 429 and
+the page asks the user to wait. To replay the original seed, use a count of
+one. Editable video frame-count/fps fields also show the approximate clip
+length. Changes to the method or model go through the agent and a new plan.
 
 ## 2. Write a plan before generating
 

@@ -92,6 +92,7 @@ const MESSAGES = {
     countLabel: "枚数",
     rerunButton: "ComfyUI で生成する",
     rerunStarted: "生成を開始しました。",
+    rerunLimit: "同時再実行の上限に達しています。実行中の生成が終わってから再度お試しください。",
     runsTitle: "Studio から実行した生成",
     runRunning: "生成中",
     runCompleted: "完了",
@@ -187,6 +188,8 @@ const MESSAGES = {
     countLabel: "Count",
     rerunButton: "Generate on ComfyUI",
     rerunStarted: "Generation started.",
+    rerunLimit:
+      "The concurrent re-run limit has been reached. Wait for a running generation to finish, then try again.",
     runsTitle: "Runs started from the studio",
     runRunning: "running",
     runCompleted: "done",
@@ -204,7 +207,9 @@ const state = {
   context: [], // [{ job_id, output_index }]
   character: null,
   editing: null, // "reject" | "note"
-  forms: {}, // job_id -> rerun form (or "loading")
+  forms: Object.create(null), // job_id -> rerun form (or "loading")
+  rerunErrors: Object.create(null),
+  submitting: new Set(),
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -227,7 +232,11 @@ const api = async (path, body) => {
     body: body ? JSON.stringify(body) : undefined,
   });
   const json = await res.json();
-  if (!json.ok) throw new Error(json.error?.message ?? res.statusText);
+  if (!res.ok || !json.ok) {
+    const error = new Error(json.error?.message ?? res.statusText);
+    error.code = json.error?.code;
+    throw error;
+  }
   return json;
 };
 
@@ -618,7 +627,7 @@ const renderRerunSection = (job) => {
     return `${heading}<p class="empty">${esc(form.message ?? t(REASON_KEYS[form.reason] ?? "rerunPresetMissing"))}</p>`;
   }
   const seed = form.has_seed
-    ? `<div class="seed-choice" role="radiogroup">
+    ? `<div class="seed-choice" role="radiogroup" aria-label="${esc(t("seed"))}">
         <label><input type="radio" name="__seed" value="new" checked /> ${esc(t("seedNew"))}</label>
         <label><input type="radio" name="__seed" value="same" /> ${esc(t("seedSame"))}${
           form.seed === null ? "" : ` <code>${esc(form.seed)}</code>`
@@ -642,8 +651,9 @@ const renderRerunSection = (job) => {
         <label class="count">${esc(t("countLabel"))}
           <select name="__count">${[1, 2, 3, 4].map((n) => `<option value="${n}">${n}</option>`).join("")}</select>
         </label>
-        <button type="submit">${esc(t("rerunButton"))}</button>
+        <button type="submit"${state.submitting.has(job.job_id) ? " disabled" : ""}>${esc(t("rerunButton"))}</button>
       </div>
+      <p class="run-error" data-rerun-error role="alert">${esc(state.rerunErrors[job.job_id])}</p>
     </form>`;
 };
 
@@ -653,12 +663,12 @@ const renderOutputInspector = (job, output) => {
   const rejected = job.tags.includes("reject");
   const editor =
     state.editing === "reject"
-      ? `<form class="inline-form" data-form="reject"><input name="value" required placeholder="${esc(
+      ? `<form class="inline-form" data-form="reject"><input name="value" required aria-label="${esc(t("rejectReason"))}" placeholder="${esc(
           t("rejectReason"),
         )}" autofocus /><button type="submit">${esc(t("save"))}</button>
         <button type="button" class="ghost" data-cancel-edit>${esc(t("cancel"))}</button></form>`
       : state.editing === "note"
-        ? `<form class="inline-form" data-form="note"><input name="value" required placeholder="${esc(
+        ? `<form class="inline-form" data-form="note"><input name="value" required aria-label="${esc(t("notePlaceholder"))}" placeholder="${esc(
             t("notePlaceholder"),
           )}" autofocus /><button type="submit">${esc(t("save"))}</button>
           <button type="button" class="ghost" data-cancel-edit>${esc(t("cancel"))}</button></form>`
@@ -726,7 +736,7 @@ const renderPlanInspector = (plan) => {
         )
         .map(
           ({ job, output }) =>
-            `<button type="button" data-job="${esc(job.job_id)}" data-index="${output.index}">${mediaTag(output, "")}</button>`,
+            `<button type="button" aria-label="${esc(output.filename)}" data-job="${esc(job.job_id)}" data-index="${output.index}">${mediaTag(output, "")}</button>`,
         )
         .join("");
       return `<div class="step">
@@ -765,6 +775,18 @@ const renderInspector = () => {
   if (inspector.dataset.html === html) return;
   // Re-renders (e.g. adding "+ Use" items) must not wipe what the user typed.
   const previous = inspector.querySelector("[data-rerun]");
+  const previousEditor = inspector.querySelector("[data-form]");
+  const editorInput = previousEditor?.querySelector("input[name='value']");
+  const savedEditor =
+    editorInput && inspector.dataset.focus === JSON.stringify(focus)
+      ? {
+          type: previousEditor.dataset.form,
+          value: editorInput.value,
+          active: editorInput === document.activeElement,
+          start: editorInput.selectionStart,
+          end: editorInput.selectionEnd,
+        }
+      : null;
   const saved = previous
     ? {
         id: previous.dataset.rerun,
@@ -775,10 +797,14 @@ const renderInspector = () => {
             value: element.type === "radio" ? element.checked : element.value,
             radioValue: element.type === "radio" ? element.value : undefined,
             disabled: element.disabled,
+            active: element === document.activeElement,
+            start: element.selectionStart,
+            end: element.selectionEnd,
           })),
       }
     : null;
   inspector.dataset.html = html;
+  inspector.dataset.focus = JSON.stringify(focus);
   unobserveVideos(inspector);
   inspector.innerHTML = html;
   const next = inspector.querySelector("[data-rerun]");
@@ -798,9 +824,23 @@ const renderInspector = () => {
         [...element.options].some((option) => option.value === entry.value)
       )
         element.value = entry.value;
+      if (entry.active) {
+        element.focus({ preventScroll: true });
+        if (typeof entry.start === "number") element.setSelectionRange(entry.start, entry.end);
+      }
     }
   }
-  inspector.querySelector("input[autofocus]")?.focus();
+  const nextEditor = inspector.querySelector("[data-form]");
+  if (savedEditor && nextEditor?.dataset.form === savedEditor.type) {
+    const input = nextEditor.querySelector("input[name='value']");
+    input.value = savedEditor.value;
+    if (savedEditor.active) {
+      input.focus({ preventScroll: true });
+      input.setSelectionRange(savedEditor.start, savedEditor.end);
+    }
+  } else {
+    inspector.querySelector("input[autofocus]")?.focus();
+  }
   observeVideos(inspector);
   const rerunForm = inspector.querySelector("[data-rerun]");
   if (rerunForm) updateDuration(rerunForm);
@@ -867,6 +907,7 @@ const applyStaticText = () => {
     element.textContent = t(element.dataset.i18n);
   }
   $("#request-text").placeholder = t("placeholder");
+  $("#request-text").setAttribute("aria-label", t("composerTitle"));
   $("#copy-request").textContent = t("copy");
   $("#queue-request").textContent = t("send");
   $("#queue-note").textContent = t("queueNote");
@@ -883,15 +924,26 @@ const savedLang = () => {
   }
 };
 
+let loadSequence = 0;
 const load = async () => {
+  const sequence = ++loadSequence;
+  let data;
   try {
-    state.data = await api("/api/state");
+    data = await api("/api/state");
   } catch (error) {
-    setStatus(t("loadFailed", { message: error.message }));
+    if (sequence === loadSequence) setStatus(t("loadFailed", { message: error.message }));
     return;
   }
+  if (sequence !== loadSequence) return;
+  state.data = data;
   // Drop selections that no longer exist (pruned jobs, removed characters).
   state.context = state.context.filter((item) => findOutput(item.job_id, item.output_index));
+  for (const id of Object.keys(state.forms)) {
+    if (!state.data.jobs.some(({ job_id }) => job_id === id)) {
+      delete state.forms[id];
+      delete state.rerunErrors[id];
+    }
+  }
   if (state.character && !state.data.characters.some(({ name }) => name === state.character)) {
     state.character = null;
   }
@@ -916,7 +968,7 @@ const feedback = async (body) => {
   if (focus?.type !== "output") return;
   try {
     await api(`/api/jobs/${encodeURIComponent(focus.job_id)}/feedback`, body);
-    state.editing = null;
+    if (state.focus === focus) state.editing = null;
     await load();
   } catch (error) {
     setStatus(error.message);
@@ -1014,6 +1066,8 @@ document.addEventListener("keydown", (event) => {
 });
 
 const submitRerun = async (form) => {
+  const jobId = form.dataset.rerun;
+  if (state.submitting.has(jobId)) return;
   const overrides = {};
   for (const element of form.querySelectorAll("[data-type]")) {
     const type = element.dataset.type;
@@ -1031,6 +1085,8 @@ const submitRerun = async (form) => {
   const seed = form.querySelector('input[name="__seed"]:checked')?.value ?? "new";
   const count = Number(form.querySelector('select[name="__count"]').value);
   const button = form.querySelector('button[type="submit"]');
+  state.submitting.add(jobId);
+  delete state.rerunErrors[jobId];
   button.disabled = true;
   try {
     await api(`/api/jobs/${encodeURIComponent(form.dataset.rerun)}/rerun`, {
@@ -1043,9 +1099,12 @@ const submitRerun = async (form) => {
     setStatus(t("rerunStarted"));
     await load();
   } catch (error) {
-    setStatus(error.message);
+    const message = error.code === "RUN_LIMIT_REACHED" ? t("rerunLimit") : error.message;
+    state.rerunErrors[jobId] = message;
+    setStatus(message);
   } finally {
-    button.disabled = false;
+    state.submitting.delete(jobId);
+    renderInspector();
   }
 };
 
@@ -1087,6 +1146,7 @@ $("#request-text").addEventListener("keydown", (event) => {
 const connectEvents = () => {
   const events = new EventSource("/api/events");
   events.addEventListener("changed", () => void load());
+  events.addEventListener("open", () => void load());
 };
 
 const start = async () => {

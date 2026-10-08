@@ -805,6 +805,10 @@ details summary {
   display: none;
 }
 
+[data-rerun-error]:empty {
+  display: none;
+}
+
 .input-audio {
   width: 100%;
   height: 32px;

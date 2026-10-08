@@ -1,4 +1,4 @@
-import { promises as fs, watch } from "node:fs";
+import { promises as fs, watch, type FSWatcher } from "node:fs";
 import { spawn } from "node:child_process";
 import { ZodError } from "zod";
 import { t, type Language } from "../i18n/index.js";
@@ -47,7 +47,9 @@ const openBrowser = (url: string) => {
     process.platform === "darwin" ? "open" : process.platform === "win32" ? "cmd" : "xdg-open";
   const args = process.platform === "win32" ? ["/c", "start", "", url] : [url];
   try {
-    spawn(command, args, { stdio: "ignore", detached: true }).unref();
+    const child = spawn(command, args, { stdio: "ignore", detached: true });
+    child.on("error", () => undefined);
+    child.unref();
   } catch {
     // The URL is printed anyway; failing to open a browser is not an error.
   }
@@ -180,12 +182,18 @@ export const runStudioInbox = async (options: StudioInboxOptions) => {
   const schedule = () => {
     draining = draining.then(drain).catch(() => undefined);
   };
-  const watcher = watch(filePath, schedule);
+  let watcher: FSWatcher | undefined;
+  try {
+    watcher = watch(filePath, schedule);
+    watcher.on("error", () => watcher?.close());
+  } catch {
+    // Polling still delivers requests when native file watching is unavailable.
+  }
   // fs.watch can miss events on some filesystems; a slow poll is the safety net.
   const poll = setInterval(schedule, 2000);
   await new Promise<void>((resolve) => {
     const stop = () => {
-      watcher.close();
+      watcher?.close();
       clearInterval(poll);
       resolve();
     };

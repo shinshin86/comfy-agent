@@ -10,6 +10,12 @@ export type RequestContextOutput = {
   prompt?: string;
 };
 
+const indent = (value: string, prefix: string) =>
+  value
+    .split(/\r\n|[\r\n\u2028\u2029]/)
+    .map((line) => `${prefix}${line}`)
+    .join("\n");
+
 /**
  * Builds the text handed to an agent session, either pasted by the user or
  * read from the inbox. It carries IDs and absolute paths so the agent never
@@ -26,20 +32,21 @@ export const buildAgentPrompt = (
       ? "comfy-agent Studio からの依頼です。`comfy-agent studio guide` の手順に沿って進めてください。"
       : "Request from comfy-agent Studio. Follow `comfy-agent studio guide`.",
     "",
-    `${ja ? "依頼" : "Request"}: ${request.text}`,
-    `request_id: ${request.id}`,
+    `${ja ? "依頼" : "Request"}:`,
+    indent(request.text, "  "),
+    `request_id: ${JSON.stringify(request.id)}`,
   ];
   if (request.character) {
-    lines.push(`${ja ? "キャラクター" : "Character"}: ${request.character}`);
+    lines.push(`${ja ? "キャラクター" : "Character"}: ${JSON.stringify(request.character)}`);
   }
   if (outputs.length > 0) {
     lines.push(ja ? "選択中の素材:" : "Selected outputs:");
     for (const output of outputs) {
       lines.push(
-        `- job ${output.job_id} #${output.output_index} (${output.preset}, ${output.kind}): ${output.path}`,
+        `- job ${JSON.stringify(output.job_id)} #${output.output_index} (${JSON.stringify(output.preset)}, ${JSON.stringify(output.kind)}): ${JSON.stringify(output.path)}`,
       );
       if (output.prompt) {
-        lines.push(`  prompt: ${output.prompt}`);
+        lines.push("  prompt:", indent(output.prompt, "    "));
       }
     }
   }

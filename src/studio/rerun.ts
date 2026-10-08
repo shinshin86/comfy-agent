@@ -56,6 +56,15 @@ const editableOrder = (def: ParameterDef) => {
 };
 
 export const MAX_RERUN_COUNT = 4;
+export const MAX_CONCURRENT_STUDIO_RUNS = 2;
+
+export class StudioRunLimitError extends Error {
+  constructor() {
+    super(
+      `Studio can run at most ${MAX_CONCURRENT_STUDIO_RUNS} re-runs at once. Wait for a run to finish and try again.`,
+    );
+  }
+}
 
 export type RerunUnsupportedReason = "remote_source" | "preset_missing";
 
@@ -386,7 +395,11 @@ export class StudioRuns {
   ) {}
 
   list(): StudioRun[] {
-    return [...this.runs].reverse().slice(0, 20);
+    const recent = [...this.runs].reverse();
+    return [
+      ...recent.filter(({ status }) => status === "running"),
+      ...recent.filter(({ status }) => status !== "running"),
+    ].slice(0, 20);
   }
 
   /** `prepare` resolves inputs (possibly downloading them) before `run` starts. */
@@ -396,6 +409,11 @@ export class StudioRuns {
     prepare: () => Promise<string[]>,
     count: number,
   ): StudioRun {
+    if (
+      this.runs.filter(({ status }) => status === "running").length >= MAX_CONCURRENT_STUDIO_RUNS
+    ) {
+      throw new StudioRunLimitError();
+    }
     const run: StudioRun = {
       id: randomUUID(),
       source_job_id: record.job_id,
@@ -412,15 +430,15 @@ export class StudioRuns {
       .then((result) => {
         const parsed = parseRunOutput(result);
         run.job_ids = parsed?.jobs?.map(({ job_id: id }) => id) ?? [];
-        if (result.exitCode === 0 && parsed?.ok !== false) {
+        if (result.exitCode === 0 && parsed?.ok === true) {
           run.status = "completed";
         } else {
           run.status = "failed";
           run.error = {
             code: parsed?.error?.code ?? "RUN_FAILED",
             message:
-              parsed?.error?.message ??
-              result.stderr.trim().split("\n").slice(-3).join("\n") ??
+              parsed?.error?.message?.trim() ||
+              result.stderr.trim().split("\n").slice(-3).join("\n") ||
               "comfy-agent run failed.",
           };
         }
@@ -434,6 +452,9 @@ export class StudioRuns {
       })
       .finally(() => {
         run.finished_at = new Date().toISOString();
+        // Keep all active runs and a bounded recent history.
+        const recent = this.runs.filter(({ status }) => status !== "running").slice(-20);
+        this.runs = this.runs.filter((item) => item.status === "running" || recent.includes(item));
         this.onChange();
       });
     return run;

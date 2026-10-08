@@ -28,6 +28,7 @@ import {
   type RerunInputOverride,
   MAX_RERUN_COUNT,
   StudioRuns,
+  StudioRunLimitError,
   type RunLauncher,
 } from "./rerun.js";
 import {
@@ -363,14 +364,7 @@ const readJsonBody = async (req: http.IncomingMessage): Promise<Record<string, u
 };
 
 const readJobOrThrow = async (cwd: string, jobId: string) => {
-  try {
-    return (await readJob(jobId, cwd, "local")).record;
-  } catch (error) {
-    if (error instanceof CliError && error.code === "JOB_NOT_FOUND") {
-      throw new HttpError(404, "JOB_NOT_FOUND", `Job not found: ${jobId}`);
-    }
-    throw error;
-  }
+  return (await readJob(jobId, cwd, "local", { fallback: false })).record;
 };
 
 const handleFeedback = async (cwd: string, jobId: string, body: Record<string, unknown>) => {
@@ -394,7 +388,7 @@ const handleFeedback = async (cwd: string, jobId: string, body: Record<string, u
   if (Object.keys(patch).length === 0) {
     throw new HttpError(400, "INVALID_PARAM", "Nothing to update.");
   }
-  const updated = await updateJob(record.job_id, patch, cwd, "local");
+  const updated = await updateJob(record.job_id, patch, cwd, "local", { fallback: false });
   return jobView(updated.record);
 };
 
@@ -461,7 +455,25 @@ export const startStudioServer = async (options: StudioServerOptions): Promise<S
   await fs.mkdir(getJobsDirPath(options.cwd, "local"), { recursive: true });
 
   const clients = new Set<http.ServerResponse>();
+  const feedbackWrites = new Map<string, Promise<unknown>>();
   const runs = new StudioRuns(options.launcher ?? cliLauncher, () => notify());
+  let stateInFlight: ReturnType<typeof buildState> | null = null;
+  let stateNext: ReturnType<typeof buildState> | null = null;
+  const startStateRead = () => {
+    stateNext = null;
+    stateInFlight = buildState(options, runs).finally(() => {
+      stateInFlight = null;
+    });
+    return stateInFlight;
+  };
+  const readState = () => {
+    if (stateNext) return stateNext;
+    if (!stateInFlight) return startStateRead();
+    // Never share a read that started before the request arrived. Requests
+    // waiting on an active read share the next one, even if the active read fails.
+    stateNext = stateInFlight.then(startStateRead, startStateRead);
+    return stateNext;
+  };
   let boundPort = options.port;
 
   const server = http.createServer(async (req, res) => {
@@ -487,7 +499,7 @@ export const startStudioServer = async (options: StudioServerOptions): Promise<S
       }
 
       if (url.pathname === "/api/state" && method === "GET") {
-        sendJson(res, 200, await buildState(options, runs));
+        sendJson(res, 200, await readState());
         return;
       }
 
@@ -628,9 +640,22 @@ export const startStudioServer = async (options: StudioServerOptions): Promise<S
       const feedback = /^\/api\/jobs\/([^/]+)\/feedback$/.exec(url.pathname);
       if (feedback && method === "POST") {
         const body = await readJsonBody(req);
+        const record = await readJobOrThrow(options.cwd, decodePathPart(feedback[1]!));
+        // Feedback for one record must see the preceding write, including prefix routes.
+        const previous = feedbackWrites.get(record.job_id) ?? Promise.resolve();
+        const write = previous
+          .catch(() => undefined)
+          .then(() => handleFeedback(options.cwd, record.job_id, body));
+        feedbackWrites.set(record.job_id, write);
+        let job;
+        try {
+          job = await write;
+        } finally {
+          if (feedbackWrites.get(record.job_id) === write) feedbackWrites.delete(record.job_id);
+        }
         sendJson(res, 200, {
           ok: true,
-          job: await handleFeedback(options.cwd, decodePathPart(feedback[1]!), body),
+          job,
         });
         return;
       }
@@ -647,6 +672,27 @@ export const startStudioServer = async (options: StudioServerOptions): Promise<S
     } catch (error) {
       if (res.headersSent) {
         res.end();
+        return;
+      }
+      if (error instanceof StudioRunLimitError) {
+        sendJson(res, 429, {
+          ok: false,
+          error: { code: "RUN_LIMIT_REACHED", message: error.message },
+        });
+        return;
+      }
+      if (error instanceof CliError) {
+        const statuses: Record<string, number> = {
+          JOB_NOT_FOUND: 404,
+          JOB_AMBIGUOUS_ID: 409,
+          INVALID_JOB_RECORD: 409,
+          INVALID_PARAM: 400,
+          FILE_NOT_FOUND: 404,
+        };
+        sendJson(res, statuses[error.code] ?? 500, {
+          ok: false,
+          error: { code: error.code, message: error.message },
+        });
         return;
       }
       if (error instanceof HttpError) {
@@ -680,13 +726,6 @@ export const startStudioServer = async (options: StudioServerOptions): Promise<S
       // Watching is best-effort; the UI also refetches on focus.
     }
   };
-  watchDir(getJobsDirPath(options.cwd, "local"), false);
-  watchDir(getStudioDirPath(options.cwd), true);
-  watchDir(getCharactersDirPath(options.cwd, "local"), true);
-  const heartbeat = setInterval(() => {
-    for (const client of clients) client.write(": ping\n\n");
-  }, 25_000);
-
   await new Promise<void>((resolve, reject) => {
     server.once("error", reject);
     server.listen(options.port, options.host, () => {
@@ -695,6 +734,13 @@ export const startStudioServer = async (options: StudioServerOptions): Promise<S
     });
   });
   boundPort = (server.address() as AddressInfo).port;
+  // Do not leave timers or watchers alive if binding the port fails.
+  watchDir(getJobsDirPath(options.cwd, "local"), false);
+  watchDir(getStudioDirPath(options.cwd), true);
+  watchDir(getCharactersDirPath(options.cwd, "local"), true);
+  const heartbeat = setInterval(() => {
+    for (const client of clients) client.write(": ping\n\n");
+  }, 25_000);
   const displayHost = options.host.includes(":") ? `[${options.host}]` : options.host;
 
   return {

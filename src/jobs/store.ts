@@ -27,6 +27,8 @@ export type PruneJobsOptions = {
 
 export type JobPatch = Partial<Omit<JobRecord, "version" | "job_id">>;
 
+export type JobLookupOptions = { fallback?: boolean };
+
 export type AttachVerifySummaryResult =
   | { status: "written" }
   | { status: "not_found" }
@@ -177,8 +179,10 @@ export const readJob = async (
   jobId: string,
   cwd: string,
   scope: WorkdirScope,
+  options: JobLookupOptions = {},
 ): Promise<ResolvedJob> => {
-  for (const candidateScope of [scope, otherScope(scope)]) {
+  const scopes = options.fallback === false ? [scope] : [scope, otherScope(scope)];
+  for (const candidateScope of scopes) {
     const filePath = await resolveRecordPath(jobId, cwd, candidateScope);
     if (filePath) {
       return { record: await readRecordFile(filePath), scope: candidateScope };
@@ -196,8 +200,9 @@ export const updateJob = async (
   patch: JobPatch,
   cwd: string,
   scope: WorkdirScope,
+  options: JobLookupOptions = {},
 ): Promise<ResolvedJob> => {
-  const resolved = await readJob(jobId, cwd, scope);
+  const resolved = await readJob(jobId, cwd, scope, options);
   const version = Object.keys(patch).some((key) => V2_JOB_KEYS.has(key as keyof JobPatch))
     ? 2
     : resolved.record.version;
