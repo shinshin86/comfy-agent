@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>comfy-agent Studio</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">comfy-agent <span>Studio</span></div>
+      <div class="topbar-meta">
+        <span class="pill" id="connection" title=""></span>
+        <span class="cwd" id="cwd"></span>
+        <button type="button" class="ghost" id="lang-toggle"></button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <aside class="sidebar">
+        <section>
+          <h2 data-i18n="characters"></h2>
+          <div id="characters" class="character-list"></div>
+        </section>
+        <section>
+          <h2 data-i18n="plans"></h2>
+          <div id="plans" class="plan-list"></div>
+        </section>
+        <section>
+          <h2 data-i18n="requests"></h2>
+          <div id="requests" class="request-list"></div>
+        </section>
+      </aside>
+
+      <section class="center">
+        <form class="composer" id="composer">
+          <div class="composer-head">
+            <h2 data-i18n="composerTitle"></h2>
+            <ol class="flow">
+              <li data-i18n="flow1"></li>
+              <li data-i18n="flow2"></li>
+              <li data-i18n="flow3"></li>
+            </ol>
+          </div>
+          <textarea id="request-text" rows="3"></textarea>
+          <div class="context" id="context"></div>
+          <div class="composer-actions">
+            <span class="hint" id="composer-hint"></span>
+            <button type="button" id="queue-request" class="secondary"></button>
+            <button type="submit" id="copy-request"></button>
+          </div>
+          <p class="queue-note" id="queue-note"></p>
+          <p class="composer-status" id="composer-status" role="status"></p>
+        </form>
+
+        <div class="runs" id="runs" hidden></div>
+
+        <div class="gallery-toolbar">
+          <div class="filters" id="filters" role="group"></div>
+          <span class="count" id="gallery-count"></span>
+        </div>
+        <div class="gallery" id="gallery"></div>
+      </section>
+
+      <aside class="inspector" id="inspector"></aside>
+    </main>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

@@ -22,6 +22,7 @@ import {
 } from "./history.js";
 import { runVerify } from "./verify.js";
 import { runBrief } from "./brief.js";
+import { runStudioGuide, runStudioInbox, runStudioPlan, runStudioServe } from "./studio.js";
 import { CliError, errorPayloadFrom, exitCodeFrom, isCliError } from "../io/errors.js";
 import { log } from "../io/output.js";
 import { resolveLanguage, setLanguage, t } from "../i18n/index.js";
@@ -835,6 +836,64 @@ colab
   .action(async (goal, options) => {
     try {
       await runColabSuggest(goal, options);
+    } catch (err) {
+      handleError(err, options?.json);
+    }
+  });
+
+const studio = program.command("studio").alias("ui").description(t("cli.studio.description"));
+
+studio
+  .command("serve", { isDefault: true })
+  .description(t("cli.studio.serve.description"))
+  .option("--port <n>", t("cli.studio.option.port"))
+  .option("--host <host>", t("cli.studio.option.host"))
+  .option("--open", t("cli.studio.option.open"))
+  .option("--lang <lang>", t("cli.option.lang"))
+  .action(async (options) => {
+    try {
+      await runStudioServe(options);
+    } catch (err) {
+      handleError(err, false);
+    }
+  });
+
+studio
+  .command("plan")
+  .description(t("cli.studio.plan.description"))
+  .argument("<file>", t("cli.studio.plan.arg.file"))
+  .option("--json", t("cli.option.json"))
+  .option("--lang <lang>", t("cli.option.lang"))
+  .action(async (file, options) => {
+    try {
+      await runStudioPlan(file, options);
+    } catch (err) {
+      handleError(err, options?.json);
+    }
+  });
+
+studio
+  .command("inbox")
+  .description(t("cli.studio.inbox.description"))
+  .option("--follow", t("cli.studio.inbox.option.follow"))
+  .option("--all", t("cli.studio.inbox.option.all"))
+  .option("--json", t("cli.option.json"))
+  .option("--lang <lang>", t("cli.option.lang"))
+  .action(async (options) => {
+    try {
+      await runStudioInbox(options);
+    } catch (err) {
+      handleError(err, options?.json);
+    }
+  });
+
+studio
+  .command("guide")
+  .description(t("cli.studio.guide.description"))
+  .option("--lang <lang>", t("cli.option.lang"))
+  .action(async (options) => {
+    try {
+      await runStudioGuide();
     } catch (err) {
       handleError(err, options?.json);
     }
