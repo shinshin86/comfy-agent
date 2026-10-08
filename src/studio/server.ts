@@ -1,6 +1,6 @@
 import http from "node:http";
 import path from "node:path";
-import { createReadStream, watch, type FSWatcher, promises as fs } from "node:fs";
+import { watch, type FSWatcher, promises as fs } from "node:fs";
 import type { AddressInfo } from "node:net";
 import { readGallery } from "../characters/gallery.js";
 import { listCharacters, resolveCharacter } from "../characters/store.js";
@@ -21,7 +21,11 @@ import {
   buildRerunArgs,
   buildRerunForm,
   cliLauncher,
+  comfyInputFetcher,
   loadRerunPreset,
+  resolveRerunInputs,
+  validateRerunRequest,
+  type RerunInputOverride,
   MAX_RERUN_COUNT,
   StudioRuns,
   type RunLauncher,
@@ -46,6 +50,8 @@ export type StudioServerOptions = {
   jobLimit?: number;
   /** How re-runs invoke `comfy-agent run`; tests replace it. */
   launcher?: RunLauncher;
+  /** How re-runs fetch inputs from the ComfyUI server; tests replace it. */
+  fetchServerInput?: (serverName: string) => Promise<Buffer>;
 };
 
 export type StudioServer = {
@@ -105,8 +111,18 @@ class HttpError extends Error {
   }
 }
 
+const decodePathPart = (value: string) => {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    throw new HttpError(400, "INVALID_PARAM", "Invalid URL encoding.");
+  }
+};
+
+// The file extension wins: job records store ComfyUI's output bucket as `kind`,
+// and video nodes report their mp4/webm files under "images".
 const outputKind = (kind: string | undefined, filename: string) =>
-  kind ?? KIND_BY_EXT[path.extname(filename).toLowerCase()] ?? "file";
+  KIND_BY_EXT[path.extname(filename).toLowerCase()] ?? kind ?? "file";
 
 const jobOutputPath = (record: JobRecord, index: number) => {
   const output = record.outputs[index];
@@ -275,40 +291,53 @@ const sendJson = (res: http.ServerResponse, status: number, body: unknown) => {
 };
 
 const sendFile = async (req: http.IncomingMessage, res: http.ServerResponse, filePath: string) => {
-  let stat;
+  let file;
   try {
-    stat = await fs.stat(filePath);
+    file = await fs.open(filePath, "r");
   } catch {
     throw new HttpError(404, "FILE_NOT_FOUND", "File not found.");
   }
-  if (!stat.isFile()) throw new HttpError(404, "FILE_NOT_FOUND", "File not found.");
-  const type = MIME[path.extname(filePath).toLowerCase()] ?? "application/octet-stream";
-  const range = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range ?? "");
-  // Safari will not play <video> without byte-range support.
-  if (range && (range[1] || range[2])) {
-    const start = range[1] ? Number(range[1]) : Math.max(0, stat.size - Number(range[2]));
-    const end = range[1] && range[2] ? Math.min(Number(range[2]), stat.size - 1) : stat.size - 1;
-    if (start > end || start >= stat.size) {
-      res.writeHead(416, { "Content-Range": `bytes */${stat.size}` });
-      res.end();
-      return;
+  let streaming = false;
+  try {
+    // Stat and stream the same open file; a later deletion or symlink change
+    // cannot redirect the stream to a different file.
+    const stat = await file.stat();
+    if (!stat.isFile()) throw new HttpError(404, "FILE_NOT_FOUND", "File not found.");
+    const type = MIME[path.extname(filePath).toLowerCase()] ?? "application/octet-stream";
+    const range = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range ?? "");
+    let bounds: { start: number; end: number } | undefined;
+    // Safari will not play <video> without byte-range support.
+    if (range && (range[1] || range[2])) {
+      const start = range[1] ? Number(range[1]) : Math.max(0, stat.size - Number(range[2]));
+      const end = range[1] && range[2] ? Math.min(Number(range[2]), stat.size - 1) : stat.size - 1;
+      if (start > end || start >= stat.size) {
+        res.writeHead(416, { "Content-Range": `bytes */${stat.size}` });
+        res.end();
+        return;
+      }
+      bounds = { start, end };
+      res.writeHead(206, {
+        "Content-Type": type,
+        "Content-Length": end - start + 1,
+        "Content-Range": `bytes ${start}-${end}/${stat.size}`,
+        "Accept-Ranges": "bytes",
+      });
+    } else {
+      res.writeHead(200, {
+        "Content-Type": type,
+        "Content-Length": stat.size,
+        "Accept-Ranges": "bytes",
+        "Cache-Control": type.startsWith("text/") ? "no-store" : "private, max-age=60",
+      });
     }
-    res.writeHead(206, {
-      "Content-Type": type,
-      "Content-Length": end - start + 1,
-      "Content-Range": `bytes ${start}-${end}/${stat.size}`,
-      "Accept-Ranges": "bytes",
-    });
-    createReadStream(filePath, { start, end }).pipe(res);
-    return;
+    const stream = file.createReadStream(bounds);
+    stream.on("error", () => res.destroy());
+    res.on("close", () => stream.destroy());
+    stream.pipe(res);
+    streaming = true;
+  } finally {
+    if (!streaming) await file.close();
   }
-  res.writeHead(200, {
-    "Content-Type": type,
-    "Content-Length": stat.size,
-    "Accept-Ranges": "bytes",
-    "Cache-Control": type.startsWith("text/") ? "no-store" : "private, max-age=60",
-  });
-  createReadStream(filePath).pipe(res);
 };
 
 const readJsonBody = async (req: http.IncomingMessage): Promise<Record<string, unknown>> => {
@@ -406,6 +435,20 @@ const handleRequest = async (
   return { request, prompt: buildAgentPrompt(request, outputs, lang) };
 };
 
+const parseInputOverrides = (value: unknown): Record<string, RerunInputOverride> => {
+  if (value === undefined || value === null) return {};
+  if (typeof value !== "object" || Array.isArray(value)) {
+    throw new HttpError(400, "INVALID_PARAM", "inputs must be an object.");
+  }
+  const entries: Array<[string, RerunInputOverride]> = [];
+  for (const [name, selection] of Object.entries(value as Record<string, unknown>)) {
+    const parsed = StudioSelectionSchema.safeParse(selection);
+    if (!parsed.success) throw new HttpError(400, "INVALID_PARAM", `Invalid input: ${name}`);
+    entries.push([name, parsed.data]);
+  }
+  return Object.fromEntries(entries);
+};
+
 const isLoopbackHost = (hostHeader: string | undefined, port: number) => {
   if (!hostHeader) return false;
   return [`127.0.0.1:${port}`, `localhost:${port}`, `[::1]:${port}`].includes(
@@ -462,9 +505,23 @@ export const startStudioServer = async (options: StudioServerOptions): Promise<S
 
       const jobMedia = /^\/api\/media\/job\/([^/]+)\/(\d+)$/.exec(url.pathname);
       if (jobMedia && method === "GET") {
-        const record = await readJobOrThrow(options.cwd, decodeURIComponent(jobMedia[1]!));
+        const record = await readJobOrThrow(options.cwd, decodePathPart(jobMedia[1]!));
         const filePath = jobOutputPath(record, Number(jobMedia[2]));
         if (!filePath) throw new HttpError(404, "FILE_NOT_FOUND", "Unknown output.");
+        await sendFile(req, res, filePath);
+        return;
+      }
+
+      const inputMedia = /^\/api\/media\/input\/([^/]+)\/([^/]+)$/.exec(url.pathname);
+      if (inputMedia && method === "GET") {
+        const record = await readJobOrThrow(options.cwd, decodePathPart(inputMedia[1]!));
+        // Only files recorded by `run` as upload sources are served.
+        const name = decodePathPart(inputMedia[2]!);
+        const filePath =
+          record.upload_sources && Object.hasOwn(record.upload_sources, name)
+            ? record.upload_sources[name]
+            : undefined;
+        if (!filePath) throw new HttpError(404, "FILE_NOT_FOUND", "Unknown input.");
         await sendFile(req, res, filePath);
         return;
       }
@@ -475,9 +532,10 @@ export const startStudioServer = async (options: StudioServerOptions): Promise<S
         );
       if (characterMedia && method === "GET") {
         const [, scope, name, kind, index] = characterMedia;
+        const characterName = decodePathPart(name!);
         let resolved;
         try {
-          resolved = await resolveCharacter(decodeURIComponent(name!), {
+          resolved = await resolveCharacter(characterName, {
             cwd: options.cwd,
             scope: scope as WorkdirScope,
           });
@@ -496,14 +554,14 @@ export const startStudioServer = async (options: StudioServerOptions): Promise<S
 
       const rerun = /^\/api\/jobs\/([^/]+)\/rerun$/.exec(url.pathname);
       if (rerun && (method === "GET" || method === "POST")) {
-        const record = await readJobOrThrow(options.cwd, decodeURIComponent(rerun[1]!));
+        const record = await readJobOrThrow(options.cwd, decodePathPart(rerun[1]!));
         const loaded = await loadRerunPreset(options.cwd, record);
         if (method === "GET") {
           sendJson(res, 200, {
             ok: true,
             form:
               "preset" in loaded
-                ? buildRerunForm(record, loaded.preset)
+                ? await buildRerunForm(record, loaded.preset)
                 : { supported: false, reason: loaded.reason },
           });
           return;
@@ -524,15 +582,18 @@ export const startStudioServer = async (options: StudioServerOptions): Promise<S
           body.overrides && typeof body.overrides === "object" && !Array.isArray(body.overrides)
             ? (body.overrides as Record<string, unknown>)
             : {};
-        let args: string[];
+        const inputOverrides = parseInputOverrides(body.inputs);
+        const request = {
+          overrides,
+          seed: body.seed === "same" ? ("same" as const) : ("new" as const),
+          count,
+          lang: body.lang === "ja" || body.lang === "en" ? body.lang : (options.lang ?? undefined),
+        };
+        const preset = loaded.preset;
+        // Validate edits and input names now so mistakes come back as 400s;
+        // resolving (and possibly downloading) input files happens in the run.
         try {
-          args = buildRerunArgs(record, loaded.preset, {
-            overrides,
-            seed: body.seed === "same" ? "same" : "new",
-            count,
-            lang:
-              body.lang === "ja" || body.lang === "en" ? body.lang : (options.lang ?? undefined),
-          });
+          validateRerunRequest(record, preset, overrides, inputOverrides);
         } catch (error) {
           throw new HttpError(
             400,
@@ -540,7 +601,27 @@ export const startStudioServer = async (options: StudioServerOptions): Promise<S
             error instanceof Error ? error.message : String(error),
           );
         }
-        sendJson(res, 200, { ok: true, run: runs.start(options.cwd, record, args, count) });
+        const prepare = async () => {
+          const inputs = await resolveRerunInputs(options.cwd, record, preset, inputOverrides, {
+            outputFile: async (selection) => {
+              const source = await readJobOrThrow(options.cwd, selection.job_id);
+              const filePath = jobOutputPath(source, selection.output_index);
+              const output = source.outputs[selection.output_index];
+              if (!filePath || !output) return null;
+              return { path: filePath, kind: outputKind(output.kind, output.saved_to) };
+            },
+            fetchServerInput: (serverName) =>
+              options.fetchServerInput
+                ? options.fetchServerInput(serverName)
+                : comfyInputFetcher(
+                    decideComfyBaseUrl({}, process.env, (scope) =>
+                      readConfigSync(options.cwd, scope),
+                    ).value,
+                  )(serverName),
+          });
+          return buildRerunArgs(record, preset, { ...request, inputs });
+        };
+        sendJson(res, 200, { ok: true, run: runs.start(options.cwd, record, prepare, count) });
         return;
       }
 
@@ -549,7 +630,7 @@ export const startStudioServer = async (options: StudioServerOptions): Promise<S
         const body = await readJsonBody(req);
         sendJson(res, 200, {
           ok: true,
-          job: await handleFeedback(options.cwd, decodeURIComponent(feedback[1]!), body),
+          job: await handleFeedback(options.cwd, decodePathPart(feedback[1]!), body),
         });
         return;
       }
@@ -592,7 +673,9 @@ export const startStudioServer = async (options: StudioServerOptions): Promise<S
   const watchers: FSWatcher[] = [];
   const watchDir = (dir: string, recursive: boolean) => {
     try {
-      watchers.push(watch(dir, { recursive }, notify));
+      const watcher = watch(dir, { recursive }, notify);
+      watcher.on("error", () => watcher.close());
+      watchers.push(watcher);
     } catch {
       // Watching is best-effort; the UI also refetches on focus.
     }

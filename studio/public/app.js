@@ -77,8 +77,14 @@ const MESSAGES = {
     rerunNote:
       "判断の要らない再実行は、Studio から直接 ComfyUI({url})に送ります。方式やモデルを変えたいときはエージェントに依頼してください。",
     rerunLoading: "読み込み中…",
-    rerunUploads:
-      "入力画像を使う生成は、まだ Studio から再生成できません。エージェントに依頼してください。",
+    inputsTitle: "入力",
+    durationFrames: "動画の長さ: 約 {s} 秒({fps} fps)",
+    durationSeconds: "動画の長さ: 約 {s} 秒",
+    inputOriginal: "元の入力をそのまま使う",
+    inputFromContext: "＋素材: {preset}",
+    inputHint: "「＋素材」で選んだ画像や音声に差し替えられます。",
+    inputServerOnly:
+      "元のファイルがローカルに見つからないため、ComfyUI 上のコピー({name})を取得して使います。サーバーを作り直していると失敗します。",
     rerunRemote: "ComfyUI 側に保存されたワークフローの生成は、まだ Studio から再生成できません。",
     rerunPresetMissing: "プリセットが見つからないため再生成できません。",
     seedNew: "新しい seed(別案)",
@@ -166,8 +172,14 @@ const MESSAGES = {
     rerunNote:
       "Re-runs that need no judgment are sent straight to ComfyUI ({url}). Ask your agent to change the method or model.",
     rerunLoading: "Loading…",
-    rerunUploads:
-      "Outputs made from input images cannot be re-run from the studio yet. Ask your agent.",
+    inputsTitle: "Inputs",
+    durationFrames: "Clip length: about {s}s ({fps} fps)",
+    durationSeconds: "Clip length: about {s}s",
+    inputOriginal: "Keep the original input",
+    inputFromContext: "+ Use: {preset}",
+    inputHint: "Replace it with an output picked via “+ Use”.",
+    inputServerOnly:
+      "The original file is not on this machine, so the copy on ComfyUI ({name}) is fetched. This fails if the server was recreated.",
     rerunRemote: "Workflows stored on the ComfyUI server cannot be re-run from the studio yet.",
     rerunPresetMissing: "The preset was not found, so this cannot be re-run.",
     seedNew: "New seed (variation)",
@@ -235,13 +247,43 @@ const mediaTag = (output, className = "media", controls = false) => {
   if (output.kind === "video") {
     return controls
       ? `<video class="${className}" src="${esc(output.url)}" controls loop playsinline></video>`
-      : `<video class="${className}" src="${esc(output.url)}#t=0.1" muted playsinline preload="metadata"></video>`;
+      : `<video class="${className}" data-src="${esc(output.url)}#t=0.1" muted loop playsinline preload="metadata"></video>`;
   }
   if (output.kind === "audio" && controls) {
     return `<audio class="${className}" src="${esc(output.url)}" controls></audio>`;
   }
   const icon = output.kind === "audio" ? "♪" : output.kind === "video" ? "▶" : "📄";
   return `<div class="${className} media-icon">${icon}</div>`;
+};
+
+// Galleries can hold hundreds of clips; only load the ones near the viewport so
+// they do not exhaust the browser's connections to the studio server.
+const videoObserver =
+  "IntersectionObserver" in window
+    ? new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            if (!entry.isIntersecting) continue;
+            const video = entry.target;
+            video.src = video.dataset.src;
+            videoObserver.unobserve(video);
+          }
+        },
+        { rootMargin: "300px" },
+      )
+    : null;
+
+const observeVideos = (root) => {
+  for (const video of root.querySelectorAll("video[data-src]:not([src])")) {
+    if (videoObserver) videoObserver.observe(video);
+    else video.src = video.dataset.src;
+  }
+};
+
+const unobserveVideos = (root) => {
+  for (const video of root.querySelectorAll("video[data-src]:not([src])")) {
+    videoObserver?.unobserve(video);
+  }
 };
 
 const formatDuration = (ms) => (ms === undefined ? "—" : `${(ms / 1000).toFixed(1)}s`);
@@ -332,7 +374,9 @@ const renderContext = () => {
     ? `<span class="chip">👤 ${esc(state.character)}
         <button type="button" data-clear-character aria-label="×">×</button></span>`
     : "";
+  unobserveVideos($("#context"));
   $("#context").innerHTML = character + chips;
+  observeVideos($("#context"));
 };
 
 const requestBody = (send) => ({
@@ -412,6 +456,7 @@ const renderFilters = () => {
 };
 
 const renderGallery = () => {
+  unobserveVideos($("#gallery"));
   const items = allOutputs().filter(matchesFilter);
   $("#gallery-count").textContent = t("items", { n: items.length });
   if (items.length === 0) {
@@ -441,6 +486,7 @@ const renderGallery = () => {
       </div>`;
     })
     .join("");
+  observeVideos($("#gallery"));
 };
 
 /* ---------- Inspector ---------- */
@@ -471,7 +517,6 @@ const stepDecision = (step) =>
   ]);
 
 const REASON_KEYS = {
-  uploads: "rerunUploads",
   remote_source: "rerunRemote",
   preset_missing: "rerunPresetMissing",
 };
@@ -490,7 +535,7 @@ const ensureRerunForm = (jobId) => {
 };
 
 const rerunField = (field) => {
-  const label = `<span>${esc(field.name)}<small>${esc(field.role)}</small></span>`;
+  const label = `<span>${esc(field.name)}<small>${esc(field.label)}</small></span>`;
   if (field.type === "string") {
     const rows = field.role === "prompt" ? 5 : 2;
     return `<label class="field">${label}<textarea name="${esc(field.name)}" data-type="string" rows="${rows}">${esc(
@@ -499,12 +544,68 @@ const rerunField = (field) => {
   }
   if (field.type === "int" || field.type === "float") {
     const step = field.type === "int" ? "1" : "any";
-    const bounds = `${field.min === undefined ? "" : ` min="${field.min}"`}${field.max === undefined ? "" : ` max="${field.max}"`}`;
+    const bounds = `${field.min === undefined ? "" : ` min="${esc(field.min)}"`}${field.max === undefined ? "" : ` max="${esc(field.max)}"`}`;
     return `<label class="field">${label}<input type="number" step="${step}"${bounds} name="${esc(
       field.name,
-    )}" data-type="${field.type}" value="${esc(field.value)}" /></label>`;
+    )}" data-type="${esc(field.type)}" data-label="${esc(field.label)}" value="${esc(field.value)}" /></label>`;
   }
   return "";
+};
+
+// Video presets expose frame count and fps; show the resulting clip length.
+const durationText = (form) => {
+  const value = (labels) =>
+    Number(
+      [...form.querySelectorAll("[data-label]")].find((element) =>
+        labels.includes(element.dataset.label),
+      )?.value,
+    );
+  const frames = value(["length", "frames", "num_frames"]);
+  const fps = value(["fps", "frame_rate"]);
+  const seconds = value(["duration", "seconds"]);
+  if (seconds > 0) return t("durationSeconds", { s: seconds.toFixed(1) });
+  if (frames > 0 && fps > 0) return t("durationFrames", { s: (frames / fps).toFixed(1), fps });
+  return "";
+};
+
+const updateDuration = (form) => {
+  const note = form.querySelector("[data-duration]");
+  if (note) note.textContent = durationText(form);
+};
+
+const acceptsKind = (uploadKind, outputKind) =>
+  uploadKind === "file" ||
+  (uploadKind === "audio" ? outputKind === "audio" : outputKind === "image");
+
+const rerunInput = (input) => {
+  const local = input.source === "local" && input.url;
+  const preview = !local
+    ? ""
+    : input.kind === "audio"
+      ? `<audio class="input-audio" src="${esc(input.url)}" controls preload="none"></audio>`
+      : input.kind === "image" || input.kind === "mask"
+        ? `<img class="input-preview" src="${esc(input.url)}" alt="" />`
+        : "";
+  // Gallery outputs added with "+ Use" are offered as replacements.
+  const options = state.context
+    .map((item) => ({ item, found: findOutput(item.job_id, item.output_index) }))
+    .filter(({ found }) => found && acceptsKind(input.kind, found.output.kind))
+    .map(
+      ({ item, found }) =>
+        `<option value="${esc(item.job_id)}:${item.output_index}">${esc(
+          t("inputFromContext", { preset: `${found.job.preset} #${item.output_index}` }),
+        )}</option>`,
+    )
+    .join("");
+  return `<div class="input-slot${input.kind === "audio" ? " audio" : ""}">
+      ${preview}
+      <label class="field"><span>${esc(input.name)}<small>${esc(input.kind)}</small></span>
+        <select data-input="${esc(input.name)}">
+          <option value="">${esc(t("inputOriginal"))}</option>${options}
+        </select>
+      </label>
+    </div>
+    ${input.source === "server" ? `<p class="rerun-note">${esc(t("inputServerOnly", { name: input.server_name }))}</p>` : ""}`;
 };
 
 const renderRerunSection = (job) => {
@@ -527,7 +628,15 @@ const renderRerunSection = (job) => {
   return `${heading}
     <form class="rerun" data-rerun="${esc(job.job_id)}">
       <p class="rerun-note">${esc(t("rerunNote", { url: state.data.connection.base_url }))}</p>
+      ${
+        form.inputs.length
+          ? `<div class="inputs"><span class="inputs-title">${esc(t("inputsTitle"))}</span>${form.inputs
+              .map(rerunInput)
+              .join("")}<p class="rerun-note">${esc(t("inputHint"))}</p></div>`
+          : ""
+      }
       ${form.fields.map(rerunField).join("")}
+      <p class="rerun-note" data-duration></p>
       ${seed}
       <div class="rerun-actions">
         <label class="count">${esc(t("countLabel"))}
@@ -597,7 +706,7 @@ const renderOutputInspector = (job, output) => {
       ],
       [t("prompt"), job.prompt_final && esc(job.prompt_final)],
       [t("negative"), job.negative_final && esc(job.negative_final)],
-      [t("seed"), job.seed ?? ""],
+      [t("seed"), esc(job.seed)],
       [t("status"), `<span class="badge ${esc(job.status)}">${esc(job.status)}</span>`],
       [t("submitted"), esc(formatDate(job.submitted_at))],
       [t("duration"), esc(formatDuration(job.duration_ms))],
@@ -654,9 +763,47 @@ const renderInspector = () => {
   const inspector = $("#inspector");
   // Keep a playing video alive when unrelated state refreshes arrive.
   if (inspector.dataset.html === html) return;
+  // Re-renders (e.g. adding "+ Use" items) must not wipe what the user typed.
+  const previous = inspector.querySelector("[data-rerun]");
+  const saved = previous
+    ? {
+        id: previous.dataset.rerun,
+        values: [...previous.elements]
+          .filter((element) => element.name || element.dataset.input)
+          .map((element) => ({
+            key: element.name || `input:${element.dataset.input}`,
+            value: element.type === "radio" ? element.checked : element.value,
+            radioValue: element.type === "radio" ? element.value : undefined,
+            disabled: element.disabled,
+          })),
+      }
+    : null;
   inspector.dataset.html = html;
+  unobserveVideos(inspector);
   inspector.innerHTML = html;
+  const next = inspector.querySelector("[data-rerun]");
+  if (saved && next && next.dataset.rerun === saved.id) {
+    for (const element of next.elements) {
+      const key = element.name || (element.dataset.input ? `input:${element.dataset.input}` : "");
+      const entry = saved.values.find(
+        (value) =>
+          value.key === key &&
+          (value.radioValue === undefined || value.radioValue === element.value),
+      );
+      if (!entry) continue;
+      element.disabled = entry.disabled;
+      if (element.type === "radio") element.checked = entry.value;
+      else if (
+        !element.options ||
+        [...element.options].some((option) => option.value === entry.value)
+      )
+        element.value = entry.value;
+    }
+  }
   inspector.querySelector("input[autofocus]")?.focus();
+  observeVideos(inspector);
+  const rerunForm = inspector.querySelector("[data-rerun]");
+  if (rerunForm) updateDuration(rerunForm);
 };
 
 /* ---------- Wiring ---------- */
@@ -827,6 +974,11 @@ document.addEventListener("click", (event) => {
   }
 });
 
+document.addEventListener("input", (event) => {
+  const form = event.target.closest?.("[data-rerun]");
+  if (form && event.target.dataset.label) updateDuration(form);
+});
+
 document.addEventListener("change", (event) => {
   if (event.target.name !== "__seed") return;
   const form = event.target.closest("[data-rerun]");
@@ -842,6 +994,17 @@ setInterval(() => {
   if (state.data?.runs?.some((run) => run.status === "running")) renderRuns();
 }, 1000);
 
+// Preview gallery videos on hover; they stay paused otherwise to save bandwidth.
+document.addEventListener("mouseover", (event) => {
+  const video = event.target.closest?.(".card")?.querySelector("video");
+  if (video && video.paused) void video.play().catch(() => undefined);
+});
+document.addEventListener("mouseout", (event) => {
+  const card = event.target.closest?.(".card");
+  if (!card || card.contains(event.relatedTarget)) return;
+  card.querySelector("video")?.pause();
+});
+
 document.addEventListener("keydown", (event) => {
   const card = event.target.closest?.(".card");
   if (card && (event.key === "Enter" || event.key === " ") && event.target === card) {
@@ -856,6 +1019,15 @@ const submitRerun = async (form) => {
     const type = element.dataset.type;
     overrides[element.name] = type === "string" ? element.value : Number(element.value);
   }
+  const inputs = {};
+  for (const select of form.querySelectorAll("[data-input]")) {
+    if (!select.value) continue;
+    const at = select.value.lastIndexOf(":");
+    inputs[select.dataset.input] = {
+      job_id: select.value.slice(0, at),
+      output_index: Number(select.value.slice(at + 1)),
+    };
+  }
   const seed = form.querySelector('input[name="__seed"]:checked')?.value ?? "new";
   const count = Number(form.querySelector('select[name="__count"]').value);
   const button = form.querySelector('button[type="submit"]');
@@ -863,6 +1035,7 @@ const submitRerun = async (form) => {
   try {
     await api(`/api/jobs/${encodeURIComponent(form.dataset.rerun)}/rerun`, {
       overrides,
+      inputs,
       seed,
       count,
       lang: state.lang,

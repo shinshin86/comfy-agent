@@ -1,6 +1,6 @@
 import path from "node:path";
 import { promises as fs } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { readJob, writeJob } from "../src/jobs/store.js";
 import type { JobRecord } from "../src/jobs/types.js";
 import type { RunLauncher } from "../src/studio/rerun.js";
@@ -217,6 +217,82 @@ describe("studio server", () => {
       await server.close();
     }
   });
+
+  it("returns 400 for malformed URL escapes on media and job routes", async () => {
+    const { job, server } = await setup();
+    try {
+      for (const target of [
+        "api/media/job/%ZZ/0",
+        "api/media/input/%ZZ/image",
+        `api/media/input/${job.job_id}/%E0%A4%A`,
+        "api/media/character/local/%ZZ/ref/0",
+        "api/jobs/%ZZ/rerun",
+      ]) {
+        const response = await fetch(`${server.url}${target}`);
+        expect(response.status, target).toBe(400);
+        expect(await response.json()).toMatchObject({ error: { code: "INVALID_PARAM" } });
+      }
+      expect((await post(`${server.url}api/jobs/%ZZ/feedback`, { favorite: true })).status).toBe(
+        400,
+      );
+    } finally {
+      await server.close();
+    }
+  });
+});
+
+describe("studio video jobs", () => {
+  it("treats mp4 outputs as video and exposes length/fps for re-runs", async () => {
+    const tmp = await createTmpWorkdir();
+    const job: JobRecord = {
+      ...makeJob(tmp.cwd),
+      job_id: "video-kind-job",
+      params: { "4_text": "a lantern", "104_length": 124, "91_fps": 24 },
+      // ComfyUI reports video files under "images", so the record says image.
+      outputs: [{ filename: "clip.mp4", kind: "image", saved_to: "clip.mp4" }],
+    };
+    await writeJob(job, tmp.cwd, "local");
+    await fs.writeFile(
+      path.join(tmp.workdir, "presets", "example.yaml"),
+      `${PRESET_YAML}  104_length:
+    type: int
+    role: custom
+    aliases: [length]
+    target: { node_id: "104", input: length }
+  91_fps:
+    type: float
+    role: custom
+    aliases: [fps]
+    target: { node_id: "91", input: fps }
+`,
+    );
+    const server = await startStudioServer({
+      cwd: tmp.cwd,
+      host: "127.0.0.1",
+      port: 0,
+      publicDir,
+      lang: "ja",
+    });
+    try {
+      const state = (await (await fetch(`${server.url}api/state`)).json()) as {
+        jobs: Array<{ job_id: string; outputs: Array<{ kind: string }> }>;
+      };
+      const video = state.jobs.find(({ job_id: id }) => id === job.job_id)!;
+      expect(video.outputs[0]!.kind).toBe("video");
+
+      const form = (await (await fetch(`${server.url}api/jobs/${job.job_id}/rerun`)).json()) as {
+        form: { fields: Array<{ name: string; label: string; value: unknown }> };
+      };
+      expect(form.form.fields.map(({ name, label }) => `${name}:${label}`)).toEqual([
+        "4_text:prompt",
+        "5_value:width",
+        "104_length:length",
+        "91_fps:fps",
+      ]);
+    } finally {
+      await server.close();
+    }
+  });
 });
 
 describe("studio plans", () => {
@@ -349,20 +425,285 @@ describe("studio re-run", () => {
     }
   });
 
-  it("refuses jobs whose inputs were uploads", async () => {
-    const { tmp, job, server } = await setup(async () => ({
-      exitCode: 0,
-      stdout: "{}",
-      stderr: "",
-    }));
-    try {
-      await fs.writeFile(path.join(tmp.workdir, "presets", "example.yaml"), PRESET_YAML);
-      await writeJob({ ...job, uploads: { image: "input/foo.png" } }, tmp.cwd, "local");
-      const form = (await (await fetch(`${server.url}api/jobs/${job.job_id}/rerun`)).json()) as {
-        form: { supported: boolean; reason: string };
+  const I2V_PRESET = `${PRESET_YAML}uploads:
+  image:
+    kind: image
+    cli_flag: --image
+    target: { node_id: "9", input: image }
+`;
+
+  const setupI2v = async (fetchServerInput?: (name: string) => Promise<Buffer>) => {
+    const calls: string[][] = [];
+    const launcher: RunLauncher = async (args) => {
+      calls.push(args);
+      return {
+        exitCode: 0,
+        stdout: JSON.stringify({ ok: true, jobs: [{ job_id: "n1" }] }),
+        stderr: "",
       };
-      expect(form.form).toEqual({ supported: false, reason: "uploads" });
-      expect((await post(`${server.url}api/jobs/${job.job_id}/rerun`, {})).status).toBe(400);
+    };
+    const tmp = await createTmpWorkdir();
+    const base = makeJob(tmp.cwd);
+    await fs.mkdir(base.output_dir, { recursive: true });
+    await fs.writeFile(path.join(base.output_dir, "image.png"), "PNGDATA");
+    await fs.writeFile(path.join(base.output_dir, "v.mp4"), "VIDEODATA");
+    await fs.writeFile(path.join(tmp.workdir, "presets", "example.yaml"), I2V_PRESET);
+    const original = path.join(tmp.root, "original.png");
+    await fs.writeFile(original, "ORIGINAL");
+    const video: JobRecord = {
+      ...base,
+      job_id: "video-job-1234",
+      params: { "4_text": "walk", "12_noise_seed": 1 },
+      uploads: { image: "original.png" },
+      upload_sources: { image: original },
+      outputs: [{ filename: "v.mp4", saved_to: "v.mp4" }],
+    };
+    await writeJob(base, tmp.cwd, "local");
+    await writeJob(video, tmp.cwd, "local");
+    const server = await startStudioServer({
+      cwd: tmp.cwd,
+      host: "127.0.0.1",
+      port: 0,
+      publicDir,
+      lang: "ja",
+      launcher,
+      fetchServerInput,
+    });
+    const lastRun = async () =>
+      (
+        (await (await fetch(`${server.url}api/state`)).json()) as {
+          runs: Array<{ status: string; error?: { message: string } }>;
+        }
+      ).runs[0];
+    return { tmp, base, video, original, server, calls, lastRun };
+  };
+
+  it("replays image inputs from the recorded local original", async () => {
+    const { video, original, server, calls, lastRun } = await setupI2v();
+    try {
+      const form = (await (await fetch(`${server.url}api/jobs/${video.job_id}/rerun`)).json()) as {
+        form: { supported: boolean; inputs: Array<{ name: string; source: string; url: string }> };
+      };
+      expect(form.form.supported).toBe(true);
+      expect(form.form.inputs[0]).toMatchObject({ name: "image", source: "local" });
+      const preview = await fetch(`${server.url.replace(/\/$/, "")}${form.form.inputs[0]!.url}`);
+      expect(await preview.text()).toBe("ORIGINAL");
+
+      await post(`${server.url}api/jobs/${video.job_id}/rerun`, { seed: "new" });
+      await waitFor(async () => (await lastRun())?.status === "completed");
+      expect(calls[0]).toContain(`--image=${original}`);
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("swaps an input for a gallery output and rejects mismatched kinds", async () => {
+    const { base, video, server, calls, lastRun } = await setupI2v();
+    try {
+      await post(`${server.url}api/jobs/${video.job_id}/rerun`, {
+        inputs: { image: { job_id: base.job_id, output_index: 0 } },
+      });
+      await waitFor(async () => (await lastRun())?.status === "completed");
+      expect(calls[0]).toContain(`--image=${path.join(base.output_dir, "image.png")}`);
+
+      // A video output cannot feed an image slot.
+      await post(`${server.url}api/jobs/${video.job_id}/rerun`, {
+        inputs: { image: { job_id: video.job_id, output_index: 0 } },
+      });
+      await waitFor(async () => (await lastRun())?.status === "failed");
+      expect((await lastRun())?.error?.message).toContain("needs a image file");
+
+      const unknown = await post(`${server.url}api/jobs/${video.job_id}/rerun`, {
+        inputs: { mask: { job_id: base.job_id, output_index: 0 } },
+      });
+      expect(unknown.status).toBe(400);
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("rejects removed and inherited upload names before starting a run", async () => {
+    const { tmp, base, video, server, calls } = await setupI2v();
+    try {
+      await writeJob(
+        { ...video, uploads: { ...video.uploads, retired: "old.png" } },
+        tmp.cwd,
+        "local",
+      );
+      const form = (await (await fetch(`${server.url}api/jobs/${video.job_id}/rerun`)).json()) as {
+        form: { inputs: Array<{ name: string }> };
+      };
+      expect(form.form.inputs.map(({ name }) => name)).toEqual(["image"]);
+      for (const name of ["retired", "toString", "constructor", "__proto__"]) {
+        const response = await post(`${server.url}api/jobs/${video.job_id}/rerun`, {
+          inputs: Object.fromEntries([[name, { job_id: base.job_id, output_index: 0 }]]),
+        });
+        expect(response.status, name).toBe(400);
+        expect(await response.json()).toMatchObject({
+          error: { message: `Unknown input: ${name}` },
+        });
+      }
+      expect(calls).toEqual([]);
+      const state = (await (await fetch(`${server.url}api/state`)).json()) as { runs: unknown[] };
+      expect(state.runs).toEqual([]);
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("only previews recorded sources and returns 404 for missing or non-file inputs", async () => {
+    const { tmp, video, original, server } = await setupI2v();
+    const url = `${server.url}api/media/input/${video.job_id}/image`;
+    try {
+      for (const name of ["other", "constructor", "toString", "..%2F..%2Fpackage.json"]) {
+        expect((await fetch(`${server.url}api/media/input/${video.job_id}/${name}`)).status).toBe(404);
+      }
+      const ranged = await fetch(url, { headers: { Range: "bytes=0-2" } });
+      expect(ranged.status).toBe(206);
+      expect(await ranged.text()).toBe("ORI");
+      expect((await fetch(url, { headers: { Range: "bytes=99-" } })).status).toBe(416);
+      await fs.rm(original);
+      const missing = await fetch(url);
+      expect(missing.status).toBe(404);
+      expect(await missing.json()).toMatchObject({ error: { code: "FILE_NOT_FOUND" } });
+
+      await fs.mkdir(original);
+      expect((await fetch(url)).status).toBe(404);
+      await fs.rmdir(original);
+      const target = path.join(tmp.root, "source.png");
+      await fs.writeFile(target, "LINKED-ORIGINAL");
+      await fs.symlink(target, original);
+      // Explicitly recorded symlink sources work just as they do in `run`.
+      expect(await (await fetch(url)).text()).toBe("LINKED-ORIGINAL");
+      await fs.rm(target);
+      expect((await fetch(url)).status).toBe(404);
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("fails a missing gallery replacement without invoking the CLI", async () => {
+    const { base, video, server, calls, lastRun } = await setupI2v();
+    try {
+      await fs.rm(path.join(base.output_dir, "image.png"));
+      await post(`${server.url}api/jobs/${video.job_id}/rerun`, {
+        inputs: { image: { job_id: base.job_id, output_index: 0 } },
+      });
+      await waitFor(async () => (await lastRun())?.status === "failed");
+      expect((await lastRun())?.error?.message).toContain("Output not found for input image");
+      expect(calls).toEqual([]);
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("streams the opened original even if its path is replaced with a symlink", async () => {
+    const { tmp, video, original, server } = await setupI2v();
+    const other = path.join(tmp.root, "other.png");
+    await fs.writeFile(other, "OTHER-FILE");
+    const open = fs.open;
+    const spy = vi.spyOn(fs, "open").mockImplementation(async (filePath, flags, mode) => {
+      const file = await open(filePath, flags, mode);
+      if (filePath === original) {
+        await fs.rm(original);
+        await fs.symlink(other, original);
+      }
+      return file;
+    });
+    try {
+      const response = await fetch(`${server.url}api/media/input/${video.job_id}/image`);
+      expect(response.status).toBe(200);
+      expect(await response.text()).toBe("ORIGINAL");
+    } finally {
+      spy.mockRestore();
+      await server.close();
+    }
+  });
+
+  it("keeps concurrent server downloads in separate cache files", async () => {
+    let fetched = 0;
+    let release!: () => void;
+    const bothFetching = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const { tmp, video, original, server, calls, lastRun } = await setupI2v(async () => {
+      const index = ++fetched;
+      if (fetched === 2) release();
+      await bothFetching;
+      return Buffer.from(`DOWNLOAD-${index}`);
+    });
+    try {
+      await fs.rm(original);
+      const responses = await Promise.all([
+        post(`${server.url}api/jobs/${video.job_id}/rerun`, {}),
+        post(`${server.url}api/jobs/${video.job_id}/rerun`, {}),
+      ]);
+      expect(responses.map(({ status }) => status)).toEqual([200, 200]);
+      await waitFor(async () => calls.length === 2 && (await lastRun())?.status === "completed");
+      const cached = calls.map((args) => args.find((arg) => arg.startsWith("--image="))!.slice(8));
+      expect(new Set(cached).size).toBe(2);
+      for (const file of cached) {
+        expect(path.dirname(file)).toBe(path.join(tmp.workdir, "cache", "studio-inputs"));
+      }
+      const contents = await Promise.all(cached.map((file) => fs.readFile(file, "utf-8")));
+      expect(contents.sort()).toEqual(["DOWNLOAD-1", "DOWNLOAD-2"]);
+    } finally {
+      await server.close();
+    }
+  });
+
+  it.each(["../../..\\odd:slot", "constructor"])(
+    "sanitizes cache paths and only reads explicit overrides (%s)",
+    async (slot) => {
+      const names: string[] = [];
+      const { tmp, video, server, calls, lastRun } = await setupI2v(async (name) => {
+        names.push(name);
+        return Buffer.from("SAFE-CACHE");
+      });
+      const serverName = "sub/..\\..\\odd:<name>?*.png";
+      try {
+        await fs.writeFile(
+          path.join(tmp.workdir, "presets", "example.yaml"),
+          I2V_PRESET.replace("uploads:\n  image:\n", `uploads:\n  ${JSON.stringify(slot)}:\n`),
+        );
+        await writeJob(
+          { ...video, uploads: { [slot]: serverName }, upload_sources: undefined },
+          tmp.cwd,
+          "local",
+        );
+        await post(`${server.url}api/jobs/${video.job_id}/rerun`, {});
+        await waitFor(async () => (await lastRun())?.status === "completed");
+        expect(names).toEqual([serverName]);
+        const cached = calls[0]!.find((arg) => arg.startsWith("--image="))!.slice(8);
+        expect(path.dirname(cached)).toBe(path.join(tmp.workdir, "cache", "studio-inputs"));
+        expect(path.basename(cached)).toMatch(/^[A-Za-z0-9._-]+\.png$/);
+        expect(path.win32.basename(cached.replaceAll(path.sep, "\\"))).toBe(path.basename(cached));
+        expect(await fs.readFile(cached, "utf-8")).toBe("SAFE-CACHE");
+      } finally {
+        await server.close();
+      }
+    },
+  );
+
+  it("fetches the ComfyUI copy when the local original is gone", async () => {
+    const fetched: string[] = [];
+    const { tmp, video, original, server, calls, lastRun } = await setupI2v(async (name) => {
+      fetched.push(name);
+      return Buffer.from("FROM-SERVER");
+    });
+    try {
+      await fs.rm(original);
+      const form = (await (await fetch(`${server.url}api/jobs/${video.job_id}/rerun`)).json()) as {
+        form: { inputs: Array<{ source: string }> };
+      };
+      expect(form.form.inputs[0]!.source).toBe("server");
+
+      await post(`${server.url}api/jobs/${video.job_id}/rerun`, {});
+      await waitFor(async () => (await lastRun())?.status === "completed");
+      expect(fetched).toEqual(["original.png"]);
+      const cached = calls[0]!.find((arg) => arg.startsWith("--image="))!.slice("--image=".length);
+      expect(cached.startsWith(path.join(tmp.workdir, "cache", "studio-inputs"))).toBe(true);
+      expect(await fs.readFile(cached, "utf-8")).toBe("FROM-SERVER");
     } finally {
       await server.close();
     }

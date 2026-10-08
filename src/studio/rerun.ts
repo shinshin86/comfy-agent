@@ -2,11 +2,12 @@ import path from "node:path";
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { promises as fs } from "node:fs";
+import { ComfyClient } from "../api/client.js";
 import { resolveSeedTargets } from "../cli/run/args.js";
-import { getSubdirPath } from "../io/workdir.js";
+import { getSubdirPath, getWorkdirPath } from "../io/workdir.js";
 import type { JobRecord } from "../jobs/types.js";
 import { loadPresetFile } from "../preset/loader.js";
-import type { ParameterRole, Preset } from "../preset/schema.js";
+import type { ParameterDef, ParameterRole, Preset, UploadDef } from "../preset/schema.js";
 
 /**
  * Re-running a past job needs no creative judgment: the preset and every
@@ -27,13 +28,55 @@ const EDITABLE_ROLES: ParameterRole[] = [
   "strength",
 ];
 
+// Video timing has no dedicated role; presets expose it through these aliases.
+const EDITABLE_ALIASES = [
+  "length",
+  "frames",
+  "num_frames",
+  "fps",
+  "frame_rate",
+  "duration",
+  "seconds",
+];
+
+const editableAlias = (def: ParameterDef): string | undefined =>
+  def.aliases
+    ?.find((alias) => EDITABLE_ALIASES.includes(alias.replace(/^--/, "")))
+    ?.replace(/^--/, "");
+
+const isEditable = (def: ParameterDef) =>
+  (def.role !== undefined && EDITABLE_ROLES.includes(def.role)) || editableAlias(def) !== undefined;
+
+const editableOrder = (def: ParameterDef) => {
+  const alias = editableAlias(def);
+  if (def.role !== undefined && EDITABLE_ROLES.includes(def.role)) {
+    return EDITABLE_ROLES.indexOf(def.role);
+  }
+  return EDITABLE_ROLES.length + EDITABLE_ALIASES.indexOf(alias ?? "");
+};
+
 export const MAX_RERUN_COUNT = 4;
 
-export type RerunUnsupportedReason = "uploads" | "remote_source" | "preset_missing";
+export type RerunUnsupportedReason = "remote_source" | "preset_missing";
+
+export type RerunInput = {
+  name: string;
+  kind: UploadDef["kind"];
+  /** Server-side name recorded when the job was submitted. */
+  server_name: string;
+  /** "local": the original file is still on disk; "server": only the ComfyUI copy is known. */
+  source: "local" | "server";
+  url?: string;
+};
+
+/** A replacement input picked from the studio gallery. */
+export type RerunInputOverride = { job_id: string; output_index: number };
 
 export type RerunField = {
   name: string;
-  role: ParameterRole;
+  role?: ParameterRole;
+  /** Short label: the role, or the alias that made the field editable (e.g. "length"). */
+  label: string;
   type: "string" | "int" | "float" | "bool" | "json";
   description?: string;
   value: unknown;
@@ -49,12 +92,15 @@ export type RerunForm =
       fields: RerunField[];
       seed: number | null;
       has_seed: boolean;
+      inputs: RerunInput[];
     };
 
 export type RerunRequest = {
   overrides: Record<string, unknown>;
   seed: "same" | "new";
   count: number;
+  /** Local file for every upload slot of the job, resolved by `resolveRerunInputs`. */
+  inputs?: Record<string, string>;
   /** Language for the CLI's own error messages shown in the studio. */
   lang?: "en" | "ja";
 };
@@ -75,9 +121,6 @@ export const loadRerunPreset = async (
   cwd: string,
   record: JobRecord,
 ): Promise<{ preset: Preset } | { reason: RerunUnsupportedReason }> => {
-  // Upload values are server-side names of already-uploaded files, not local
-  // paths, so they cannot be passed back to `run` as-is.
-  if (Object.keys(record.uploads).length > 0) return { reason: "uploads" };
   if (record.source !== "local") return { reason: "remote_source" };
   const file = await presetPath(cwd, record);
   if (!file) return { reason: "preset_missing" };
@@ -88,27 +131,162 @@ export const loadRerunPreset = async (
   }
 };
 
-export const buildRerunForm = (record: JobRecord, preset: Preset): RerunForm => {
+const fileExists = async (filePath: string) => {
+  try {
+    return (await fs.stat(filePath)).isFile();
+  } catch {
+    return false;
+  }
+};
+
+export const uploadSlots = (record: JobRecord, preset: Preset) =>
+  Object.entries(record.uploads).flatMap(([name, serverName]) => {
+    const def =
+      preset.uploads && Object.hasOwn(preset.uploads, name) ? preset.uploads[name] : undefined;
+    return def ? [{ name, def, serverName }] : [];
+  });
+
+/** Validate edits before resolving files or starting a run. */
+export const validateRerunRequest = (
+  record: JobRecord,
+  preset: Preset,
+  overrides: Record<string, unknown>,
+  inputOverrides: Record<string, RerunInputOverride> = {},
+): void => {
+  const editable = new Set(
+    Object.entries(preset.parameters ?? {})
+      .filter(([, def]) => isEditable(def))
+      .map(([name]) => name),
+  );
+  for (const name of Object.keys(overrides)) {
+    if (!editable.has(name)) throw new Error(`Parameter cannot be edited: ${name}`);
+  }
+  const inputs = new Set(uploadSlots(record, preset).map(({ name }) => name));
+  for (const name of Object.keys(inputOverrides)) {
+    if (!inputs.has(name)) throw new Error(`Unknown input: ${name}`);
+  }
+};
+
+export const buildRerunForm = async (record: JobRecord, preset: Preset): Promise<RerunForm> => {
+  const inputs: RerunInput[] = [];
+  for (const { name, def, serverName } of uploadSlots(record, preset)) {
+    const local = record.upload_sources?.[name];
+    const source = local && (await fileExists(local)) ? "local" : "server";
+    inputs.push({
+      name,
+      kind: def.kind,
+      server_name: serverName,
+      source,
+      ...(source === "local"
+        ? {
+            url: `/api/media/input/${encodeURIComponent(record.job_id)}/${encodeURIComponent(name)}`,
+          }
+        : {}),
+    });
+  }
   const fields = Object.entries(preset.parameters ?? {})
-    .filter(([, def]) => def.role !== undefined && EDITABLE_ROLES.includes(def.role))
+    .filter(([, def]) => isEditable(def))
+    .sort(([, left], [, right]) => editableOrder(left) - editableOrder(right))
     .map(([name, def]) => ({
       name,
-      role: def.role!,
+      role: def.role,
+      label:
+        def.role !== undefined && EDITABLE_ROLES.includes(def.role)
+          ? def.role
+          : (editableAlias(def) ?? name),
       type: def.type,
       description: def.description,
       value: record.params[name] ?? def.default ?? "",
       min: def.min,
       max: def.max,
-    }))
-    .sort((left, right) => EDITABLE_ROLES.indexOf(left.role) - EDITABLE_ROLES.indexOf(right.role));
+    }));
   return {
     supported: true,
     preset: preset.name,
     fields,
     seed: record.seed,
     has_seed: resolveSeedTargets(preset).length > 0,
+    inputs,
   };
 };
+
+const acceptsKind = (uploadKind: UploadDef["kind"], outputKind: string) =>
+  uploadKind === "file" ||
+  (uploadKind === "audio" ? outputKind === "audio" : outputKind === "image");
+
+export type InputResolverDeps = {
+  /** Absolute path and kind of a gallery output, or null if it does not exist. */
+  outputFile: (selection: RerunInputOverride) => Promise<{ path: string; kind: string } | null>;
+  /** Downloads a file from the ComfyUI input folder (used when the local original is gone). */
+  fetchServerInput: (serverName: string) => Promise<Buffer>;
+};
+
+/**
+ * Picks a local file for every upload slot: a gallery output the user chose,
+ * else the recorded original, else a copy fetched from the ComfyUI server.
+ */
+export const resolveRerunInputs = async (
+  cwd: string,
+  record: JobRecord,
+  preset: Preset,
+  overrides: Record<string, RerunInputOverride>,
+  deps: InputResolverDeps,
+): Promise<Record<string, string>> => {
+  validateRerunRequest(record, preset, {}, overrides);
+  const slots = uploadSlots(record, preset);
+  const resolved: Record<string, string> = {};
+  for (const { name, def, serverName } of slots) {
+    const override = Object.hasOwn(overrides, name) ? overrides[name] : undefined;
+    if (override) {
+      const output = await deps.outputFile(override);
+      if (!output || !(await fileExists(output.path))) {
+        throw new Error(`Output not found for input ${name}.`);
+      }
+      if (!acceptsKind(def.kind, output.kind)) {
+        throw new Error(`Input ${name} needs a ${def.kind} file, got ${output.kind}.`);
+      }
+      resolved[name] = output.path;
+      continue;
+    }
+    const local = record.upload_sources?.[name];
+    if (local && (await fileExists(local))) {
+      resolved[name] = local;
+      continue;
+    }
+    const cacheDir = path.join(getWorkdirPath(cwd, "local"), "cache", "studio-inputs");
+    await fs.mkdir(cacheDir, { recursive: true });
+    const safeName = (value: string) => value.replace(/[^A-Za-z0-9._-]/g, "_");
+    const basename = path.posix.basename(serverName.replace(/\\/g, "/"));
+    // Unique paths keep concurrent runs and previously recorded sources independent.
+    const filename = [
+      safeName(record.job_id.slice(0, 8)),
+      safeName(name).slice(0, 40),
+      randomUUID(),
+      safeName(basename).slice(-120),
+    ].join("-");
+    const target = path.join(cacheDir, filename);
+    const data = await deps.fetchServerInput(serverName);
+    try {
+      await fs.writeFile(target, data, { flag: "wx" });
+    } catch (error) {
+      await fs.rm(target, { force: true });
+      throw error;
+    }
+    resolved[name] = target;
+  }
+  return resolved;
+};
+
+export const comfyInputFetcher =
+  (baseUrl: string) =>
+  async (serverName: string): Promise<Buffer> => {
+    const subfolder = path.posix.dirname(serverName);
+    return new ComfyClient(baseUrl).viewFile({
+      filename: path.posix.basename(serverName),
+      ...(subfolder && subfolder !== "." ? { subfolder } : {}),
+      type: "input",
+    });
+  };
 
 const argValue = (type: string, value: unknown) =>
   type === "json" ? JSON.stringify(value) : String(value);
@@ -123,15 +301,10 @@ export const buildRerunArgs = (
   preset: Preset,
   request: RerunRequest,
 ): string[] => {
+  validateRerunRequest(record, preset, request.overrides);
   const parameters = preset.parameters ?? {};
-  const editable = new Set(
-    Object.entries(parameters)
-      .filter(([, def]) => def.role !== undefined && EDITABLE_ROLES.includes(def.role))
-      .map(([name]) => name),
-  );
   const params: Record<string, unknown> = { ...record.params };
   for (const [name, value] of Object.entries(request.overrides)) {
-    if (!editable.has(name)) throw new Error(`Parameter cannot be edited: ${name}`);
     params[name] = value;
   }
   const seedTargets = resolveSeedTargets(preset).map(({ param }) => param);
@@ -143,6 +316,11 @@ export const buildRerunArgs = (
   if (request.count > 1) args.push("--n", String(request.count));
   if (newSeed) args.push("--seed", "random");
   if (request.lang) args.push("--lang", request.lang);
+  for (const { name, def } of uploadSlots(record, preset)) {
+    const file = request.inputs?.[name];
+    if (!file) throw new Error(`No local file for input ${name}.`);
+    args.push(`--${def.cli_flag.replace(/^--/, "")}=${file}`);
+  }
   for (const [name, value] of Object.entries(params)) {
     const def = parameters[name];
     if (!def || value === undefined || value === null) continue;
@@ -211,7 +389,13 @@ export class StudioRuns {
     return [...this.runs].reverse().slice(0, 20);
   }
 
-  start(cwd: string, record: JobRecord, args: string[], count: number): StudioRun {
+  /** `prepare` resolves inputs (possibly downloading them) before `run` starts. */
+  start(
+    cwd: string,
+    record: JobRecord,
+    prepare: () => Promise<string[]>,
+    count: number,
+  ): StudioRun {
     const run: StudioRun = {
       id: randomUUID(),
       source_job_id: record.job_id,
@@ -223,7 +407,8 @@ export class StudioRuns {
     };
     this.runs.push(run);
     this.onChange();
-    void this.launcher(args, cwd)
+    void prepare()
+      .then((args) => this.launcher(args, cwd))
       .then((result) => {
         const parsed = parseRunOutput(result);
         run.job_ids = parsed?.jobs?.map(({ job_id: id }) => id) ?? [];

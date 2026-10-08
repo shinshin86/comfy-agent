@@ -67,6 +67,14 @@ export const JobRecordSchema = z.object({
   source: JobSourceSchema,
   params: z.record(z.unknown()),
   uploads: z.record(z.string()),
+  /** Local files that were uploaded, so a job can be replayed after a server reset. */
+  upload_sources: z
+    .record(
+      z.string().refine(isAbsolutePath, {
+        message: "upload_sources values must be absolute paths",
+      }),
+    )
+    .optional(),
   seed: z.number().nullable(),
   output_dir: z.string().refine(isAbsolutePath, {
     message: "output_dir must be an absolute path",

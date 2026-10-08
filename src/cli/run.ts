@@ -368,10 +368,12 @@ export const runRun = async (presetName: string, options: RunOptions, rawArgs: s
   log(t("run.output_dir", { dir: outputDir }));
 
   const resolvedUploads: Record<string, string> = {};
+  const uploadSources: Record<string, string> = {};
   for (const [name, filePath] of Object.entries(uploads)) {
     await ensureFileExists(filePath);
     const def = preset.uploads?.[name];
     if (!def) continue;
+    uploadSources[name] = path.resolve(filePath);
     const endpoint = uploadEndpointForKind(def.kind);
     log(t("run.upload", { name, endpoint }));
     const response = await client.uploadFile(endpoint, filePath);
@@ -415,6 +417,7 @@ export const runRun = async (presetName: string, options: RunOptions, rawArgs: s
       source: selectedSource,
       params: runParams,
       uploads: resolvedUploads,
+      ...(Object.keys(uploadSources).length === 0 ? {} : { upload_sources: uploadSources }),
       seed: seedValue,
       output_dir: outputDir,
       submitted_at: new Date().toISOString(),
