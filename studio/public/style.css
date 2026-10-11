@@ -352,6 +352,8 @@ small {
 }
 .composer {
   position: relative;
+  display: flex;
+  flex-direction: column;
   padding: 15px 18px;
   border: 1px solid #c3d7cc;
   border-radius: 19px;
@@ -362,6 +364,17 @@ small {
   max-height: 70dvh;
   overflow: visible;
 }
+#online-composer {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+#online-composer > :not(.input-slots) {
+  flex-shrink: 0;
+}
+#composer-status {
+  flex-shrink: 0;
+}
 .modes {
   display: flex;
   gap: 6px;
@@ -369,18 +382,32 @@ small {
   margin-bottom: 10px;
 }
 .mode-context {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 2px 6px;
   color: var(--muted);
   font-size: 11px;
   line-height: 1.6;
   margin-bottom: 7px;
-}
-.mode-context > span {
-  min-width: 0;
   overflow-wrap: anywhere;
+}
+.context-details {
+  white-space: nowrap;
+}
+.drop-overlay {
+  position: absolute;
+  inset: 5px;
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed var(--accent);
+  border-radius: 15px;
+  background: #e9f5efdf;
+  color: var(--accent);
+  font-size: 17px;
+  font-weight: 600;
+  pointer-events: none;
+}
+.drop-overlay[hidden] {
+  display: none;
 }
 .text-link {
   border: 0;
@@ -393,7 +420,7 @@ small {
   text-underline-offset: 3px;
 }
 .previous-check {
-  flex-basis: 100%;
+  display: block;
 }
 #creation-capabilities h3 {
   margin-top: 0;
@@ -508,20 +535,22 @@ small {
   display: none;
 }
 .input-slots {
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  max-height: 145px;
-  padding: 1px 0 5px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-auto-rows: max-content;
+  gap: 10px;
+  overflow: auto;
+  max-height: min(360px, 38dvh);
+  min-height: 0;
+  padding: 3px 2px 6px;
 }
 .input-slot {
-  flex: 1;
-  min-width: 150px;
-  max-width: 300px;
+  min-width: 0;
+  min-height: 128px;
   background: var(--bg);
   border: 1px dashed #bccbc2;
   border-radius: 10px;
-  padding: 8px 10px;
+  padding: 11px 13px;
 }
 .input-slot.filled {
   border-style: solid;
@@ -529,14 +558,15 @@ small {
   background: var(--soft);
 }
 .input-slot.drag-over {
-  outline: 3px solid var(--accent);
+  outline: 2px solid var(--accent);
+  outline-offset: 0;
 }
 .slot-heading {
   display: flex;
   align-items: center;
   gap: 7px;
   min-height: 20px;
-  font-size: 11px;
+  font-size: 12px;
 }
 .slot-heading strong {
   font-weight: 600;
@@ -544,42 +574,48 @@ small {
 .slot-heading > span {
   margin-left: auto;
   color: var(--muted);
-  font-size: 9px;
-}
-.clear-slot {
-  font-size: 15px;
-  padding: 0 4px;
-  border-radius: 5px;
-  background: transparent !important;
-  line-height: 1.2;
+  font-size: 10px;
 }
 .slot-body {
   display: flex;
-  gap: 8px;
+  flex-direction: column;
+  gap: 10px;
   align-items: center;
-  margin-top: 5px;
+  margin-top: 12px;
+}
+.slot-drop-label {
+  margin: 3px 0 0;
+  font-size: 14px;
+  text-align: center;
 }
 .slot-media {
-  width: 46px;
-  height: 46px;
-  object-fit: cover;
+  display: block;
+  width: 100%;
+  height: 150px;
+  max-height: 160px;
+  object-fit: contain;
   border-radius: 5px;
   background: var(--line);
 }
 audio.slot-media {
-  width: 150px;
-  height: 32px;
+  height: 40px;
+  max-width: 100%;
 }
 .slot-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 3px;
+  justify-content: center;
+  gap: 2px 4px;
   align-items: center;
 }
 .slot-actions button,
 .slot-actions .file-button {
-  font-size: 10px;
-  padding: 3px 5px;
+  font-size: 11px;
+  padding: 3px 4px;
+  color: var(--muted);
+}
+.slot-actions > span {
+  font-size: 11px;
   color: var(--muted);
 }
 .file-button {
@@ -1242,25 +1278,25 @@ code {
     padding-top: 5px;
   }
   .input-slot {
-    min-width: 135px;
-    padding: 7px 8px;
+    min-height: 112px;
+    padding: 9px 11px;
   }
   .input-slots {
-    max-height: 115px;
+    grid-template-columns: 1fr;
+    max-height: 32dvh;
   }
   .slot-actions button,
   .slot-actions .file-button {
-    font-size: 9px;
+    font-size: 11px;
   }
   .slot-heading strong {
-    font-size: 10px;
+    font-size: 12px;
   }
   .slot-heading > span {
-    font-size: 8px;
+    font-size: 10px;
   }
   .slot-media {
-    width: 36px;
-    height: 36px;
+    height: 140px;
   }
   .composer #action-note {
     font-size: 10px;

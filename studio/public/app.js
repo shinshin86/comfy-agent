@@ -460,11 +460,11 @@ const LABELS = {
   generating: ["送信中…", "Starting…"],
   connectionTitle: ["接続先とできること", "Connection & what you can make"],
   modeContext: [
-    "接続中の ComfyUI{server} でできること（{n} 種類）",
+    "接続中の ComfyUI{server}でできること（{n} 種類）",
     "What your connected ComfyUI{server} can do ({n})",
   ],
   singleModeContext: [
-    "接続中の ComfyUI{server} でできるのは「{name}」だけです",
+    "接続中の ComfyUI{server}でできるのは「{name}」だけです",
     "Only “{name}” is available on your connected ComfyUI{server}",
   ],
   capabilityDetails: ["詳しく", "Details"],
@@ -561,7 +561,24 @@ const LABELS = {
   attachMaterial: ["＋ 素材を添付", "＋ Attach an input"],
   pickResult: ["結果から選ぶ", "Pick from results"],
   uploadFile: ["ファイルを選ぶ", "Choose a file"],
-  dropHere: ["ここにドロップ", "Drop here"],
+  dropImage: ["ここに画像をドロップ", "Drop an image here"],
+  dropVideo: ["ここに動画をドロップ", "Drop a video here"],
+  dropAudio: ["ここに音声をドロップ", "Drop audio here"],
+  dropFile: ["ここにファイルをドロップ", "Drop a file here"],
+  dropHere: ["ここにドロップして追加", "Drop here to add"],
+  orChoose: ["または", "or"],
+  replaceInput: ["替える", "Replace"],
+  removeInput: ["外す", "Remove"],
+  slotIncompatible: [
+    "「{name}」には{kind}を追加できません。",
+    "You cannot add {kind} to “{name}”.",
+  ],
+  noEmptyInput: ["対応する入力枠が埋まっています。", "All compatible input slots are full."],
+  ignoredFiles: ["{n} 件のファイルは追加しませんでした。", "{n} files were not added."],
+  inputChanged: [
+    "作業が変わったため、追加しませんでした。もう一度追加してください。",
+    "The task changed, so the file was not added. Please add it again.",
+  ],
   required: ["必須", "Required"],
   optional: ["なしでも可", "Can be omitted"],
   bakedInput: ["既定の入力あり", "Default input available"],
@@ -889,6 +906,7 @@ const slotPreview = (slot) => {
 };
 const renderInputs = () => {
   const engine = currentEngine();
+  unobserveVideos($("#input-slots"));
   $("#input-slots").innerHTML = (engine?.inputs ?? [])
     .map((slot) => {
       if (state.skip.has(slot.slot))
@@ -896,7 +914,9 @@ const renderInputs = () => {
       const filled = Boolean(
         state.inputs[slot.slot] || state.originalInputs.some((i) => i.name === slot.slot),
       );
-      return `<div class="input-slot ${filled ? "filled" : ""}" data-drop-slot="${esc(slot.slot)}"><div class="slot-heading"><strong>${esc(text(slot.label))}</strong><span>${esc(t(slot.optional ? "optional" : slot.required ? "required" : "bakedInput"))}</span>${filled ? `<button type="button" class="ghost clear-slot" data-clear-slot="${esc(slot.slot)}" aria-label="${esc(t("clearInput"))}: ${esc(text(slot.label))}">×</button>` : ""}</div><div class="slot-body">${slotPreview(slot)}<div class="slot-actions"><button type="button" class="ghost" data-pick-slot="${esc(slot.slot)}">${esc(t("pickResult"))}</button><label class="file-button">${esc(t("uploadFile"))}<input type="file" data-upload-slot="${esc(slot.slot)}" accept="${slot.kind === "file" ? "image/*,audio/*,video/*" : `${slot.kind === "mask" ? "image" : slot.kind}/*`}" aria-label="${esc(t("uploadFile"))}: ${esc(text(slot.label))}"></label>${slot.optional ? `<button type="button" class="ghost" data-toggle-slot="${esc(slot.slot)}" aria-pressed="false">${esc(t("skipInput"))}</button>` : ""}</div></div></div>`;
+      const kind = slot.kind === "mask" ? "image" : slot.kind;
+      const dropLabel = t(`drop${kind[0].toUpperCase()}${kind.slice(1)}`);
+      return `<div class="input-slot ${filled ? "filled" : ""}" data-drop-slot="${esc(slot.slot)}"><div class="slot-heading"><strong>${esc(text(slot.label))}</strong><span>${esc(t(slot.optional ? "optional" : slot.required ? "required" : "bakedInput"))}</span></div><div class="slot-body">${filled ? slotPreview(slot) : `<p class="slot-drop-label">${esc(dropLabel)}</p>`}<div class="slot-actions">${!filled ? `<span>${esc(t("orChoose"))}</span>` : ""}<label class="file-button">${esc(t(filled ? "replaceInput" : "uploadFile"))}<input type="file" data-upload-slot="${esc(slot.slot)}" accept="${slot.kind === "file" ? "image/*,audio/*,video/*" : `${kind}/*`}" aria-label="${esc(t(filled ? "replaceInput" : "uploadFile"))}: ${esc(text(slot.label))}"></label><span aria-hidden="true">/</span><button type="button" class="ghost" data-pick-slot="${esc(slot.slot)}">${esc(t("pickResult"))}</button>${filled ? `<button type="button" class="ghost" data-clear-slot="${esc(slot.slot)}" aria-label="${esc(t("removeInput"))}: ${esc(text(slot.label))}">${esc(t("removeInput"))}</button>` : ""}${slot.optional ? `<button type="button" class="ghost" data-toggle-slot="${esc(slot.slot)}" aria-pressed="false">${esc(t("skipInput"))}</button>` : ""}</div></div></div>`;
     })
     .join("");
   observeVideos($("#input-slots"));
@@ -1090,8 +1110,16 @@ const renderComposer = () => {
   const cap = currentCapability();
   if (!cap) return;
   const host = connectedServerName(server.base_url);
+  const context = t(capabilities().length === 1 ? "singleModeContext" : "modeContext", {
+    server: host ? (state.lang === "ja" ? `（${host}）` : ` (${host})`) : "",
+    n: capabilities().length,
+    name: text(capabilities()[0].label),
+  });
+  const ending =
+    context.match(/（\d+ 種類）$|だけです$|\(\d+\)$|ComfyUI(?: \([^)]*\))?$/)?.[0] ?? "";
   $("#mode-context").innerHTML =
-    `<span>${esc(t(capabilities().length === 1 ? "singleModeContext" : "modeContext", { server: host ? (state.lang === "ja" ? `（${host}）` : ` (${host})`) : "", n: capabilities().length, name: text(capabilities()[0].label) }))}</span><span>· <button type="button" class="text-link" data-capability-details aria-haspopup="dialog">${esc(t("capabilityDetails"))}</button></span>${state.catalog.unverified ? `<span class="previous-check">${esc(t("previousCheck"))} · <button type="button" class="text-link" data-reconnect${state.checking ? " disabled" : ""}>${esc(t("recheck"))}</button></span>` : ""}`;
+    `<span>${esc(context.slice(0, context.length - ending.length))}<span class="context-details">${esc(ending)}&nbsp;· <button type="button" class="text-link" data-capability-details aria-haspopup="dialog">${esc(t("capabilityDetails"))}</button></span></span>${state.catalog.unverified ? `<span class="previous-check">${esc(t("previousCheck"))} · <button type="button" class="text-link" data-reconnect${state.checking ? " disabled" : ""}>${esc(t("recheck"))}</button></span>` : ""}`;
+  $("#drop-overlay").textContent = t("dropHere");
   $("#prompt").required = Boolean(currentEngine()?.controls.prompt?.required);
   $("#modes").hidden = capabilities().length === 1;
   $("#modes").innerHTML = capabilities()
@@ -1394,13 +1422,28 @@ const addContext = (selection) => {
   renderContext();
   renderGallery();
 };
-const attachInput = (input, kind, slotName = null, preferred = null) => {
-  let engine = currentEngine(),
-    slot =
-      slotName && slotName !== "attach"
-        ? engine?.inputs.find((i) => i.slot === slotName)
-        : engine?.inputs.find((i) => slotAccepts(i, kind));
-  if (preferred || !slot) {
+const resolveInputSlot = (kind, slotName = null, preferred = null, emptyOnly = false) => {
+  const targeted = slotName && slotName !== "attach";
+  const empty = (slot) =>
+    !state.inputs[slot.slot] && !state.originalInputs.some((input) => input.name === slot.slot);
+  let engine = currentEngine();
+  if (targeted) {
+    const slot = engine?.inputs.find((input) => input.slot === slotName);
+    if (slot && slotAccepts(slot, kind)) return slot;
+    setStatus(
+      slot
+        ? t("slotIncompatible", { name: text(slot.label), kind: t(`${kind}Kind`) })
+        : t("inputUnsupported"),
+    );
+    return null;
+  }
+  // A full set of compatible slots must not be overwritten or switch tasks.
+  const compatible = engine?.inputs.filter((slot) => slotAccepts(slot, kind)) ?? [];
+  if (!preferred && compatible.length && emptyOnly && !compatible.some(empty)) {
+    setStatus(t("noEmptyInput"));
+    return null;
+  }
+  if (preferred || !compatible.length || engine?.inputless) {
     const target =
       capabilities().find(
         (c) =>
@@ -1415,19 +1458,26 @@ const attachInput = (input, kind, slotName = null, preferred = null) => {
       capabilities().find((c) => c.engines.some((e) => e.inputs.some((i) => slotAccepts(i, kind))));
     if (!target) {
       setStatus(t(kind === "image" ? "imageUnsupported" : "inputUnsupported"));
-      return false;
+      return null;
     }
     const suitable =
       target.engines.find((e) => e.default && e.inputs.some((i) => slotAccepts(i, kind))) ??
       target.engines.find((e) => e.inputs.some((i) => slotAccepts(i, kind)));
     chooseEngine(target.id, suitable.preset);
     engine = currentEngine();
-    slot = engine.inputs.find((i) => slotAccepts(i, kind));
   }
-  if (!slot || !slotAccepts(slot, kind)) {
-    setStatus(t("inputUnsupported"));
-    return false;
+  const slot = engine?.inputs.find(
+    (input) => slotAccepts(input, kind) && (!emptyOnly || empty(input)),
+  );
+  if (!slot) {
+    setStatus(t("noEmptyInput"));
+    return null;
   }
+  return slot;
+};
+const attachInput = (input, kind, slotName = null, preferred = null, emptyOnly = false) => {
+  const slot = resolveInputSlot(kind, slotName, preferred, emptyOnly);
+  if (!slot) return false;
   state.inputs[slot.slot] = input;
   state.skip.delete(slot.slot);
   state.originalInputs = state.originalInputs.filter((i) => i.name !== slot.slot);
@@ -1455,21 +1505,82 @@ const useSelection = (selection, preferred = null) => {
     setRequestStatus(t("inputUnsupported"));
   }
 };
-const upload = async (file, slot = null) => {
-  if (!file) return;
+const fileMediaType = (file) => {
+  if (file.type) return file.type;
+  const extension = file.name.split(".").pop()?.toLowerCase();
+  return (
+    {
+      png: "image/png",
+      jpg: "image/jpeg",
+      jpeg: "image/jpeg",
+      webp: "image/webp",
+      gif: "image/gif",
+      wav: "audio/wav",
+      mp3: "audio/mpeg",
+      flac: "audio/flac",
+      ogg: "audio/ogg",
+      m4a: "audio/mp4",
+      mp4: "video/mp4",
+      webm: "video/webm",
+      mov: "video/quicktime",
+    }[extension] ?? "application/octet-stream"
+  );
+};
+const upload = async (file, slotName = null, emptyOnly = false) => {
+  if (!file) return false;
+  const type = fileMediaType(file),
+    kind = type.split("/")[0];
+  if (!["image", "video", "audio"].includes(kind)) {
+    setStatus(t("inputUnsupported"));
+    return false;
+  }
+  const slot = resolveInputSlot(kind, slotName, null, emptyOnly);
+  if (!slot) return false;
+  const capability = state.capability,
+    engine = state.engineName;
   setStatus(t("uploading"));
   try {
     const response = await fetch("/api/uploads", {
       method: "POST",
-      headers: { "Content-Type": file.type || "application/octet-stream" },
+      headers: { "Content-Type": type },
       body: file,
     });
     const result = await response.json();
     if (!response.ok || !result.ok) throw new Error(result.error?.message ?? response.statusText);
-    attachInput({ ...result, filename: file.name }, result.kind, slot);
+    if (state.capability !== capability || state.engineName !== engine) {
+      setStatus(t("inputChanged"));
+      return false;
+    }
+    return attachInput({ ...result, filename: file.name }, result.kind, slot.slot);
   } catch (error) {
     setStatus(error.message);
+    return false;
   }
+};
+let inputQueue = Promise.resolve();
+const addFiles = (files, slotName = null) => {
+  // Serialize additions so separate drops and paste events cannot claim the
+  // same empty slot while its upload is still in flight.
+  inputQueue = inputQueue
+    .then(async () => {
+      const messages = [],
+        failed = [];
+      let target = slotName;
+      for (const file of files) {
+        if (await upload(file, target, true)) target = null;
+        else {
+          failed.push(file);
+          messages.push($("#composer-status").textContent);
+        }
+      }
+      if (failed.length) {
+        const details = [...new Set(messages)].join(" ");
+        setStatus(
+          files.length > 1 ? `${t("ignoredFiles", { n: failed.length })} ${details}` : details,
+        );
+      }
+    })
+    .catch((error) => setStatus(error.message));
 };
 const renderPicker = (slotName) => {
   state.pickerSlot = slotName;
@@ -1888,34 +1999,69 @@ document.addEventListener("dragstart", (event) => {
   event.dataTransfer.effectAllowed = "copy";
 });
 const isInputDrag = (event) =>
-  [...event.dataTransfer.types].some((type) =>
+  [...(event.dataTransfer?.types ?? [])].some((type) =>
     ["Files", "application/x-studio-output"].includes(type),
   );
-$("#create-form").addEventListener("dragover", (event) => {
-  if (isInputDrag(event)) {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = "copy";
-    event.target.closest(".input-slot")?.classList.add("drag-over");
-  }
-});
-$("#create-form").addEventListener("dragleave", (event) =>
-  event.target.closest(".input-slot")?.classList.remove("drag-over"),
-);
-$("#create-form").addEventListener("drop", (event) => {
+let dragDepth = 0;
+const clearDrag = () => {
+  dragDepth = 0;
+  $("#drop-overlay").hidden = true;
+  document
+    .querySelectorAll(".drag-over")
+    .forEach((element) => element.classList.remove("drag-over"));
+};
+const showDrag = (event) => {
+  $("#drop-overlay").hidden = false;
+  const slot = event.target.closest?.("[data-drop-slot]");
+  document.querySelectorAll(".drag-over").forEach((element) => {
+    if (element !== slot) element.classList.remove("drag-over");
+  });
+  slot?.classList.add("drag-over");
+};
+document.addEventListener("dragenter", (event) => {
   if (!isInputDrag(event)) return;
   event.preventDefault();
-  document.querySelectorAll(".drag-over").forEach((e) => e.classList.remove("drag-over"));
-  const slot = event.target.closest("[data-drop-slot]")?.dataset.dropSlot;
+  dragDepth += 1;
+  showDrag(event);
+});
+document.addEventListener("dragover", (event) => {
+  if (!isInputDrag(event)) return;
+  event.preventDefault();
+  event.dataTransfer.dropEffect = "copy";
+  showDrag(event);
+});
+document.addEventListener("dragleave", (event) => {
+  if (!isInputDrag(event)) return;
+  dragDepth = Math.max(0, dragDepth - 1);
+  if (!dragDepth) clearDrag();
+});
+document.addEventListener("dragend", clearDrag);
+window.addEventListener("blur", clearDrag);
+document.addEventListener("drop", (event) => {
+  if (!isInputDrag(event)) return;
+  event.preventDefault();
+  clearDrag();
+  const slot = event.target.closest?.("[data-drop-slot]")?.dataset.dropSlot;
   const raw = event.dataTransfer.getData("application/x-studio-output");
   if (raw) {
     try {
       const selection = JSON.parse(raw);
       const found = findOutput(selection.job_id, selection.output_index);
-      if (found) attachInput(selection, found.output.kind, slot);
+      if (found) attachInput(selection, found.output.kind, slot, null, true);
+      else setStatus(t("inputUnsupported"));
     } catch {
-      /* invalid drag data */
+      setStatus(t("inputUnsupported"));
     }
-  } else void upload(event.dataTransfer.files?.[0], slot);
+  } else addFiles([...event.dataTransfer.files], slot);
+});
+$("#create-form").addEventListener("paste", (event) => {
+  const images = [...(event.clipboardData?.items ?? [])]
+    .filter((item) => item.kind === "file" && item.type.startsWith("image/"))
+    .map((item) => item.getAsFile())
+    .filter(Boolean);
+  if (!images.length) return;
+  event.preventDefault();
+  addFiles(images, event.target.closest?.("[data-drop-slot]")?.dataset.dropSlot);
 });
 $("#connection").addEventListener("click", () => showDialog("connection-dialog"));
 $("#refresh-connection").addEventListener("click", () => void loadCatalog(true));

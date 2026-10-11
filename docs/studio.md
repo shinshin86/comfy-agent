@@ -52,9 +52,14 @@ Before deciding anything, read the context the request points to:
    capability, no mode row is needed. Large model menus group choices by model family and provide a name filter.
    The most recently used engine selects
    the initial mode; otherwise Studio selects the first capability.
-2. Add compatible inputs by dropping files, dragging results onto a slot, or
-   choosing **Select a result** / **Choose a file**. Attaching an image while
-   creating an image or video switches to editing or animation when available.
+2. Add compatible inputs by dropping files anywhere on the page, pasting an
+   image into the composer, dragging results onto a slot, or choosing
+   **Pick from results** / **Choose a file**. Drops on a slot fill that slot;
+   drops elsewhere fill empty compatible slots in order. Extra files and
+   incompatible inputs show a message. Attaching an image while creating an
+   image or video switches to editing or animation when available. Input zones
+   appear side by side on desktop and stack on mobile; filled zones offer
+   **Replace** and **Remove**, while optional inputs still allow **Do not use**.
 3. Write the prompt in the large input box. Chips below it choose the model
    (when multiple engines exist), length in seconds, aspect ratio, and count
    (1–4). **Details** contains the negative prompt, seed, strength, and remaining
