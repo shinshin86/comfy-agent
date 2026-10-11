@@ -9,6 +9,7 @@ export const KNOWN_RUN_FLAGS = new Set([
   "poll-interval-ms",
   "timeout-seconds",
   "no-preflight",
+  "skip-input",
   "preflight",
   "base-url",
   "source",

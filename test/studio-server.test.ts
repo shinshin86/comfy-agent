@@ -1,7 +1,7 @@
 import path from "node:path";
 import http from "node:http";
 import { promises as fs } from "node:fs";
-import { describe, expect, it, vi } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
 import { readJob, writeJob } from "../src/jobs/store.js";
 import type { JobRecord } from "../src/jobs/types.js";
 import { StudioRuns, type RunLauncher } from "../src/studio/rerun.js";
@@ -11,6 +11,30 @@ import { getRequestsFilePath, listRequests, savePlan } from "../src/studio/store
 import { getJobsDirPath } from "../src/io/workdir.js";
 import { runCli } from "./helpers/run-cli.js";
 import { createTmpWorkdir } from "./helpers/tmp-workdir.js";
+
+// Global-scope fixtures must never write into the real user's workdir.
+const { globalFixture } = await vi.hoisted(async () => {
+  const fs = await import("node:fs/promises");
+  const os = await import("node:os");
+  const path = await import("node:path");
+  return { globalFixture: await fs.mkdtemp(path.join(os.tmpdir(), "studio-global-test-")) };
+});
+vi.mock("../src/io/workdir.js", async (importOriginal) => {
+  const original = await importOriginal<typeof import("../src/io/workdir.js")>();
+  const root = (cwd: string, scope: "local" | "global") =>
+    scope === "global" ? globalFixture : original.getWorkdirPath(cwd, scope);
+  return {
+    ...original,
+    GLOBAL_WORK_DIR: globalFixture,
+    getWorkdirPath: root,
+    getSubdirPath: (subdir: string, cwd: string, scope: "local" | "global") =>
+      path.join(root(cwd, scope), subdir),
+    getJobsDirPath: (cwd: string, scope: "local" | "global") => path.join(root(cwd, scope), "jobs"),
+    getCharactersDirPath: (cwd: string, scope: "local" | "global") =>
+      path.join(root(cwd, scope), "characters"),
+  };
+});
+afterAll(() => fs.rm(globalFixture, { recursive: true, force: true }));
 
 const publicDir = path.resolve("studio/public");
 
@@ -113,7 +137,7 @@ describe("studio server", () => {
       expect(await ranged.text()).toBe("PNG");
 
       const page = await fetch(server.url);
-      expect(await page.text()).toContain("comfy-agent Studio");
+      expect(await page.text()).toContain("Comfy Agent Studio");
     } finally {
       await server.close();
     }

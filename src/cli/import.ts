@@ -18,6 +18,7 @@ import {
   type WorkflowObjectInfo,
 } from "../workflow/normalize.js";
 import { resolveComfyBaseUrl } from "../utils/base-url.js";
+import { readWorkflowProfile } from "../studio/profiles.js";
 
 export type ImportOptions = {
   name: string;
@@ -494,6 +495,11 @@ export const runImport = async (workflowPath: string, options: ImportOptions) =>
   );
   const presetYaml = YAML.stringify(presetTemplate);
   const presetOverwritten = await writeFileSafe(presetDest, presetYaml, options.force);
+  try {
+    await readWorkflowProfile(process.cwd(), presetTemplate, scope, objectInfo ?? undefined);
+  } catch {
+    // Profiles are a best-effort display layer; importing the workflow still succeeds.
+  }
 
   if (options.json) {
     printJson(

@@ -18,6 +18,7 @@ export type RunOptions = {
   lora?: string;
   /** commander --no-preflight sets this to false; default true */
   preflight?: boolean;
+  skipInput?: string[];
 };
 
 export type RunSource = "auto" | "local" | "remote" | "remote-catalog";

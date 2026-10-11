@@ -22,7 +22,13 @@ import {
 } from "./history.js";
 import { runVerify } from "./verify.js";
 import { runBrief } from "./brief.js";
-import { runStudioGuide, runStudioInbox, runStudioPlan, runStudioServe } from "./studio.js";
+import {
+  runStudioGuide,
+  runStudioInbox,
+  runStudioPlan,
+  runStudioProfile,
+  runStudioServe,
+} from "./studio.js";
 import { CliError, errorPayloadFrom, exitCodeFrom, isCliError } from "../io/errors.js";
 import { log } from "../io/output.js";
 import { resolveLanguage, setLanguage, t } from "../i18n/index.js";
@@ -131,6 +137,12 @@ program
   .option("--timeout-seconds <sec>", t("cli.run.option.timeout"))
   .option("--async", t("cli.run.option.async"))
   .option("--no-preflight", t("cli.run.option.no_preflight"))
+  .option(
+    "--skip-input <slot>",
+    t("cli.run.option.skip_input"),
+    (slot: string, previous: string[]) => [...previous, slot],
+    [],
+  )
   .option("--base-url <url>", t("cli.option.base_url"))
   .option("--source <local|remote|remote-catalog>", t("cli.run.option.source"))
   .option("--character <name>", t("cli.run.option.character"))
@@ -842,6 +854,22 @@ colab
   });
 
 const studio = program.command("studio").alias("ui").description(t("cli.studio.description"));
+
+studio
+  .command("profile")
+  .description(t("cli.studio.profile.description"))
+  .argument("[preset]", t("cli.studio.profile.arg.preset"))
+  .option("--all", t("cli.studio.profile.option.all"))
+  .option("--set <file>", t("cli.studio.profile.option.set"))
+  .option("--json", t("cli.option.json"))
+  .option("--lang <lang>", t("cli.option.lang"))
+  .action(async (name, options) => {
+    try {
+      await runStudioProfile(name, options);
+    } catch (error) {
+      handleError(error, options?.json);
+    }
+  });
 
 studio
   .command("serve", { isDefault: true })

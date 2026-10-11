@@ -102,6 +102,7 @@ export type RerunForm =
       seed: number | null;
       has_seed: boolean;
       inputs: RerunInput[];
+      skip: string[];
     };
 
 export type RerunRequest = {
@@ -112,6 +113,9 @@ export type RerunRequest = {
   inputs?: Record<string, string>;
   /** Language for the CLI's own error messages shown in the studio. */
   lang?: "en" | "ja";
+  skip?: string[];
+  /** Surviving nodes after the server validated the skipped inputs. */
+  liveNodes?: Set<string>;
 };
 
 const presetPath = async (cwd: string, record: JobRecord): Promise<string | null> => {
@@ -216,10 +220,11 @@ export const buildRerunForm = async (record: JobRecord, preset: Preset): Promise
     seed: record.seed,
     has_seed: resolveSeedTargets(preset).length > 0,
     inputs,
+    skip: record.skipped_inputs ?? [],
   };
 };
 
-const acceptsKind = (uploadKind: UploadDef["kind"], outputKind: string) =>
+export const acceptsKind = (uploadKind: UploadDef["kind"], outputKind: string) =>
   uploadKind === "file" ||
   (uploadKind === "audio" ? outputKind === "audio" : outputKind === "image");
 
@@ -311,7 +316,6 @@ export const buildRerunArgs = (
   request: RerunRequest,
 ): string[] => {
   validateRerunRequest(record, preset, request.overrides);
-  const parameters = preset.parameters ?? {};
   const params: Record<string, unknown> = { ...record.params };
   for (const [name, value] of Object.entries(request.overrides)) {
     params[name] = value;
@@ -320,19 +324,57 @@ export const buildRerunArgs = (
   const newSeed = request.seed === "new" && seedTargets.length > 0;
   if (newSeed) for (const name of seedTargets) delete params[name];
 
-  const args = ["run", record.preset, "--json", "--source", "local", "--timeout-seconds", "3600"];
-  if (record.scope === "global") args.push("--global");
-  if (request.count > 1) args.push("--n", String(request.count));
-  if (newSeed) args.push("--seed", "random");
-  if (request.lang) args.push("--lang", request.lang);
-  for (const { name, def } of uploadSlots(record, preset)) {
-    const file = request.inputs?.[name];
-    if (!file) throw new Error(`No local file for input ${name}.`);
+  return buildStudioArgs(
+    record.preset,
+    record.scope,
+    preset,
+    params,
+    request.inputs ?? {},
+    request.count,
+    newSeed ? "random" : undefined,
+    request.lang,
+    request.skip ?? record.skipped_inputs ?? [],
+    request.liveNodes,
+  );
+};
+
+/** Both new generations and re-runs use the same CLI argument builder. */
+export const buildStudioArgs = (
+  name: string,
+  scope: "local" | "global",
+  preset: Preset,
+  params: Record<string, unknown>,
+  inputs: Record<string, string>,
+  count: number,
+  seed?: "random" | number,
+  lang?: "en" | "ja",
+  skip: string[] = [],
+  liveNodes?: Set<string>,
+): string[] => {
+  const parameters = preset.parameters ?? {};
+  const seedTargets = resolveSeedTargets(preset).map(({ param }) => param);
+  const args = ["run", name, "--json", "--source", "local", "--timeout-seconds", "3600"];
+  if (scope === "global") args.push("--global");
+  if (count > 1) args.push("--n", String(count));
+  if (seed !== undefined && seedTargets.length) args.push("--seed", String(seed));
+  if (lang) args.push("--lang", lang);
+  for (const [slot, def] of Object.entries(preset.uploads ?? {})) {
+    if (skip.includes(slot)) {
+      args.push("--skip-input", slot);
+      continue;
+    }
+    if (liveNodes && !liveNodes.has(String(def.target.node_id))) continue;
+    const file = inputs[slot];
+    if (!file) {
+      if (def.required) throw new Error(`No local file for input ${slot}.`);
+      continue;
+    }
     args.push(`--${def.cli_flag.replace(/^--/, "")}=${file}`);
   }
   for (const [name, value] of Object.entries(params)) {
     const def = parameters[name];
-    if (!def || value === undefined || value === null) continue;
+    if (!def || value === undefined || (value === null && def.type !== "json")) continue;
+    if (seed !== undefined && seedTargets.includes(name)) continue;
     // `--name=value` keeps values that start with "--" from being read as flags.
     args.push(`--${name}=${argValue(def.type, value)}`);
   }
@@ -405,7 +447,7 @@ export class StudioRuns {
   /** `prepare` resolves inputs (possibly downloading them) before `run` starts. */
   start(
     cwd: string,
-    record: JobRecord,
+    record: Pick<JobRecord, "job_id" | "preset">,
     prepare: () => Promise<string[]>,
     count: number,
   ): StudioRun {

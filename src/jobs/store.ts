@@ -46,6 +46,7 @@ const V2_JOB_KEYS = new Set<keyof JobPatch>([
   "verify",
   "favorite",
   "upload_sources",
+  "skipped_inputs",
 ]);
 
 type StoredJob = {

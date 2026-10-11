@@ -206,11 +206,13 @@ export const assertRequiredInputs = (
   preset: Preset,
   params: Record<string, unknown>,
   uploads: Record<string, string>,
+  liveNodes?: Set<string>,
 ): void => {
   const parameters = preset.parameters ?? {};
   const uploadsDef = preset.uploads ?? {};
 
   for (const [name, def] of Object.entries(parameters)) {
+    if (liveNodes && !liveNodes.has(String(def.target.node_id))) continue;
     if (params[name] !== undefined || !def.required) continue;
     throw new CliError("MISSING_REQUIRED_PARAM", t("param.required", { param: name }), 2, {
       param: name,
@@ -218,6 +220,7 @@ export const assertRequiredInputs = (
   }
 
   for (const [name, def] of Object.entries(uploadsDef)) {
+    if (liveNodes && !liveNodes.has(String(def.target.node_id))) continue;
     if (uploads[name] !== undefined || !def.required) continue;
     throw new CliError("MISSING_REQUIRED_UPLOAD", t("param.required", { param: def.cli_flag }), 2, {
       upload: name,

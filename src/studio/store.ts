@@ -54,12 +54,32 @@ export const StudioSelectionSchema = z.object({
   output_index: z.number().int().min(0),
 });
 
+export const StudioInputSchema = z.union([
+  StudioSelectionSchema.strict(),
+  z.object({ upload_id: z.string().min(1) }).strict(),
+  z.object({ input_job_id: z.string().min(1), input_slot: z.string().min(1) }).strict(),
+]);
+
+export const StudioRequestContextSchema = z.object({
+  task: z.string().optional(),
+  preset: z.string().optional(),
+  params: z.record(z.unknown()).default({}),
+  count: z.number().int().min(1).max(4).optional(),
+  seed: z
+    .union([z.literal("random"), z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER)])
+    .optional(),
+  inputs: z.record(StudioInputSchema).default({}),
+  source_job_id: z.string().optional(),
+  skip: z.array(z.string().min(1)).optional(),
+});
+
 export const StudioRequestSchema = z.object({
   id: z.string().min(1),
   at: z.string().datetime(),
   text: z.string().min(1),
   selected: z.array(StudioSelectionSchema).default([]),
   character: z.string().optional(),
+  context: StudioRequestContextSchema.optional(),
 });
 
 export type StudioStep = z.infer<typeof StudioStepSchema>;

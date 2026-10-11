@@ -151,10 +151,7 @@ export const toServerUnreachable = (err: unknown, server: string) => {
  *   and return { checked: false } instead of blocking the run.
  * - Other answered-but-broken cases → rethrow the original API_ERROR.
  */
-export const fetchPreflightReport = async (
-  client: ComfyClient,
-  workflow: Workflow,
-): Promise<PreflightReport> => {
+export const fetchPreflightObjectInfo = async (client: ComfyClient) => {
   let objectInfo: Record<string, unknown>;
   try {
     objectInfo = await client.objectInfo<Record<string, unknown>>();
@@ -164,14 +161,24 @@ export const fetchPreflightReport = async (
       throw toServerUnreachable(err, client.baseUrl);
     }
     if (kind === "endpoint_missing") {
-      return { checked: false, missing_nodes: [], missing_models: [] };
+      return null;
     }
     throw err;
   }
   if (!objectInfo || typeof objectInfo !== "object") {
-    return { checked: false, missing_nodes: [], missing_models: [] };
+    return null;
   }
-  return buildPreflightReport(workflow, objectInfo);
+  return objectInfo;
+};
+
+export const fetchPreflightReport = async (
+  client: ComfyClient,
+  workflow: Workflow,
+): Promise<PreflightReport> => {
+  const objectInfo = await fetchPreflightObjectInfo(client);
+  return objectInfo
+    ? buildPreflightReport(workflow, objectInfo)
+    : { checked: false, missing_nodes: [], missing_models: [] };
 };
 
 /** Throw the contract errors when the report has findings. */

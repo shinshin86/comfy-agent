@@ -6,6 +6,12 @@ import { CliError } from "../io/errors.js";
 import { print, printJson } from "../io/output.js";
 import { readResource, resourcePath } from "../io/resources.js";
 import { startStudioServer } from "../studio/server.js";
+import { loadStudioPresets } from "../studio/capabilities.js";
+import {
+  readWorkflowProfile,
+  saveAgentProfile,
+  WorkflowProfileSchema,
+} from "../studio/profiles.js";
 import {
   ensureStudioDir,
   getRequestsFilePath,
@@ -25,6 +31,7 @@ export type StudioServeOptions = {
 
 export type StudioPlanOptions = { json?: boolean };
 export type StudioInboxOptions = { json?: boolean; follow?: boolean; all?: boolean };
+export type StudioProfileOptions = { json?: boolean; all?: boolean; set?: string };
 
 const LOOPBACK_HOSTS = new Set(["127.0.0.1", "localhost", "::1"]);
 
@@ -203,5 +210,53 @@ export const runStudioInbox = async (options: StudioInboxOptions) => {
 };
 
 export const runStudioGuide = async () => {
+  print(t("studio.profile_guide"));
   print(await readResource("docs/studio.md"));
+};
+
+export const runStudioProfile = async (name: string | undefined, options: StudioProfileOptions) => {
+  const cwd = process.cwd();
+  const presets = await loadStudioPresets(cwd);
+  try {
+    if (options.set) {
+      if (options.all) throw new CliError("INVALID_PROFILE", t("studio.profile_invalid"), 2);
+      const raw = JSON.parse(await fs.readFile(options.set, "utf8"));
+      const input = { ...raw };
+      delete input.stale;
+      const parsed = WorkflowProfileSchema.parse(input);
+      if (name && parsed.preset !== name)
+        throw new CliError("INVALID_PROFILE", t("studio.profile_invalid"), 2);
+      const entry = presets.find((entry) => entry.name === parsed.preset);
+      if (!entry?.preset)
+        throw new CliError(
+          "PRESET_NOT_FOUND",
+          t("studio.profile_missing", { name: parsed.preset }),
+          2,
+        );
+      const profile = await saveAgentProfile(cwd, entry.preset, entry.scope, parsed);
+      if (options.json) printJson({ ok: true, profile });
+      else print(t("studio.profile_saved", { name: profile.preset }));
+      return;
+    }
+    const selected =
+      name && !options.all ? presets.filter((entry) => entry.name === name) : presets;
+    if (name && !selected.length)
+      throw new CliError("PRESET_NOT_FOUND", t("studio.profile_missing", { name }), 2);
+    const profiles = [];
+    for (const entry of selected) {
+      if (!entry.preset) continue;
+      profiles.push(await readWorkflowProfile(cwd, entry.preset, entry.scope));
+    }
+    if (options.json)
+      printJson(name && !options.all ? { ok: true, profile: profiles[0] } : { ok: true, profiles });
+    else
+      for (const profile of profiles)
+        print(
+          `${profile.preset}: ${profile.title?.[process.env.COMFY_AGENT_LANG === "ja" ? "ja" : "en"] ?? profile.capability} (${profile.source}${profile.stale ? `, ${t("studio.profile_stale")}` : ""})`,
+        );
+  } catch (error) {
+    if (error instanceof ZodError || error instanceof SyntaxError)
+      throw new CliError("INVALID_PROFILE", t("studio.profile_invalid"), 2);
+    throw error;
+  }
 };

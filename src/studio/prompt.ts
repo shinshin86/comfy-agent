@@ -25,6 +25,7 @@ export const buildAgentPrompt = (
   request: StudioRequest,
   outputs: RequestContextOutput[],
   lang: Language,
+  uploadPaths: Record<string, string> = {},
 ): string => {
   const ja = lang === "ja";
   const lines = [
@@ -38,6 +39,18 @@ export const buildAgentPrompt = (
   ];
   if (request.character) {
     lines.push(`${ja ? "キャラクター" : "Character"}: ${JSON.stringify(request.character)}`);
+  }
+  if (request.context) {
+    lines.push(
+      ja ? "作成フォームの設定:" : "Create panel context:",
+      indent(JSON.stringify(request.context, null, 2), "  "),
+    );
+  }
+  if (Object.keys(uploadPaths).length) {
+    lines.push(
+      ja ? "アップロード素材:" : "Uploaded inputs:",
+      indent(JSON.stringify(uploadPaths, null, 2), "  "),
+    );
   }
   if (outputs.length > 0) {
     lines.push(ja ? "選択中の素材:" : "Selected outputs:");

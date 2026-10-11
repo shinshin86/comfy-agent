@@ -7,18 +7,21 @@ import { listCharacters, resolveCharacter } from "../characters/store.js";
 import type { Language } from "../i18n/index.js";
 import { readConfigSync } from "../io/config.js";
 import { CliError } from "../io/errors.js";
-import {
-  getCharactersDirPath,
-  getJobsDirPath,
-  getSubdirPath,
-  type WorkdirScope,
-} from "../io/workdir.js";
+import { getCharactersDirPath, getJobsDirPath, type WorkdirScope } from "../io/workdir.js";
 import { readJob, updateJob } from "../jobs/store.js";
 import { JobRecordSchema, type JobRecord } from "../jobs/types.js";
 import { decideComfyBaseUrl } from "../utils/base-url.js";
+import { resolveSeedTargets } from "../cli/run/args.js";
 import { buildAgentPrompt, type RequestContextOutput } from "./prompt.js";
+import { loadStudioPresets, type CapabilityFetcher } from "./capabilities.js";
+import { StudioCatalog } from "./catalog.js";
+import { readWorkflowProfile } from "./profiles.js";
+import { mapComposerParams, parseGenerate, validateGenerateParams } from "./generate.js";
+import { receiveUpload, resolveUpload, MAX_UPLOAD_BYTES } from "./uploads.js";
 import {
   buildRerunArgs,
+  buildStudioArgs,
+  acceptsKind,
   buildRerunForm,
   cliLauncher,
   comfyInputFetcher,
@@ -39,6 +42,7 @@ import {
   listPlans,
   listRequests,
   StudioSelectionSchema,
+  StudioRequestContextSchema,
 } from "./store.js";
 
 export type StudioServerOptions = {
@@ -53,6 +57,8 @@ export type StudioServerOptions = {
   launcher?: RunLauncher;
   /** How re-runs fetch inputs from the ComfyUI server; tests replace it. */
   fetchServerInput?: (serverName: string) => Promise<Buffer>;
+  capabilityFetcher?: CapabilityFetcher;
+  maxUploadBytes?: number;
 };
 
 export type StudioServer = {
@@ -83,6 +89,7 @@ const MIME: Record<string, string> = {
   ".mp3": "audio/mpeg",
   ".flac": "audio/flac",
   ".ogg": "audio/ogg",
+  ".m4a": "audio/mp4",
 };
 
 const KIND_BY_EXT: Record<string, string> = {
@@ -98,6 +105,7 @@ const KIND_BY_EXT: Record<string, string> = {
   ".mp3": "audio",
   ".flac": "audio",
   ".ogg": "audio",
+  ".m4a": "audio",
 };
 
 const MAX_BODY_BYTES = 64 * 1024;
@@ -173,6 +181,7 @@ const jobView = (record: JobRecord) => ({
   seed: record.seed,
   params: record.params,
   uploads: record.uploads,
+  skipped_inputs: record.skipped_inputs ?? [],
   prompt_input: record.prompt_input,
   prompt_final: record.prompt_final,
   negative_final: record.negative_final,
@@ -241,20 +250,6 @@ const loadCharacters = async (cwd: string) => {
   return views;
 };
 
-const listPresetNames = async (cwd: string) => {
-  const names = new Set<string>();
-  for (const scope of ["local", "global"] as const) {
-    try {
-      for (const file of await fs.readdir(getSubdirPath("presets", cwd, scope))) {
-        if (/\.ya?ml$/.test(file)) names.add(file.replace(/\.ya?ml$/, ""));
-      }
-    } catch {
-      // A missing presets directory just means nothing is imported yet.
-    }
-  }
-  return [...names].sort();
-};
-
 const buildState = async (options: StudioServerOptions, runs: StudioRuns) => {
   const { cwd } = options;
   const [records, characters, plans, requests, presets] = await Promise.all([
@@ -262,8 +257,24 @@ const buildState = async (options: StudioServerOptions, runs: StudioRuns) => {
     loadCharacters(cwd),
     listPlans(cwd),
     listRequests(cwd),
-    listPresetNames(cwd),
+    loadStudioPresets(cwd),
   ]);
+  const models = new Map(
+    await Promise.all(
+      [...new Set(records.map((record) => record.preset))].map(async (name) => {
+        const entry = presets.find((preset) => preset.name === name);
+        let label: string | undefined;
+        if (entry?.preset) {
+          try {
+            label = (await readWorkflowProfile(cwd, entry.preset, entry.scope)).model_label;
+          } catch {
+            // A missing or invalid workflow must not hide recorded outputs.
+          }
+        }
+        return [name, label] as const;
+      }),
+    ),
+  );
   const handled = handledRequestIds(plans);
   // Read config relative to the studio cwd, not the process cwd.
   const connection = decideComfyBaseUrl({}, process.env, (scope) => readConfigSync(cwd, scope));
@@ -272,13 +283,13 @@ const buildState = async (options: StudioServerOptions, runs: StudioRuns) => {
     cwd,
     lang: options.lang,
     connection: { base_url: connection.value, source: connection.source },
-    presets,
+    presets: presets.map((preset) => preset.name).sort(),
     characters,
     plans,
     requests: requests
       .map((request) => ({ ...request, handled: handled.has(request.id) }))
       .reverse(),
-    jobs: records.map(jobView),
+    jobs: records.map((record) => ({ ...jobView(record), model_label: models.get(record.preset) })),
     runs: runs.list(),
   };
 };
@@ -367,6 +378,46 @@ const readJobOrThrow = async (cwd: string, jobId: string) => {
   return (await readJob(jobId, cwd, "local", { fallback: false })).record;
 };
 
+// A retained re-creation input identifies a recorded slot, never an arbitrary path.
+const originalInput = async (options: StudioServerOptions, jobId: string, slot: string) => {
+  const record = await readJobOrThrow(options.cwd, jobId);
+  const loaded = await loadRerunPreset(options.cwd, record);
+  if (
+    "reason" in loaded ||
+    !Object.hasOwn(record.uploads, slot) ||
+    !Object.hasOwn(loaded.preset.uploads ?? {}, slot)
+  )
+    throw new HttpError(400, "INVALID_PARAM", "Original input is unavailable.");
+  const def = loaded.preset.uploads![slot]!;
+  const kind =
+    def.kind === "mask"
+      ? "image"
+      : def.kind === "file"
+        ? (KIND_BY_EXT[path.extname(record.uploads[slot]!).toLowerCase()] ?? "file")
+        : def.kind;
+  return {
+    kind,
+    resolve: async () => {
+      const inputs = await resolveRerunInputs(
+        options.cwd,
+        { ...record, uploads: { [slot]: record.uploads[slot]! } },
+        loaded.preset,
+        {},
+        {
+          outputFile: async () => null,
+          fetchServerInput:
+            options.fetchServerInput ??
+            comfyInputFetcher(
+              decideComfyBaseUrl({}, process.env, (scope) => readConfigSync(options.cwd, scope))
+                .value,
+            ),
+        },
+      );
+      return inputs[slot]!;
+    },
+  };
+};
+
 const handleFeedback = async (cwd: string, jobId: string, body: Record<string, unknown>) => {
   const record = await readJobOrThrow(cwd, jobId);
   const patch: Parameters<typeof updateJob>[1] = {};
@@ -420,13 +471,42 @@ const handleRequest = async (
     });
   }
 
-  const draft = { text, selected: selected.data, character };
+  const contextResult = StudioRequestContextSchema.optional().safeParse(body.context);
+  if (!contextResult.success) throw new HttpError(400, "INVALID_PARAM", "Invalid request context.");
+  const context = contextResult.data;
+  const uploadPaths: Record<string, string> = {};
+  for (const [slot, input] of Object.entries(context?.inputs ?? {})) {
+    if ("upload_id" in input)
+      uploadPaths[slot] = (await resolveUpload(options.cwd, input.upload_id)).path;
+    else if ("input_job_id" in input)
+      uploadPaths[slot] = await (
+        await originalInput(options, input.input_job_id, input.input_slot)
+      ).resolve();
+    else if (
+      !selected.data.some(
+        (item) => item.job_id === input.job_id && item.output_index === input.output_index,
+      )
+    ) {
+      const record = await readJobOrThrow(options.cwd, input.job_id);
+      const file = jobOutputPath(record, input.output_index);
+      if (!file) throw new HttpError(400, "INVALID_PARAM", "Unknown input output.");
+      outputs.push({
+        job_id: record.job_id,
+        output_index: input.output_index,
+        preset: record.preset,
+        kind: outputKind(record.outputs[input.output_index]!.kind, file),
+        path: file,
+      });
+    }
+  }
+  if (context?.source_job_id) await readJobOrThrow(options.cwd, context.source_job_id);
+  const draft = { text, selected: selected.data, character, context };
   // `send: false` only previews the text for the copy button; nothing is stored.
   const request =
     body.send === true
       ? await appendRequest(options.cwd, draft)
       : { ...draft, id: "(preview)", at: new Date().toISOString() };
-  return { request, prompt: buildAgentPrompt(request, outputs, lang) };
+  return { request, prompt: buildAgentPrompt(request, outputs, lang, uploadPaths) };
 };
 
 const parseInputOverrides = (value: unknown): Record<string, RerunInputOverride> => {
@@ -457,6 +537,7 @@ export const startStudioServer = async (options: StudioServerOptions): Promise<S
   const clients = new Set<http.ServerResponse>();
   const feedbackWrites = new Map<string, Promise<unknown>>();
   const runs = new StudioRuns(options.launcher ?? cliLauncher, () => notify());
+  const catalog = new StudioCatalog(options.cwd, options.capabilityFetcher);
   let stateInFlight: ReturnType<typeof buildState> | null = null;
   let stateNext: ReturnType<typeof buildState> | null = null;
   const startStateRead = () => {
@@ -500,6 +581,204 @@ export const startStudioServer = async (options: StudioServerOptions): Promise<S
 
       if (url.pathname === "/api/state" && method === "GET") {
         sendJson(res, 200, await readState());
+        return;
+      }
+
+      if (url.pathname === "/api/capabilities" && method === "GET") {
+        sendJson(
+          res,
+          200,
+          await catalog.probe.read(
+            await loadJobs(options.cwd, options.jobLimit ?? 200),
+            url.searchParams.get("refresh") === "1",
+          ),
+        );
+        return;
+      }
+
+      if (url.pathname === "/api/catalog" && method === "GET") {
+        sendJson(
+          res,
+          200,
+          await catalog.read(
+            await loadJobs(options.cwd, options.jobLimit ?? 200),
+            url.searchParams.get("refresh") === "1",
+          ),
+        );
+        return;
+      }
+
+      if (url.pathname === "/api/uploads" && method === "POST") {
+        sendJson(res, 200, {
+          ok: true,
+          ...(await receiveUpload(options.cwd, req, options.maxUploadBytes ?? MAX_UPLOAD_BYTES)),
+        });
+        return;
+      }
+      const uploadMedia = /^\/api\/media\/upload\/([^/]+)$/.exec(url.pathname);
+      if (uploadMedia && method === "GET") {
+        await sendFile(
+          req,
+          res,
+          (await resolveUpload(options.cwd, decodePathPart(uploadMedia[1]!))).path,
+        );
+        return;
+      }
+
+      if (url.pathname === "/api/generate" && method === "POST") {
+        const body = parseGenerate(await readJsonBody(req));
+        let defaultSkip: string[] = [];
+        let requestedParams = body.params;
+        if (body.capability) {
+          const current = await catalog.read(await loadJobs(options.cwd, options.jobLimit ?? 200));
+          const engine = current.capabilities
+            .find((capability) => capability.id === body.capability)
+            ?.engines.find((engine) => engine.preset === body.preset);
+          if (!engine)
+            throw new HttpError(
+              400,
+              "INVALID_PARAM",
+              "This creation is not available on the connected ComfyUI.",
+            );
+          requestedParams = mapComposerParams(body, engine);
+          defaultSkip = engine.default_skip;
+        }
+        const loaded = (await loadStudioPresets(options.cwd)).find(
+          (entry) => entry.name === body.preset,
+        );
+        if (!loaded?.preset)
+          throw new HttpError(400, "INVALID_PARAM", "Preset is missing or invalid.");
+        const preset = loaded.preset;
+        const source = body.source_job_id
+          ? await readJobOrThrow(options.cwd, body.source_job_id)
+          : undefined;
+        const skip = [...new Set(body.skip ?? source?.skipped_inputs ?? defaultSkip)];
+        const pruned = skip.length ? await catalog.validateSkip(preset, loaded.scope, skip) : null;
+        const liveNodes = pruned ? new Set(Object.keys(pruned)) : undefined;
+        for (const slot of skip)
+          if (Object.hasOwn(body.inputs, slot))
+            throw new HttpError(
+              400,
+              "INVALID_PARAM",
+              `Input ${slot} cannot be supplied and skipped together.`,
+            );
+        if (
+          source &&
+          (source.source !== "local" ||
+            source.preset !== body.preset ||
+            source.scope !== loaded.scope)
+        ) {
+          throw new HttpError(
+            400,
+            "INVALID_PARAM",
+            "Source job cannot be replayed with this preset.",
+          );
+        }
+        const seedNames = new Set(resolveSeedTargets(preset).map(({ param }) => param));
+        const params = {
+          ...Object.fromEntries(
+            Object.entries(source?.params ?? {}).filter(
+              ([name]) => Object.hasOwn(preset.parameters ?? {}, name) && !seedNames.has(name),
+            ),
+          ),
+          ...requestedParams,
+        };
+        validateGenerateParams(preset, params, liveNodes);
+        const inputs: Record<string, string> = {};
+        const originals: Record<string, Awaited<ReturnType<typeof originalInput>>> = {};
+        for (const [slot, input] of Object.entries(body.inputs)) {
+          const def = Object.hasOwn(preset.uploads ?? {}, slot) ? preset.uploads![slot] : undefined;
+          if (!def) throw new HttpError(400, "INVALID_PARAM", `Unknown input: ${slot}`);
+          let file: { path: string; kind: string };
+          if ("upload_id" in input) file = await resolveUpload(options.cwd, input.upload_id);
+          else if ("input_job_id" in input) {
+            const original = await originalInput(options, input.input_job_id, input.input_slot);
+            if (!acceptsKind(def.kind, original.kind))
+              throw new HttpError(400, "INVALID_PARAM", `Input ${slot} needs ${def.kind}.`);
+            originals[slot] = original;
+            continue;
+          } else {
+            const record = await readJobOrThrow(options.cwd, input.job_id);
+            const output = record.outputs[input.output_index];
+            const target = jobOutputPath(record, input.output_index);
+            if (!output || !target) throw new HttpError(400, "INVALID_PARAM", "Unknown output.");
+            file = { path: target, kind: outputKind(output.kind, output.saved_to) };
+            try {
+              if (!(await fs.stat(file.path)).isFile()) throw new Error();
+            } catch {
+              throw new HttpError(400, "INVALID_PARAM", "Input file is missing.");
+            }
+          }
+          if (!acceptsKind(def.kind, file.kind))
+            throw new HttpError(400, "INVALID_PARAM", `Input ${slot} needs ${def.kind}.`);
+          inputs[slot] = file.path;
+        }
+        for (const [slot, def] of Object.entries(preset.uploads ?? {})) {
+          if (skip.includes(slot) || (pruned && !Object.hasOwn(pruned, String(def.target.node_id))))
+            continue;
+          if (def.required && !inputs[slot] && !originals[slot] && !source?.uploads[slot])
+            throw new HttpError(400, "INVALID_PARAM", `Input is required: ${slot}`);
+        }
+        const prepare = async () => {
+          for (const [slot, original] of Object.entries(originals))
+            inputs[slot] = await original.resolve();
+          if (source) {
+            // Resolve original inputs only for slots the user did not replace.
+            const pending = {
+              ...source,
+              uploads: Object.fromEntries(
+                Object.entries(source.uploads).filter(
+                  ([slot]) =>
+                    !Object.hasOwn(inputs, slot) &&
+                    !skip.includes(slot) &&
+                    (!liveNodes ||
+                      !preset.uploads?.[slot] ||
+                      liveNodes.has(String(preset.uploads[slot]!.target.node_id))),
+                ),
+              ),
+            };
+            Object.assign(
+              inputs,
+              await resolveRerunInputs(
+                options.cwd,
+                pending,
+                preset,
+                {},
+                {
+                  outputFile: async () => null,
+                  fetchServerInput:
+                    options.fetchServerInput ??
+                    comfyInputFetcher(
+                      decideComfyBaseUrl({}, process.env, (scope) =>
+                        readConfigSync(options.cwd, scope),
+                      ).value,
+                    ),
+                },
+              ),
+            );
+          }
+          return buildStudioArgs(
+            body.preset,
+            loaded.scope,
+            preset,
+            params,
+            inputs,
+            body.count,
+            body.seed,
+            body.lang ?? options.lang ?? undefined,
+            skip,
+            liveNodes,
+          );
+        };
+        sendJson(res, 200, {
+          ok: true,
+          run: runs.start(
+            options.cwd,
+            { job_id: source?.job_id ?? "", preset: body.preset },
+            prepare,
+            body.count,
+          ),
+        });
         return;
       }
 
@@ -595,10 +874,31 @@ export const startStudioServer = async (options: StudioServerOptions): Promise<S
             ? (body.overrides as Record<string, unknown>)
             : {};
         const inputOverrides = parseInputOverrides(body.inputs);
+        if (
+          body.skip !== undefined &&
+          (!Array.isArray(body.skip) ||
+            !body.skip.every((slot) => typeof slot === "string" && slot))
+        )
+          throw new HttpError(400, "INVALID_PARAM", "Invalid skipped inputs.");
+        const skip = [
+          ...new Set((body.skip as string[] | undefined) ?? record.skipped_inputs ?? []),
+        ];
+        const pruned = skip.length
+          ? await catalog.validateSkip(loaded.preset, record.scope, skip)
+          : null;
+        const liveNodes = pruned ? new Set(Object.keys(pruned)) : undefined;
+        if (skip.some((slot) => Object.hasOwn(inputOverrides, slot)))
+          throw new HttpError(
+            400,
+            "INVALID_PARAM",
+            "An input cannot be supplied and skipped together.",
+          );
         const request = {
           overrides,
           seed: body.seed === "same" ? ("same" as const) : ("new" as const),
           count,
+          skip,
+          liveNodes,
           lang: body.lang === "ja" || body.lang === "en" ? body.lang : (options.lang ?? undefined),
         };
         const preset = loaded.preset;
@@ -614,7 +914,19 @@ export const startStudioServer = async (options: StudioServerOptions): Promise<S
           );
         }
         const prepare = async () => {
-          const inputs = await resolveRerunInputs(options.cwd, record, preset, inputOverrides, {
+          const pending = {
+            ...record,
+            uploads: Object.fromEntries(
+              Object.entries(record.uploads).filter(
+                ([slot]) =>
+                  !skip.includes(slot) &&
+                  (!liveNodes ||
+                    !preset.uploads?.[slot] ||
+                    liveNodes.has(String(preset.uploads[slot]!.target.node_id))),
+              ),
+            ),
+          };
+          const inputs = await resolveRerunInputs(options.cwd, pending, preset, inputOverrides, {
             outputFile: async (selection) => {
               const source = await readJobOrThrow(options.cwd, selection.job_id);
               const filePath = jobOutputPath(source, selection.output_index);
@@ -687,7 +999,11 @@ export const startStudioServer = async (options: StudioServerOptions): Promise<S
           JOB_AMBIGUOUS_ID: 409,
           INVALID_JOB_RECORD: 409,
           INVALID_PARAM: 400,
+          UNKNOWN_INPUT_SLOT: 400,
+          INPUT_NOT_SKIPPABLE: 400,
           FILE_NOT_FOUND: 404,
+          UNSUPPORTED_MEDIA_TYPE: 415,
+          BODY_TOO_LARGE: 413,
         };
         sendJson(res, statuses[error.code] ?? 500, {
           ok: false,

@@ -289,6 +289,7 @@ export const awaitAndDownload = async (
         scope: job.scope,
         params: job.params,
         uploads: job.uploads,
+        skipped_inputs: job.skipped_inputs,
         character: job.character,
         prompt_input: job.prompt_input,
         prompt_final: job.prompt_final,
