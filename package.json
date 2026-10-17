@@ -24,6 +24,8 @@
     "CHANGELOG.md",
     "AGENTS.md",
     "docs/*.md",
+    "docs/prompt-guides/*.md",
+    "studio/public/**",
     "recipes/**/*.md",
     "scripts/colab/**/*.{py,json,md,yaml}",
     ".claude/skills/**"

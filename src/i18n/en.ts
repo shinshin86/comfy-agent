@@ -310,8 +310,7 @@ export const messages = {
     "Cannot expand the subgraph because /object_info has no schema for node class {type}. Update ComfyUI and retry the import.",
   "workflow.subgraph_mode_unsupported":
     "Cannot expand subgraph node {type}: execution mode {mode} is not supported yet.",
-  "workflow.disabled_node_referenced":
-    "Disabled node {type} is referenced by {consumer}.",
+  "workflow.disabled_node_referenced": "Disabled node {type} is referenced by {consumer}.",
   "workflow.subgraph_cycle": "Cannot expand a cyclic subgraph output: {id}.",
   "workflow.subgraph_invalid": "The ComfyUI subgraph definition is invalid or incomplete.",
   "run.workdir_missing": ".comfy-agent not found. Run comfy-agent init first.",
@@ -455,6 +454,11 @@ export const messages = {
   "error.unexpected": "Unexpected error: {message}",
   "param.required": "{param} is required.",
   "cli.run.option.no_preflight": "Skip the server preflight check (models/nodes)",
+  "cli.run.option.skip_input":
+    "Disconnect an optional upload slot (repeatable; requires server object_info)",
+  "run.unknown_skip_input": "Unknown upload slot to skip: {slot}.",
+  "run.input_not_skippable":
+    "Cannot disconnect inputs {slots} on this server; output safety could not be confirmed.",
   "cli.doctor.option.preset": "Also check that the server has the models/nodes this preset needs",
   "cli.connect.description": "Verify a ComfyUI base URL and save it to .comfy-agent/config.yaml",
   "cli.connect.arg.url": "ComfyUI base URL (e.g. https://xxxx.trycloudflare.com)",
@@ -472,6 +476,45 @@ export const messages = {
   "doctor.preflight_skipped": "preflight({preset}): SKIPPED (/object_info unavailable)",
   "doctor.preflight_missing_node": "- missing node: {node} (workflow node {id})",
   "doctor.preflight_missing_model": "- missing model: {value} ({node}.{input})",
-} as const;
+  "cli.studio.description": "Local web studio that shares production state with an agent session",
+  "cli.studio.serve.description": "Start the studio web UI on localhost",
+  "cli.studio.option.port": "Port to listen on (default: 8790, 0 = any free port)",
+  "cli.studio.option.host": "Loopback host to bind (127.0.0.1, localhost, ::1)",
+  "cli.studio.option.open": "Open the studio in the default browser",
+  "cli.studio.plan.description": "Create or update a studio plan from a JSON file (- for stdin)",
+  "cli.studio.plan.arg.file": "Plan JSON file, or - to read stdin",
+  "cli.studio.inbox.description":
+    "List studio requests not yet answered by a plan or prompt suggestion",
+  "cli.studio.inbox.option.follow": "Keep running and print each new request as one JSON line",
+  "cli.studio.inbox.option.all": "Include requests already answered",
+  "cli.studio.guide.description": "Print the agent guide for working with the studio",
+  "studio.listening": "comfy-agent studio: {url}",
+  "studio.agent_hint":
+    "Open an agent session in this folder and run `comfy-agent studio guide` to start. Press Ctrl+C to stop.",
+  "studio.invalid_port": "--port must be an integer between 0 and 65535.",
+  "studio.loopback_only": "The studio only binds to loopback hosts (127.0.0.1, localhost, ::1).",
+  "studio.port_in_use": "Port {port} is already in use. Pass --port <n>.",
+  "studio.plan_invalid": "The plan JSON is invalid.",
+  "studio.plan_saved": "Saved studio plan {id}.",
+  "cli.studio.suggest.description": "Answer a prompt assistance request with suggestions from JSON",
+  "cli.studio.suggest.arg.file": "Suggestion JSON file, or - to read stdin",
+  "cli.studio.prompt_guide.description": "Print the prompt writing guide for a preset",
+  "studio.suggestion_invalid":
+    "Invalid suggestion: check request_id, preset, explanation language, size limits and supported settings.",
+  "studio.suggestion_saved": "Saved prompt suggestions for {id}.",
+  "cli.studio.feedback.description": "Read reasons for deleted outputs as agent feedback",
+  "studio.feedback_empty": "No deletion feedback yet.",
+  "studio.inbox_empty": "No pending studio requests.",
 
+  "cli.studio.profile.description": "Inspect and confirm creation capability profiles",
+  "cli.studio.profile.arg.preset": "Preset name (omit to list all profiles)",
+  "cli.studio.profile.option.all": "Print all profiles",
+  "cli.studio.profile.option.set": "Save an agent-confirmed profile from a JSON file",
+  "studio.profile_invalid": "The profile or its input/control mapping is invalid.",
+  "studio.profile_missing": "Preset {name} was not found.",
+  "studio.profile_saved": "Saved the confirmed profile for {name}.",
+  "studio.profile_stale": "source data changed",
+  "studio.profile_guide":
+    "When the user starts using Studio or after importing a workflow, inspect studio profile --all --json. Confirm or fix title, summary, capability and model_label, then save the profile with studio profile <name> --set <file.json>. Watch studio inbox --follow: creation requests need a plan; prompt_assist requests need studio prompt-guide <preset> and a reply via studio suggest <file|->.",
+} as const;
 export type MessageKey = keyof typeof messages;

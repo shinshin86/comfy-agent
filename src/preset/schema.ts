@@ -17,6 +17,7 @@ const PresetTaskSchema = z.enum([
   "audio_inpaint",
   "text_to_video",
   "image_to_video",
+  "reference_to_video",
   "video_to_video",
   "custom",
 ]);
@@ -66,6 +67,7 @@ const ParameterSchema = z.object({
   aliases: AliasesSchema.optional(),
   min: z.number().optional(),
   max: z.number().optional(),
+  step: z.number().positive().optional(),
   choices: z.array(z.unknown()).min(1).optional(),
   recommended: z.unknown().optional(),
 });

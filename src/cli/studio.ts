@@ -1,0 +1,317 @@
+import { promises as fs, watch, type FSWatcher } from "node:fs";
+import { spawn } from "node:child_process";
+import { ZodError } from "zod";
+import { t, type Language } from "../i18n/index.js";
+import { CliError } from "../io/errors.js";
+import { print, printJson } from "../io/output.js";
+import { readResource, resourcePath } from "../io/resources.js";
+import { startStudioServer } from "../studio/server.js";
+import { loadStudioPresets } from "../studio/capabilities.js";
+import {
+  readWorkflowProfile,
+  saveAgentProfile,
+  WorkflowProfileSchema,
+} from "../studio/profiles.js";
+import {
+  ensureStudioDir,
+  getRequestsFilePath,
+  handledRequestIds,
+  listPlans,
+  listRequests,
+  parseRequestLines,
+  savePlan,
+} from "../studio/store.js";
+
+import {
+  listSuggestions,
+  MAX_SUGGESTION_BYTES,
+  readPromptGuide,
+  saveSuggestion,
+} from "../studio/suggestions.js";
+
+import { listDeletedFeedback } from "../studio/results.js";
+
+export type StudioServeOptions = {
+  port?: string;
+  host?: string;
+  open?: boolean;
+  lang?: string;
+};
+
+export type StudioPlanOptions = { json?: boolean };
+export type StudioInboxOptions = { json?: boolean; follow?: boolean; all?: boolean };
+export type StudioProfileOptions = { json?: boolean; all?: boolean; set?: string };
+
+const LOOPBACK_HOSTS = new Set(["127.0.0.1", "localhost", "::1"]);
+
+const explicitLanguage = (options: StudioServeOptions): Language | null => {
+  const value = options.lang ?? process.env.COMFY_AGENT_LANG;
+  return value === "ja" || value === "en" ? value : null;
+};
+
+const parsePort = (value: string | undefined) => {
+  if (value === undefined) return 8790;
+  const port = Number(value);
+  if (!Number.isInteger(port) || port < 0 || port > 65535) {
+    throw new CliError("INVALID_PARAM", t("studio.invalid_port"), 2, { port: value });
+  }
+  return port;
+};
+
+const openBrowser = (url: string) => {
+  const command =
+    process.platform === "darwin" ? "open" : process.platform === "win32" ? "cmd" : "xdg-open";
+  const args = process.platform === "win32" ? ["/c", "start", "", url] : [url];
+  try {
+    const child = spawn(command, args, { stdio: "ignore", detached: true });
+    child.on("error", () => undefined);
+    child.unref();
+  } catch {
+    // The URL is printed anyway; failing to open a browser is not an error.
+  }
+};
+
+export const runStudioServe = async (options: StudioServeOptions) => {
+  const host = options.host ?? "127.0.0.1";
+  // The API can rewrite job records, so it must never be reachable from the network.
+  if (!LOOPBACK_HOSTS.has(host)) {
+    throw new CliError("INVALID_PARAM", t("studio.loopback_only"), 2, { host });
+  }
+  let server;
+  try {
+    server = await startStudioServer({
+      cwd: process.cwd(),
+      host,
+      port: parsePort(options.port),
+      publicDir: resourcePath("studio", "public"),
+      lang: explicitLanguage(options),
+    });
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "EADDRINUSE") {
+      throw new CliError(
+        "PORT_IN_USE",
+        t("studio.port_in_use", { port: options.port ?? "8790" }),
+        2,
+      );
+    }
+    throw error;
+  }
+  print(t("studio.listening", { url: server.url }));
+  print(t("studio.agent_hint"));
+  if (options.open) openBrowser(server.url);
+
+  await new Promise<void>((resolve) => {
+    const stop = () => {
+      void server.close().then(resolve);
+    };
+    process.once("SIGINT", stop);
+    process.once("SIGTERM", stop);
+  });
+};
+
+const readPlanInput = async (file: string): Promise<unknown> => {
+  const raw =
+    file === "-"
+      ? await new Promise<string>((resolve, reject) => {
+          const chunks: Buffer[] = [];
+          process.stdin.on("data", (chunk: Buffer) => chunks.push(chunk));
+          process.stdin.on("end", () => resolve(Buffer.concat(chunks).toString("utf-8")));
+          process.stdin.on("error", reject);
+        })
+      : await fs.readFile(file, "utf-8");
+  try {
+    return JSON.parse(raw) as unknown;
+  } catch (error) {
+    throw new CliError("INVALID_PLAN", t("studio.plan_invalid"), 2, {
+      cause: error instanceof Error ? error.message : String(error),
+    });
+  }
+};
+
+export const runStudioPlan = async (file: string, options: StudioPlanOptions) => {
+  let plan;
+  try {
+    plan = await savePlan(process.cwd(), await readPlanInput(file));
+  } catch (error) {
+    if (error instanceof ZodError) {
+      throw new CliError("INVALID_PLAN", t("studio.plan_invalid"), 2, { issues: error.issues });
+    }
+    throw error;
+  }
+  if (options.json) {
+    printJson({ ok: true, plan });
+    return;
+  }
+  print(t("studio.plan_saved", { id: plan.id }));
+};
+
+export const runStudioInbox = async (options: StudioInboxOptions) => {
+  const cwd = process.cwd();
+  if (!options.follow) {
+    const allRequests = await listRequests(cwd);
+    const handled = handledRequestIds(
+      await listPlans(cwd),
+      await listSuggestions(cwd),
+      allRequests,
+    );
+    const requests = allRequests.filter((request) => options.all || !handled.has(request.id));
+    if (options.json) {
+      printJson({ ok: true, requests });
+      return;
+    }
+    if (requests.length === 0) {
+      print(t("studio.inbox_empty"));
+      return;
+    }
+    for (const request of requests) {
+      print(`${request.id}  ${request.at}  ${request.kind}  ${request.text}`);
+    }
+    return;
+  }
+
+  // Follow mode prints one JSON line per new request, so an agent can stream it
+  // into a live session (e.g. Claude Code's Monitor) and react without polling.
+  await ensureStudioDir(cwd);
+  const filePath = getRequestsFilePath(cwd);
+  let offset = 0;
+  try {
+    offset = (await fs.stat(filePath)).size;
+  } catch {
+    await fs.writeFile(filePath, "", { flag: "a" });
+  }
+  const drain = async () => {
+    const handle = await fs.open(filePath, "r");
+    try {
+      const { size } = await handle.stat();
+      if (size < offset) offset = 0;
+      if (size === offset) return;
+      const buffer = Buffer.alloc(size - offset);
+      await handle.read(buffer, 0, buffer.length, offset);
+      const text = buffer.toString("utf-8");
+      const complete = text.lastIndexOf("\n") + 1;
+      offset += Buffer.byteLength(text.slice(0, complete));
+      for (const request of parseRequestLines(text.slice(0, complete))) {
+        print(JSON.stringify(request));
+      }
+    } finally {
+      await handle.close();
+    }
+  };
+  let draining = Promise.resolve();
+  const schedule = () => {
+    draining = draining.then(drain).catch(() => undefined);
+  };
+  let watcher: FSWatcher | undefined;
+  try {
+    watcher = watch(filePath, schedule);
+    watcher.on("error", () => watcher?.close());
+  } catch {
+    // Polling still delivers requests when native file watching is unavailable.
+  }
+  // fs.watch can miss events on some filesystems; a slow poll is the safety net.
+  const poll = setInterval(schedule, 2000);
+  await new Promise<void>((resolve) => {
+    const stop = () => {
+      watcher?.close();
+      clearInterval(poll);
+      resolve();
+    };
+    process.once("SIGINT", stop);
+    process.once("SIGTERM", stop);
+  });
+};
+
+export const runStudioGuide = async () => {
+  print(t("studio.profile_guide"));
+  print(await readResource("docs/studio.md"));
+};
+
+export const runStudioProfile = async (name: string | undefined, options: StudioProfileOptions) => {
+  const cwd = process.cwd();
+  const presets = await loadStudioPresets(cwd);
+  try {
+    if (options.set) {
+      if (options.all) throw new CliError("INVALID_PROFILE", t("studio.profile_invalid"), 2);
+      const raw = JSON.parse(await fs.readFile(options.set, "utf8"));
+      const input = { ...raw };
+      delete input.stale;
+      const parsed = WorkflowProfileSchema.parse(input);
+      if (name && parsed.preset !== name)
+        throw new CliError("INVALID_PROFILE", t("studio.profile_invalid"), 2);
+      const entry = presets.find((entry) => entry.name === parsed.preset);
+      if (!entry?.preset)
+        throw new CliError(
+          "PRESET_NOT_FOUND",
+          t("studio.profile_missing", { name: parsed.preset }),
+          2,
+        );
+      const profile = await saveAgentProfile(cwd, entry.preset, entry.scope, parsed);
+      if (options.json) printJson({ ok: true, profile });
+      else print(t("studio.profile_saved", { name: profile.preset }));
+      return;
+    }
+    const selected =
+      name && !options.all ? presets.filter((entry) => entry.name === name) : presets;
+    if (name && !selected.length)
+      throw new CliError("PRESET_NOT_FOUND", t("studio.profile_missing", { name }), 2);
+    const profiles = [];
+    for (const entry of selected) {
+      if (!entry.preset) continue;
+      profiles.push(await readWorkflowProfile(cwd, entry.preset, entry.scope));
+    }
+    if (options.json)
+      printJson(name && !options.all ? { ok: true, profile: profiles[0] } : { ok: true, profiles });
+    else
+      for (const profile of profiles)
+        print(
+          `${profile.preset}: ${profile.title?.[process.env.COMFY_AGENT_LANG === "ja" ? "ja" : "en"] ?? profile.capability} (${profile.source}${profile.stale ? `, ${t("studio.profile_stale")}` : ""})`,
+        );
+  } catch (error) {
+    if (error instanceof ZodError || error instanceof SyntaxError)
+      throw new CliError("INVALID_PROFILE", t("studio.profile_invalid"), 2);
+    throw error;
+  }
+};
+
+export const runStudioSuggest = async (file: string, options: StudioPlanOptions) => {
+  try {
+    let raw: string;
+    if (file === "-") {
+      const chunks: Buffer[] = [];
+      let size = 0;
+      for await (const value of process.stdin) {
+        const chunk = Buffer.from(value);
+        size += chunk.length;
+        if (size > MAX_SUGGESTION_BYTES) throw new Error("size");
+        chunks.push(chunk);
+      }
+      raw = Buffer.concat(chunks).toString("utf8");
+    } else {
+      if ((await fs.stat(file)).size > MAX_SUGGESTION_BYTES) throw new Error("size");
+      raw = await fs.readFile(file, "utf8");
+    }
+    if (Buffer.byteLength(raw) > MAX_SUGGESTION_BYTES) throw new Error("size");
+    const suggestion = await saveSuggestion(process.cwd(), JSON.parse(raw));
+    if (options.json) printJson({ ok: true, suggestion });
+    else print(t("studio.suggestion_saved", { id: suggestion.request_id }));
+  } catch (error) {
+    if (error instanceof CliError) throw error;
+    throw new CliError("INVALID_SUGGESTION", t("studio.suggestion_invalid"), 2);
+  }
+};
+
+export const runStudioPromptGuide = async (name: string, options: StudioPlanOptions) => {
+  const guide = await readPromptGuide(process.cwd(), name);
+  if (options.json) printJson({ ok: true, ...guide });
+  else
+    print(
+      `${guide.preset} (${guide.model_label ?? guide.capability}) — ${guide.guide}\n\n${guide.text}`,
+    );
+};
+
+export const runStudioFeedback = async (options: StudioPlanOptions) => {
+  const feedback = await listDeletedFeedback(process.cwd());
+  if (options.json) printJson({ ok: true, feedback });
+  else if (!feedback.length) print(t("studio.feedback_empty"));
+  else for (const entry of feedback) print(`${entry.at}  ${entry.preset}  ${entry.reason}`);
+};

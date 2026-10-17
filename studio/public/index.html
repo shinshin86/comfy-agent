@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Comfy Agent Studio</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">Comfy Agent <span>Studio</span></div>
+      <div class="topbar-meta">
+        <button id="agent-button" class="secondary" type="button" hidden></button
+        ><button id="connection" class="connection" type="button" aria-haspopup="dialog"></button
+        ><button id="lang-toggle" class="ghost" type="button"></button>
+      </div>
+    </header>
+    <main class="feed">
+      <div class="feed-toolbar">
+        <div id="filters" class="filters" role="group"></div>
+        <span id="gallery-count" class="muted"></span>
+      </div>
+      <div id="feed-grid" class="gallery">
+        <div id="running-gallery"></div>
+        <div id="gallery"></div>
+      </div>
+    </main>
+    <section class="composer-dock" aria-label="Create">
+      <form id="create-form" class="composer">
+        <div
+          id="drop-overlay"
+          class="drop-overlay"
+          data-i18n="dropHere"
+          aria-live="polite"
+          hidden
+        ></div>
+        <div id="offline-panel" hidden></div>
+        <div id="online-composer">
+          <div id="mode-context" class="mode-context"></div>
+          <div id="modes" class="modes"></div>
+          <div id="input-slots" class="input-slots"></div>
+          <button
+            id="start-input"
+            type="button"
+            class="setting-chip start-input"
+            data-start-input
+            hidden
+          ></button>
+          <div id="character-chip"></div>
+          <label class="prompt-label"
+            ><span class="sr-only" data-i18n="prompt"></span
+            ><textarea id="prompt" rows="2"></textarea>
+          </label>
+          <div class="prompt-tools">
+            <button
+              id="prompt-assist"
+              type="button"
+              class="secondary"
+              data-assist-start
+              aria-describedby="prompt-assist-description"
+              disabled
+            ></button>
+            <button
+              id="prompt-undo"
+              type="button"
+              class="text-link"
+              data-assist-undo
+              hidden
+            ></button>
+          </div>
+          <p id="prompt-assist-description" class="hint prompt-assist-description"></p>
+          <section
+            id="prompt-assist-panel"
+            class="prompt-assist-panel"
+            aria-label="Prompt suggestions"
+            hidden
+          ></section>
+          <div class="composer-bottom">
+            <div id="setting-chips" class="setting-chips"></div>
+            <div class="create-actions">
+              <button id="ask-agent" type="button" class="secondary"></button
+              ><button id="generate" type="submit"></button>
+            </div>
+          </div>
+          <div id="model-popover" class="settings-popover" hidden></div>
+          <div id="duration-popover" class="settings-popover" hidden></div>
+          <div id="size-popover" class="settings-popover" hidden></div>
+          <div id="count-popover" class="settings-popover" hidden></div>
+          <div id="details-popover" class="settings-popover details-popover" hidden></div>
+          <p id="action-note" class="hint"></p>
+        </div>
+        <p id="composer-status" class="status" role="status"></p>
+      </form>
+      <p id="first-hint" class="hint first-hint"></p>
+    </section>
+    <dialog id="detail-dialog" class="detail-dialog">
+      <div class="dialog-heading">
+        <h2 data-i18n="detailTitle"></h2>
+        <div class="detail-header-actions">
+          <button
+            id="detail-delete"
+            class="ghost danger-text"
+            type="button"
+            data-i18n="deleteOutput"
+            hidden
+          ></button
+          ><button
+            class="ghost"
+            type="button"
+            data-close-dialog="detail-dialog"
+            data-i18n="close"
+          ></button>
+        </div>
+      </div>
+      <div id="inspector"></div>
+    </dialog>
+    <dialog id="delete-dialog" aria-labelledby="delete-title" aria-describedby="delete-body">
+      <form id="delete-form">
+        <h2 id="delete-title" data-i18n="deleteTitle"></h2>
+        <p id="delete-body" data-i18n="deleteBody"></p>
+        <label class="field"
+          ><span data-i18n="deleteReason"></span
+          ><textarea id="delete-reason" rows="3" maxlength="4000"></textarea>
+        </label>
+        <div class="actions">
+          <button
+            type="button"
+            class="secondary"
+            data-close-dialog="delete-dialog"
+            data-i18n="deleteCancel"
+            autofocus
+          ></button
+          ><button
+            id="confirm-delete"
+            type="submit"
+            class="danger"
+            data-i18n="deleteConfirm"
+          ></button>
+        </div>
+        <p id="delete-status" class="status" role="status"></p>
+      </form>
+    </dialog>
+    <dialog id="connection-dialog">
+      <div class="dialog-heading">
+        <h2 data-i18n="connectionTitle"></h2>
+        <button
+          class="ghost"
+          type="button"
+          data-close-dialog="connection-dialog"
+          data-i18n="close"
+        ></button>
+      </div>
+      <div id="connection-details"></div>
+      <button id="refresh-connection" type="button" data-i18n="recheck"></button>
+      <details id="url-help">
+        <summary data-i18n="changeUrl"></summary>
+        <p data-i18n="urlHelp"></p>
+        <code>comfy-agent connect &lt;url&gt;</code>
+        <p id="url-source-help" class="hint"></p>
+      </details>
+    </dialog>
+    <dialog id="character-dialog">
+      <div class="dialog-heading">
+        <h2 data-i18n="characters"></h2>
+        <button
+          class="ghost"
+          type="button"
+          data-close-dialog="character-dialog"
+          data-i18n="close"
+        ></button>
+      </div>
+      <p class="hint" data-i18n="characterExplanation"></p>
+      <input id="character-search" type="search" />
+      <div id="characters" class="character-list"></div>
+    </dialog>
+    <dialog id="picker-dialog">
+      <div class="dialog-heading">
+        <h2 data-i18n="pickResult"></h2>
+        <button
+          class="ghost"
+          type="button"
+          data-close-dialog="picker-dialog"
+          data-i18n="close"
+        ></button>
+      </div>
+      <p id="picker-hint" class="hint"></p>
+      <div id="picker-results" class="gallery picker"></div>
+    </dialog>
+    <dialog id="request-dialog">
+      <div class="dialog-heading">
+        <h2 data-i18n="askAgent"></h2>
+        <button
+          class="ghost"
+          type="button"
+          data-close-dialog="request-dialog"
+          data-i18n="close"
+        ></button>
+      </div>
+      <label class="field"
+        ><span data-i18n="intent"></span><textarea id="request-text" rows="4"></textarea>
+      </label>
+      <div id="context" class="context"></div>
+      <button
+        id="request-character"
+        type="button"
+        class="secondary"
+        data-open-characters
+        hidden
+        data-i18n="requestCharacter"
+      ></button>
+      <details open>
+        <summary data-i18n="requestContext"></summary>
+        <pre id="request-context"></pre>
+      </details>
+      <div class="actions">
+        <button id="copy-request" type="button" data-i18n="copy"></button
+        ><button id="queue-request" class="secondary" type="button" data-i18n="send"></button>
+      </div>
+      <p class="hint" data-i18n="queueNote"></p>
+      <textarea id="copy-fallback" rows="6" readonly hidden></textarea>
+      <p id="request-status" class="status" role="status"></p>
+    </dialog>
+    <dialog id="agent-dialog" class="side-sheet">
+      <div class="dialog-heading">
+        <h2 data-i18n="agentArea"></h2>
+        <button
+          class="ghost"
+          type="button"
+          data-close-dialog="agent-dialog"
+          data-i18n="close"
+        ></button>
+      </div>
+      <div id="agent-area"></div>
+    </dialog>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

@@ -316,8 +316,7 @@ export const messages = {
     "サブグラフを展開できません。/object_info にノードクラス {type} の定義がありません。ComfyUIを更新して再度importしてください。",
   "workflow.subgraph_mode_unsupported":
     "サブグラフノード {type} を展開できません。実行モード {mode} は未対応です。",
-  "workflow.disabled_node_referenced":
-    "無効化ノード {type} は {consumer} から参照されています。",
+  "workflow.disabled_node_referenced": "無効化ノード {type} は {consumer} から参照されています。",
   "workflow.subgraph_cycle": "循環するサブグラフ出力を展開できません: {id}",
   "workflow.subgraph_invalid": "ComfyUIのサブグラフ定義が不正または不完全です。",
   "run.workdir_missing":
@@ -462,6 +461,11 @@ export const messages = {
   "error.unexpected": "予期しないエラー: {message}",
   "param.required": "{param} が必要です。",
   "cli.run.option.no_preflight": "サーバープリフライト検査(モデル/ノード)をスキップ",
+  "cli.run.option.skip_input":
+    "省略可能なアップロード枠を外す（繰り返し指定可、接続先のobject_infoが必要）",
+  "run.unknown_skip_input": "省略するアップロード枠がありません: {slot}。",
+  "run.input_not_skippable":
+    "この接続先では入力 {slots} を外せません。出力が残ることを確認できませんでした。",
   "cli.doctor.option.preset": "プリセットが必要とするモデル/ノードがサーバーに揃っているかも検査",
   "cli.connect.description": "ComfyUI の base URL を疎通確認して .comfy-agent/config.yaml に保存",
   "cli.connect.arg.url": "ComfyUI base URL (例: https://xxxx.trycloudflare.com)",
@@ -479,4 +483,43 @@ export const messages = {
   "doctor.preflight_skipped": "preflight({preset}): SKIPPED (/object_info 利用不可)",
   "doctor.preflight_missing_node": "- 不足ノード: {node} (workflow node {id})",
   "doctor.preflight_missing_model": "- 不足モデル: {value} ({node}.{input})",
+  "cli.studio.description": "エージェントのセッションと制作状態を共有するローカル Web スタジオ",
+  "cli.studio.serve.description": "スタジオの Web UI を localhost で起動",
+  "cli.studio.option.port": "待ち受けポート (既定: 8790、0 で空きポート)",
+  "cli.studio.option.host": "bind するループバックホスト (127.0.0.1, localhost, ::1)",
+  "cli.studio.option.open": "既定のブラウザでスタジオを開く",
+  "cli.studio.plan.description": "JSON ファイルからスタジオの制作計画を作成・更新 (- で標準入力)",
+  "cli.studio.plan.arg.file": "計画の JSON ファイル。- で標準入力",
+  "cli.studio.inbox.description": "まだ計画やプロンプト案で回答していない依頼を表示",
+  "cli.studio.inbox.option.follow": "起動したまま、新しい依頼を1件ずつ JSON 1行で出力",
+  "cli.studio.inbox.option.all": "回答済みの依頼も含める",
+  "cli.studio.guide.description": "スタジオと連携するエージェント向けの手順書を表示",
+  "studio.listening": "comfy-agent studio: {url}",
+  "studio.agent_hint":
+    "このフォルダでエージェントのセッションを開き、`comfy-agent studio guide` を読ませてから始めてください。Ctrl+C で停止します。",
+  "studio.invalid_port": "--port には 0〜65535 の整数を指定してください。",
+  "studio.loopback_only":
+    "スタジオはループバックホスト (127.0.0.1, localhost, ::1) にのみ bind できます。",
+  "studio.port_in_use": "ポート {port} は使用中です。--port <n> を指定してください。",
+  "studio.plan_invalid": "計画の JSON が不正です。",
+  "studio.plan_saved": "スタジオの計画 {id} を保存しました。",
+  "cli.studio.suggest.description": "JSONの提案でプロンプト整形の依頼に回答",
+  "cli.studio.suggest.arg.file": "提案のJSONファイル。- で標準入力",
+  "cli.studio.prompt_guide.description": "プリセットに適したプロンプト作成ガイドを表示",
+  "studio.suggestion_invalid":
+    "提案が不正です。依頼ID・プリセット・説明の言語・文字数・対応する設定を確認してください。",
+  "studio.suggestion_saved": "依頼 {id} のプロンプト案を保存しました。",
+  "cli.studio.feedback.description": "削除した結果の理由をエージェント向けフィードバックとして表示",
+  "studio.feedback_empty": "削除理由のフィードバックはまだありません。",
+  "studio.inbox_empty": "未対応のスタジオ依頼はありません。",
+  "cli.studio.profile.description": "制作機能のプロファイルを表示・確認・更新",
+  "cli.studio.profile.arg.preset": "対象のプリセット名（省略するとすべて）",
+  "cli.studio.profile.option.all": "すべてのプロファイルを表示",
+  "cli.studio.profile.option.set": "JSON ファイルから確認済みプロファイルを保存",
+  "studio.profile_invalid": "プロファイルの内容または入力・設定項目の対応が不正です。",
+  "studio.profile_missing": "プリセット {name} が見つかりません。",
+  "studio.profile_saved": "{name} のプロファイルを確認済みとして保存しました。",
+  "studio.profile_stale": "元のデータが変更されています",
+  "studio.profile_guide":
+    "Studio を使い始めるときやワークフローを取り込んだ後は、studio profile --all --json で自動判定を確認してください。表示名・説明・機能・モデル名を確認または修正し、studio profile <name> --set <file.json> で保存してください。studio inbox --follow の creation は計画、prompt_assist は studio prompt-guide <preset> を読んで studio suggest <file|-> で回答してください。",
 } as const;

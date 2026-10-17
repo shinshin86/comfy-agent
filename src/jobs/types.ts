@@ -67,6 +67,15 @@ export const JobRecordSchema = z.object({
   source: JobSourceSchema,
   params: z.record(z.unknown()),
   uploads: z.record(z.string()),
+  skipped_inputs: z.array(z.string().min(1)).optional(),
+  /** Local files that were uploaded, so a job can be replayed after a server reset. */
+  upload_sources: z
+    .record(
+      z.string().refine(isAbsolutePath, {
+        message: "upload_sources values must be absolute paths",
+      }),
+    )
+    .optional(),
   seed: z.number().nullable(),
   output_dir: z.string().refine(isAbsolutePath, {
     message: "output_dir must be an absolute path",
@@ -116,6 +125,7 @@ export const RunManifestSchema = z.object({
   scope: JobScopeSchema,
   params: z.record(z.unknown()),
   uploads: z.record(z.string()),
+  skipped_inputs: z.array(z.string().min(1)).optional(),
   character: JobCharacterSchema.optional(),
   prompt_input: z.string().optional(),
   prompt_final: z.string().optional(),
@@ -140,6 +150,7 @@ export type RunManifestHeader = Pick<
   | "scope"
   | "params"
   | "uploads"
+  | "skipped_inputs"
   | "character"
   | "prompt_input"
   | "prompt_final"

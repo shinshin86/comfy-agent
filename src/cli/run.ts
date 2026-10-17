@@ -11,7 +11,14 @@ import type { Preset } from "../preset/schema.js";
 import { resolvePresetPath } from "../preset/path.js";
 import { loadLocalWorkflow } from "../workflow/load.js";
 import { applyParameters, applyUploads } from "../workflow/patch.js";
-import { assertPreflightPasses, fetchPreflightReport } from "../workflow/preflight.js";
+import {
+  assertPreflightPasses,
+  fetchPreflightReport,
+  fetchPreflightObjectInfo,
+  buildPreflightReport,
+} from "../workflow/preflight.js";
+import { skipWorkflowUploads } from "../workflow/optional-inputs.js";
+import type { WorkflowObjectInfo } from "../workflow/normalize.js";
 import { resolveComfyBaseUrl } from "../utils/base-url.js";
 import type { ProgressEventRecord } from "../api/progress.js";
 import { createProgressUi } from "../jobs/progress-ui.js";
@@ -325,7 +332,30 @@ export const runRun = async (presetName: string, options: RunOptions, rawArgs: s
           ...(appliedCharacter.next_action ? { next_action: appliedCharacter.next_action } : {}),
         }
       : undefined;
-  assertRequiredInputs(preset, params, uploads);
+  const skippedInputs = [...new Set(options.skipInput ?? [])];
+  for (const slot of skippedInputs)
+    if (!Object.hasOwn(preset.uploads ?? {}, slot))
+      throw new CliError("UNKNOWN_INPUT_SLOT", t("run.unknown_skip_input", { slot }), 2, { slot });
+  const skipInfo = skippedInputs.length ? await fetchPreflightObjectInfo(client) : null;
+  const prune = (graph: typeof workflow) =>
+    skippedInputs.length
+      ? skipWorkflowUploads(graph, preset, skippedInputs, skipInfo as WorkflowObjectInfo | null)
+      : graph;
+  const liveNodes = skippedInputs.length ? new Set(Object.keys(prune(workflow))) : undefined;
+  for (const slot of skippedInputs)
+    if (Object.hasOwn(uploads, slot))
+      throw new CliError(
+        "INVALID_PARAM",
+        `Input ${slot} cannot be supplied and skipped together.`,
+        2,
+        { slot },
+      );
+  uploads = Object.fromEntries(
+    Object.entries(uploads).filter(
+      ([slot]) => !liveNodes || liveNodes.has(String(preset.uploads![slot]!.target.node_id)),
+    ),
+  );
+  assertRequiredInputs(preset, params, uploads, liveNodes);
   const seedTargets = resolveSeedTargets(preset);
   const seedValues = resolveSeedValues(preset, params, options, runCount);
   const withSeedValue = (baseParams: Record<string, unknown>, seed: number) => {
@@ -340,7 +370,7 @@ export const runRun = async (presetName: string, options: RunOptions, rawArgs: s
     const seedValue = seedValues[0];
     const runParams = seedValue === null ? params : withSeedValue(params, seedValue);
     const patched = applyParameters(workflow, preset, runParams);
-    const withUploads = applyUploads(patched, preset, uploads);
+    const withUploads = prune(applyUploads(patched, preset, uploads));
     if (resolvedCharacter || options.lora) {
       printJson({
         ok: true,
@@ -357,8 +387,10 @@ export const runRun = async (presetName: string, options: RunOptions, rawArgs: s
     return;
   }
   if (options.preflight !== false) {
-    const preflightTarget = applyParameters(workflow, preset, params);
-    const report = await fetchPreflightReport(client, preflightTarget);
+    const preflightTarget = prune(applyParameters(workflow, preset, params));
+    const report = skipInfo
+      ? buildPreflightReport(preflightTarget, skipInfo)
+      : await fetchPreflightReport(client, preflightTarget);
     assertPreflightPasses(report, baseUrl);
   }
 
@@ -368,10 +400,12 @@ export const runRun = async (presetName: string, options: RunOptions, rawArgs: s
   log(t("run.output_dir", { dir: outputDir }));
 
   const resolvedUploads: Record<string, string> = {};
+  const uploadSources: Record<string, string> = {};
   for (const [name, filePath] of Object.entries(uploads)) {
     await ensureFileExists(filePath);
     const def = preset.uploads?.[name];
     if (!def) continue;
+    uploadSources[name] = path.resolve(filePath);
     const endpoint = uploadEndpointForKind(def.kind);
     log(t("run.upload", { name, endpoint }));
     const response = await client.uploadFile(endpoint, filePath);
@@ -391,7 +425,7 @@ export const runRun = async (presetName: string, options: RunOptions, rawArgs: s
     const promptFields = summarizePromptFields(preset, runParams);
 
     const patched = applyParameters(workflow, preset, runParams);
-    const withUploads = applyUploads(patched, preset, resolvedUploads);
+    const withUploads = prune(applyUploads(patched, preset, resolvedUploads));
 
     const clientId = randomUUID();
     const requestPromptId = requestPromptIds[i];
@@ -415,6 +449,8 @@ export const runRun = async (presetName: string, options: RunOptions, rawArgs: s
       source: selectedSource,
       params: runParams,
       uploads: resolvedUploads,
+      ...(skippedInputs.length ? { skipped_inputs: skippedInputs } : {}),
+      ...(Object.keys(uploadSources).length === 0 ? {} : { upload_sources: uploadSources }),
       seed: seedValue,
       output_dir: outputDir,
       submitted_at: new Date().toISOString(),
@@ -476,6 +512,7 @@ export const runRun = async (presetName: string, options: RunOptions, rawArgs: s
           scope,
           params: runParams,
           uploads: resolvedUploads,
+          ...(skippedInputs.length ? { skipped_inputs: skippedInputs } : {}),
           character: job.character,
           prompt_input: job.prompt_input,
           prompt_final: job.prompt_final,

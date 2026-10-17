@@ -3,6 +3,7 @@ import { t } from "../i18n/index.js";
 export type Workflow = Record<string, unknown>;
 
 export type ObjectInfoNode = {
+  output_node?: boolean;
   input?: {
     required?: Record<string, unknown>;
     optional?: Record<string, unknown>;
@@ -162,8 +163,13 @@ const parseArrayUiLink = (item: unknown): UiLink | null => {
 
 const parseObjectUiLink = (item: unknown): UiLink | null => {
   if (!isPlainObject(item)) return null;
-  const { id, origin_id: originId, origin_slot: originSlot, target_id: targetId, target_slot: targetSlot } =
-    item;
+  const {
+    id,
+    origin_id: originId,
+    origin_slot: originSlot,
+    target_id: targetId,
+    target_slot: targetSlot,
+  } = item;
   if (
     typeof id !== "number" ||
     !Number.isInteger(id) ||
@@ -257,9 +263,12 @@ const convertUiWorkflowToApiWorkflow = (
   return isApiWorkflow(workflow) ? workflow : null;
 };
 
-const extractSubgraphDefinitions = (raw: Record<string, unknown>): Map<string, SubgraphDefinition> => {
+const extractSubgraphDefinitions = (
+  raw: Record<string, unknown>,
+): Map<string, SubgraphDefinition> => {
   const definitions = isPlainObject(raw.definitions) ? raw.definitions : null;
-  const subgraphs = definitions && Array.isArray(definitions.subgraphs) ? definitions.subgraphs : [];
+  const subgraphs =
+    definitions && Array.isArray(definitions.subgraphs) ? definitions.subgraphs : [];
   const result = new Map<string, SubgraphDefinition>();
 
   for (const rawDefinition of subgraphs) {
@@ -459,12 +468,7 @@ const assertDisabledNodesUnreferenced = (context: GraphContext) => {
   for (const node of context.nodes) {
     const id = nodeId(node);
     const type = nodeType(node);
-    if (
-      id === null ||
-      !type ||
-      UI_NON_EXECUTION_NODE_TYPES.has(type) ||
-      !isDisabledNode(node)
-    ) {
+    if (id === null || !type || UI_NON_EXECUTION_NODE_TYPES.has(type) || !isDisabledNode(node)) {
       continue;
     }
 
@@ -475,9 +479,9 @@ const assertDisabledNodesUnreferenced = (context: GraphContext) => {
       const consumerType = consumer ? nodeType(consumer) : null;
       return Boolean(
         consumer &&
-          consumerType &&
-          !UI_NON_EXECUTION_NODE_TYPES.has(consumerType) &&
-          !isDisabledNode(consumer),
+        consumerType &&
+        !UI_NON_EXECUTION_NODE_TYPES.has(consumerType) &&
+        !isDisabledNode(consumer),
       );
     });
     if (!reference) continue;
@@ -486,7 +490,7 @@ const assertDisabledNodesUnreferenced = (context: GraphContext) => {
     const consumer =
       reference.targetId === -20
         ? "subgraph output"
-        : (consumerNode && nodeType(consumerNode)) ?? String(reference.targetId);
+        : ((consumerNode && nodeType(consumerNode)) ?? String(reference.targetId));
     throw new Error(t("workflow.disabled_node_referenced", { type, consumer }));
   }
 };
@@ -506,10 +510,7 @@ const convertSubgraphWorkflowToApi = (
   const resolvingOutputs = new Set<string>();
   const resolvingPortKinds = new Set<string>();
 
-  const isBoundaryWidgetPort = (
-    definition: SubgraphDefinition,
-    inputIndex: number,
-  ): boolean => {
+  const isBoundaryWidgetPort = (definition: SubgraphDefinition, inputIndex: number): boolean => {
     const cycleKey = `${definition.id}:${inputIndex}`;
     if (resolvingPortKinds.has(cycleKey)) {
       throw new Error(t("workflow.subgraph_cycle", { id: cycleKey }));
@@ -625,7 +626,12 @@ const convertSubgraphWorkflowToApi = (
     const id = nodeId(containerNode);
     if (id === null) throw new Error(t("workflow.subgraph_invalid"));
     const boundaryValues = resolveBoundaryValues(parentContext, containerNode, definition);
-    return makeGraphContext(definition.nodes, definition.links, executionId(parentContext, id), boundaryValues);
+    return makeGraphContext(
+      definition.nodes,
+      definition.links,
+      executionId(parentContext, id),
+      boundaryValues,
+    );
   }
 
   const flattenGraph = (context: GraphContext) => {
@@ -677,7 +683,10 @@ const convertSubgraphWorkflowToApi = (
   return workflow;
 };
 
-export const normalizeWorkflow = (raw: unknown, options: NormalizeWorkflowOptions = {}): Workflow => {
+export const normalizeWorkflow = (
+  raw: unknown,
+  options: NormalizeWorkflowOptions = {},
+): Workflow => {
   if (isApiWorkflow(raw)) return raw;
 
   if (isPlainObject(raw)) {
