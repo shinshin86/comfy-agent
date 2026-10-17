@@ -1524,13 +1524,7 @@ code {
   max-height: calc(100dvh - 140px);
 }
 .has-prompt-suggestions .prompt-assist-panel {
-  max-height: min(55dvh, 520px);
-}
-.has-prompt-suggestions .input-slots {
-  max-height: 22dvh;
-}
-.has-prompt-suggestions .slot-media {
-  height: 96px;
+  max-height: none;
 }
 
 .result-action-groups {
@@ -1616,8 +1610,7 @@ button.danger-text {
 .input-slot {
   min-height: 0;
 }
-.input-slot .slot-media,
-.has-prompt-suggestions .slot-media {
+.input-slot .slot-media {
   height: var(--slot-preview-height, 120px);
   max-height: none;
   object-fit: contain;
@@ -1643,7 +1636,19 @@ button.danger-text {
 .assist-content {
   padding: 12px;
 }
+.assist-editor {
+  flex-shrink: 0;
+  padding: 12px 12px 0;
+}
+.assist-editor .assist-title {
+  margin: 0 0 8px;
+  font-size: 13px;
+}
+.assist-editor label {
+  display: block;
+}
 .assist-prompt {
+  display: block;
   font: inherit;
   font-size: 16px;
   line-height: 1.6;
@@ -1652,9 +1657,10 @@ button.danger-text {
   border-radius: 10px;
   background: var(--surface);
   color: var(--fg);
-  height: 96px;
-  min-height: 96px;
-  max-height: 180px;
+  height: calc(8lh + 22px);
+  min-height: calc(8lh + 22px);
+  max-height: calc(10lh + 22px);
+  resize: none;
   outline: none;
 }
 .assist-prompt:focus-visible {
@@ -1685,6 +1691,7 @@ button.danger-text {
   color: var(--muted);
 }
 .assist-actions {
+  flex-shrink: 0;
   background: var(--bg);
   border-color: var(--line);
 }
@@ -1743,41 +1750,85 @@ button.danger-text {
   .assist-content {
     padding: 9px;
   }
-}
-
-@media (max-width: 600px) {
-  .has-prompt-suggestions #prompt {
-    height: 40px;
-    min-height: 40px;
+  .assist-editor {
+    padding: 9px 9px 0;
   }
-  .has-prompt-suggestions .prompt-assist-description {
-    display: none;
-  }
-  .has-prompt-suggestions .slot-body {
-    margin-top: 6px;
-    gap: 6px;
-  }
-  .has-prompt-suggestions .assist-prompt {
-    height: 80px;
-    min-height: 80px;
+  .assist-prompt {
+    height: calc(4lh + 20px);
+    min-height: calc(4lh + 20px);
+    max-height: calc(5lh + 20px);
   }
 }
 
 .has-prompt-suggestions #mode-context,
-.has-prompt-suggestions .prompt-assist-description {
+.has-prompt-suggestions .prompt-assist-description,
+.has-prompt-suggestions .prompt-label,
+.has-prompt-suggestions #prompt-assist,
+.has-prompt-suggestions .prompt-tools:has(#prompt-undo[hidden]) {
   display: none;
 }
-.has-prompt-suggestions #prompt {
-  height: 40px;
-  min-height: 40px;
+.has-prompt-suggestions .input-slot.filled {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  align-content: center;
+  align-items: center;
+  gap: 5px 12px;
+  padding: 8px;
 }
-.has-prompt-suggestions .input-slot {
-  padding-top: 8px;
-  padding-bottom: 8px;
+.has-prompt-suggestions .input-slot.filled .slot-heading {
+  grid-column: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 7px;
+  min-height: 0;
+  font-size: 12px;
 }
-.has-prompt-suggestions .slot-body {
-  margin-top: 6px;
+.has-prompt-suggestions .input-slot.filled .slot-heading strong {
+  font-size: 12px;
+}
+.has-prompt-suggestions .input-slot.filled .slot-heading > span {
+  margin-left: 0;
+  font-size: 10px;
+}
+.has-prompt-suggestions .input-slot.filled .slot-body {
+  display: contents;
+}
+.has-prompt-suggestions .input-slot.filled .slot-media,
+.has-prompt-suggestions .input-slot.filled .slot-original {
+  grid-column: 1;
+  grid-row: 1 / 3;
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+}
+.has-prompt-suggestions .input-slot.filled .slot-actions {
+  grid-column: 2;
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
   gap: 6px;
+  width: auto;
+}
+.has-prompt-suggestions .input-slot.filled .slot-action {
+  width: auto;
+  padding: 6px 8px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+@media (max-width: 600px) {
+  .has-prompt-suggestions .input-slots {
+    grid-template-columns: 1fr;
+  }
+  .has-prompt-suggestions .input-slot.filled {
+    grid-template-columns: 64px minmax(0, 1fr);
+    column-gap: 10px;
+  }
+  .has-prompt-suggestions .input-slot.filled .slot-media,
+  .has-prompt-suggestions .input-slot.filled .slot-original {
+    width: 64px;
+    height: 64px;
+  }
 }
 .assist-scroll-hint {
   flex-basis: 100%;

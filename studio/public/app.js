@@ -1073,30 +1073,27 @@ const fitInputPreviews = () => {
   const form = $("#create-form"),
     slots = $("#input-slots");
   if (!form || !slots || $("#online-composer").hidden) return;
+  // Suggestions use fixed-size thumbnail rows; explanatory text takes the scroll.
+  if (form.classList.contains("has-prompt-suggestions")) return;
   const media = [...slots.querySelectorAll(".slot-media")];
   if (!media.length) return;
   const max = Math.max(...media.map((el) => el.getBoundingClientRect().height));
   const budget = parseFloat(getComputedStyle(form).maxHeight);
   const count = Number(slots.dataset.count) || 1;
-  const limit = form.classList.contains("has-prompt-suggestions")
-    ? 40
-    : innerWidth <= 600 && count > 1
+  const limit =
+    innerWidth <= 600 && count > 1
       ? count >= 3
         ? 76
         : 104
       : count >= 3
         ? 120
         : 150;
-  const assistContent = $("#prompt-assist-panel .assist-content");
-  const assistOverflow = assistContent
-    ? Math.max(0, assistContent.scrollHeight - assistContent.clientHeight)
-    : 0;
   const rows = Math.max(1, Math.ceil(count / 3));
   const height = Math.max(
     28,
     Math.min(
       limit,
-      Math.floor((budget - form.scrollHeight + max * rows - assistOverflow - 3) / rows),
+      Math.floor((budget - form.scrollHeight + max * rows - 3) / rows),
     ),
   );
   const value = `${height}px`;
@@ -1697,6 +1694,7 @@ const renderAssist = () => {
     ? [$("#assist-prompt").selectionStart, $("#assist-prompt").selectionEnd]
     : null;
   const scroll = panel.querySelector(".assist-content")?.scrollTop ?? 0;
+  const promptScroll = $("#assist-prompt")?.scrollTop ?? 0;
   const item = a.answer?.suggestions[a.index];
   const mismatch = !assistMatches();
   const settings = Object.entries(item?.settings ?? {})
@@ -1712,13 +1710,14 @@ const renderAssist = () => {
       return `<button type="button" class="secondary" data-assist-setting="${esc(key)}"${mismatch ? " disabled" : ""}>${esc(t("assistApply", { name }))}</button>`;
     })
     .join("");
-  panel.innerHTML = `<div class="assist-content"><h3 class="assist-title">${esc(t("assistTitle"))}</h3>${
+  panel.innerHTML = `${item ? `<div class="assist-editor"><h3 class="assist-title">${esc(t("assistTitle"))}</h3>
+    ${a.answer.suggestions.length > 1 ? `<div class="assist-tabs" aria-label="${esc(t("assistPrompt"))}">${a.answer.suggestions.map((_, i) => `<button type="button" class="secondary" data-assist-option="${i}" aria-pressed="${a.index === i}">${esc(t("assistOption", { n: i + 1 }))}</button>`).join("")}</div>` : ""}
+    <label><span class="sr-only">${esc(t("assistPrompt"))}</span><textarea id="assist-prompt" class="assist-prompt" rows="8" maxlength="32000">${esc(item.prompt)}</textarea></label>
+  </div>` : ""}<div class="assist-content">${!item ? `<h3 class="assist-title">${esc(t("assistTitle"))}</h3>` : ""}${
     a.phase === "waiting"
       ? `<p role="status">${esc(t("assistWaiting"))}</p>${a.hint ? `<p>${esc(t("assistHint"))}</p>` : ""}`
       : item
         ? `
-    ${a.answer.suggestions.length > 1 ? `<div class="assist-tabs" aria-label="${esc(t("assistPrompt"))}">${a.answer.suggestions.map((_, i) => `<button type="button" class="secondary" data-assist-option="${i}" aria-pressed="${a.index === i}">${esc(t("assistOption", { n: i + 1 }))}</button>`).join("")}</div>` : ""}
-    <label><span class="sr-only">${esc(t("assistPrompt"))}</span><textarea id="assist-prompt" class="assist-prompt" rows="3" maxlength="32000">${esc(item.prompt)}</textarea></label>
     ${item.explanation?.[state.lang] ? `<h3>${esc(t("assistMeaning"))}</h3><p class="assist-explanation">${esc(item.explanation[state.lang])}</p>` : ""}
     ${item.notes?.[state.lang] ? `<p class="hint assist-notes">${esc(item.notes[state.lang])}</p>` : ""}
     ${mismatch ? `<p>${esc(t("assistMismatch"))}</p>` : ""}
@@ -1733,7 +1732,23 @@ const renderAssist = () => {
     $("#assist-prompt").setSelectionRange(...selection);
   }
   panel.querySelector(".assist-content").scrollTop = scroll;
-  requestAnimationFrame(updateAssistOverflow);
+  requestAnimationFrame(() => {
+    sizeAssistPrompt();
+    if (active && $("#assist-prompt")) $("#assist-prompt").scrollTop = promptScroll;
+    updateAssistOverflow();
+    fitInputPreviews();
+  });
+};
+const sizeAssistPrompt = () => {
+  const field = $("#assist-prompt");
+  if (!field) return;
+  const style = getComputedStyle(field),
+    min = parseFloat(style.minHeight),
+    max = parseFloat(style.maxHeight),
+    scroll = field.scrollTop;
+  field.style.height = `${min}px`;
+  field.style.height = `${Math.min(max, Math.max(min, field.scrollHeight + 2))}px`;
+  field.scrollTop = scroll;
 };
 const updateAssistOverflow = () => {
   const panel = $("#prompt-assist-panel"),
@@ -2518,6 +2533,7 @@ document.addEventListener("input", (event) => {
     state.assist.answer.suggestions[state.assist.index].prompt = el.value;
     $("[data-assist-use]").disabled = !el.value.trim() || !assistMatches();
     $("[data-assist-copy-prompt]").disabled = !el.value.trim();
+    sizeAssistPrompt();
   } else if (el.id === "model-filter") {
     state.modelQuery = el.value;
     renderModelOptions();
@@ -2767,6 +2783,7 @@ document.addEventListener("keydown", (event) => {
     closeOutputDestinations();
   }
 });
+window.addEventListener("resize", sizeAssistPrompt);
 new ResizeObserver(() => {
   document.documentElement.style.setProperty(
     "--composer-space",

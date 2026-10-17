@@ -386,11 +386,14 @@ The user can edit or compare suggestions, apply each setting individually,
 currently edited suggestion, briefly confirms success, and selects its text
 for manual copying if clipboard access is blocked. **Copy request** copies
 the agent request instead; the two actions are labeled separately. The
-answer uses the composer's fonts, borders and chips. On desktop the explanation
-and notes have room beside the prompt controls; on small screens long answers
-scroll within the answer area with an explicit hint, while Use/Copy/Close stay
-visible. The input slot area itself does not scroll. Closing or cancelling
-stops waiting in this tab; it does not retract a request already in the inbox.
+answer uses the composer's fonts, borders and chips. While a reply is open, the
+original prompt is hidden and preserved for Undo. The suggestion editor grows
+to 8–10 lines on desktop and 4–5 on small screens. Explanations and notes scroll
+separately with an explicit hint when needed; the editor and Use/Copy/Close stay
+visible. Filled inputs use compact rows with readable thumbnails and their
+replacement/removal controls. The input slot area itself does not scroll.
+Closing or cancelling stops waiting in this tab; it does not retract a request
+already in the inbox.
 Late replies do not reopen a cancelled panel. After about 20 seconds without
 a reply, the panel explains how to start a watcher or copy the same request,
 including its actual ID, into the active agent session.
