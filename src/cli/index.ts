@@ -23,7 +23,10 @@ import {
 import { runVerify } from "./verify.js";
 import { runBrief } from "./brief.js";
 import {
+  runStudioSuggest,
+  runStudioPromptGuide,
   runStudioGuide,
+  runStudioFeedback,
   runStudioInbox,
   runStudioPlan,
   runStudioProfile,
@@ -895,6 +898,47 @@ studio
   .action(async (file, options) => {
     try {
       await runStudioPlan(file, options);
+    } catch (err) {
+      handleError(err, options?.json);
+    }
+  });
+
+studio
+  .command("suggest")
+  .description(t("cli.studio.suggest.description"))
+  .argument("<file>", t("cli.studio.suggest.arg.file"))
+  .option("--json", t("cli.option.json"))
+  .option("--lang <lang>", t("cli.option.lang"))
+  .action(async (file, options) => {
+    try {
+      await runStudioSuggest(file, options);
+    } catch (err) {
+      handleError(err, options?.json);
+    }
+  });
+
+studio
+  .command("prompt-guide")
+  .description(t("cli.studio.prompt_guide.description"))
+  .argument("<preset>", t("cli.studio.profile.arg.preset"))
+  .option("--json", t("cli.option.json"))
+  .option("--lang <lang>", t("cli.option.lang"))
+  .action(async (name, options) => {
+    try {
+      await runStudioPromptGuide(name, options);
+    } catch (err) {
+      handleError(err, options?.json);
+    }
+  });
+
+studio
+  .command("feedback")
+  .description(t("cli.studio.feedback.description"))
+  .option("--json", t("cli.option.json"))
+  .option("--lang <lang>", t("cli.option.lang"))
+  .action(async (options) => {
+    try {
+      await runStudioFeedback(options);
     } catch (err) {
       handleError(err, options?.json);
     }

@@ -22,6 +22,15 @@ import {
   savePlan,
 } from "../studio/store.js";
 
+import {
+  listSuggestions,
+  MAX_SUGGESTION_BYTES,
+  readPromptGuide,
+  saveSuggestion,
+} from "../studio/suggestions.js";
+
+import { listDeletedFeedback } from "../studio/results.js";
+
 export type StudioServeOptions = {
   port?: string;
   host?: string;
@@ -139,10 +148,13 @@ export const runStudioPlan = async (file: string, options: StudioPlanOptions) =>
 export const runStudioInbox = async (options: StudioInboxOptions) => {
   const cwd = process.cwd();
   if (!options.follow) {
-    const handled = handledRequestIds(await listPlans(cwd));
-    const requests = (await listRequests(cwd)).filter(
-      (request) => options.all || !handled.has(request.id),
+    const allRequests = await listRequests(cwd);
+    const handled = handledRequestIds(
+      await listPlans(cwd),
+      await listSuggestions(cwd),
+      allRequests,
     );
+    const requests = allRequests.filter((request) => options.all || !handled.has(request.id));
     if (options.json) {
       printJson({ ok: true, requests });
       return;
@@ -152,7 +164,7 @@ export const runStudioInbox = async (options: StudioInboxOptions) => {
       return;
     }
     for (const request of requests) {
-      print(`${request.id}  ${request.at}  ${request.text}`);
+      print(`${request.id}  ${request.at}  ${request.kind}  ${request.text}`);
     }
     return;
   }
@@ -259,4 +271,47 @@ export const runStudioProfile = async (name: string | undefined, options: Studio
       throw new CliError("INVALID_PROFILE", t("studio.profile_invalid"), 2);
     throw error;
   }
+};
+
+export const runStudioSuggest = async (file: string, options: StudioPlanOptions) => {
+  try {
+    let raw: string;
+    if (file === "-") {
+      const chunks: Buffer[] = [];
+      let size = 0;
+      for await (const value of process.stdin) {
+        const chunk = Buffer.from(value);
+        size += chunk.length;
+        if (size > MAX_SUGGESTION_BYTES) throw new Error("size");
+        chunks.push(chunk);
+      }
+      raw = Buffer.concat(chunks).toString("utf8");
+    } else {
+      if ((await fs.stat(file)).size > MAX_SUGGESTION_BYTES) throw new Error("size");
+      raw = await fs.readFile(file, "utf8");
+    }
+    if (Buffer.byteLength(raw) > MAX_SUGGESTION_BYTES) throw new Error("size");
+    const suggestion = await saveSuggestion(process.cwd(), JSON.parse(raw));
+    if (options.json) printJson({ ok: true, suggestion });
+    else print(t("studio.suggestion_saved", { id: suggestion.request_id }));
+  } catch (error) {
+    if (error instanceof CliError) throw error;
+    throw new CliError("INVALID_SUGGESTION", t("studio.suggestion_invalid"), 2);
+  }
+};
+
+export const runStudioPromptGuide = async (name: string, options: StudioPlanOptions) => {
+  const guide = await readPromptGuide(process.cwd(), name);
+  if (options.json) printJson({ ok: true, ...guide });
+  else
+    print(
+      `${guide.preset} (${guide.model_label ?? guide.capability}) — ${guide.guide}\n\n${guide.text}`,
+    );
+};
+
+export const runStudioFeedback = async (options: StudioPlanOptions) => {
+  const feedback = await listDeletedFeedback(process.cwd());
+  if (options.json) printJson({ ok: true, feedback });
+  else if (!feedback.length) print(t("studio.feedback_empty"));
+  else for (const entry of feedback) print(`${entry.at}  ${entry.preset}  ${entry.reason}`);
 };

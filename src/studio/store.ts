@@ -63,6 +63,23 @@ export const StudioInputSchema = z.union([
 export const StudioRequestContextSchema = z.object({
   task: z.string().optional(),
   preset: z.string().optional(),
+  model_label: z.string().max(256).optional(),
+  duration_s: z.number().positive().optional(),
+  size: z.tuple([z.number().int().positive(), z.number().int().positive()]).optional(),
+  aspect: z.string().max(32).optional(),
+  input_slots: z
+    .array(
+      z
+        .object({
+          slot: z.string().min(1).max(256),
+          kind: z.string().max(32),
+          role: z.string().max(64),
+          reference: StudioInputSchema,
+        })
+        .strict(),
+    )
+    .max(64)
+    .optional(),
   params: z.record(z.unknown()).default({}),
   count: z.number().int().min(1).max(4).optional(),
   seed: z
@@ -76,6 +93,8 @@ export const StudioRequestContextSchema = z.object({
 export const StudioRequestSchema = z.object({
   id: z.string().min(1),
   at: z.string().datetime(),
+  kind: z.enum(["creation", "prompt_assist"]).default("creation"),
+  lang: z.enum(["ja", "en"]).optional(),
   text: z.string().min(1),
   selected: z.array(StudioSelectionSchema).default([]),
   character: z.string().optional(),
@@ -177,7 +196,7 @@ export const parseRequestLines = (raw: string): StudioRequest[] =>
 
 export const appendRequest = async (
   cwd: string,
-  input: Omit<StudioRequest, "id" | "at">,
+  input: Omit<z.input<typeof StudioRequestSchema>, "id" | "at">,
   now = new Date(),
 ): Promise<StudioRequest> => {
   const request = StudioRequestSchema.parse({
@@ -193,6 +212,15 @@ export const appendRequest = async (
   return request;
 };
 
-/** A request counts as handled once a plan references it. */
-export const handledRequestIds = (plans: StudioPlan[]) =>
-  new Set(plans.flatMap(({ request_id: requestId }) => (requestId ? [requestId] : [])));
+/** Prompt assistance requires a suggestion; a creation request requires a plan. */
+export const handledRequestIds = (
+  plans: StudioPlan[],
+  suggestions: { request_id: string }[] = [],
+  requests: StudioRequest[] = [],
+) => {
+  const assists = new Set(requests.filter((r) => r.kind === "prompt_assist").map((r) => r.id));
+  return new Set([
+    ...plans.flatMap(({ request_id: id }) => (id && !assists.has(id) ? [id] : [])),
+    ...suggestions.map((s) => s.request_id),
+  ]);
+};

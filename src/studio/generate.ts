@@ -45,7 +45,7 @@ export const parseGenerate = (body: unknown) => {
 
 export const mapComposerParams = (
   body: ReturnType<typeof parseGenerate>,
-  engine: CatalogEngine,
+  engine: Pick<CatalogEngine, "controls" | "constraints">,
 ) => {
   const params = { ...body.params };
   const invalid = (key: string): never => {

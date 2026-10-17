@@ -483,9 +483,10 @@ export const messages = {
   "cli.studio.option.open": "Open the studio in the default browser",
   "cli.studio.plan.description": "Create or update a studio plan from a JSON file (- for stdin)",
   "cli.studio.plan.arg.file": "Plan JSON file, or - to read stdin",
-  "cli.studio.inbox.description": "List studio requests not yet answered by a plan",
+  "cli.studio.inbox.description":
+    "List studio requests not yet answered by a plan or prompt suggestion",
   "cli.studio.inbox.option.follow": "Keep running and print each new request as one JSON line",
-  "cli.studio.inbox.option.all": "Include requests already linked to a plan",
+  "cli.studio.inbox.option.all": "Include requests already answered",
   "cli.studio.guide.description": "Print the agent guide for working with the studio",
   "studio.listening": "comfy-agent studio: {url}",
   "studio.agent_hint":
@@ -495,6 +496,14 @@ export const messages = {
   "studio.port_in_use": "Port {port} is already in use. Pass --port <n>.",
   "studio.plan_invalid": "The plan JSON is invalid.",
   "studio.plan_saved": "Saved studio plan {id}.",
+  "cli.studio.suggest.description": "Answer a prompt assistance request with suggestions from JSON",
+  "cli.studio.suggest.arg.file": "Suggestion JSON file, or - to read stdin",
+  "cli.studio.prompt_guide.description": "Print the prompt writing guide for a preset",
+  "studio.suggestion_invalid":
+    "Invalid suggestion: check request_id, preset, explanation language, size limits and supported settings.",
+  "studio.suggestion_saved": "Saved prompt suggestions for {id}.",
+  "cli.studio.feedback.description": "Read reasons for deleted outputs as agent feedback",
+  "studio.feedback_empty": "No deletion feedback yet.",
   "studio.inbox_empty": "No pending studio requests.",
 
   "cli.studio.profile.description": "Inspect and confirm creation capability profiles",
@@ -506,6 +515,6 @@ export const messages = {
   "studio.profile_saved": "Saved the confirmed profile for {name}.",
   "studio.profile_stale": "source data changed",
   "studio.profile_guide":
-    "When the user starts using Studio or after importing a workflow, inspect studio profile --all --json. Confirm or fix title, summary, capability and model_label, then save the profile with studio profile <name> --set <file.json>.",
+    "When the user starts using Studio or after importing a workflow, inspect studio profile --all --json. Confirm or fix title, summary, capability and model_label, then save the profile with studio profile <name> --set <file.json>. Watch studio inbox --follow: creation requests need a plan; prompt_assist requests need studio prompt-guide <preset> and a reply via studio suggest <file|->.",
 } as const;
 export type MessageKey = keyof typeof messages;

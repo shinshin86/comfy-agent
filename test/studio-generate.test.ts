@@ -244,6 +244,84 @@ describe("studio generation", () => {
       await server.close();
     }
   });
+  it("skips empty optional slots in input modes, but uses explicitly supplied references", async () => {
+    const launcher = vi
+      .fn<RunLauncher>()
+      .mockResolvedValue({ exitCode: 0, stdout: '{"ok":true,"jobs":[]}', stderr: "" });
+    const { server, tmp, job } = await setup(launcher, undefined, async () => optionalObjectInfo);
+    await writeOptionalFixture(tmp.workdir);
+    const body = {
+      capability: "image_to_video",
+      preset: optionalPreset.name,
+      prompt: "A scene",
+      params: { length: 81 },
+      inputs: {},
+      skip: [],
+    };
+    try {
+      expect((await post(`${server.url}api/generate`, body)).status).toBe(200);
+      await vi.waitFor(() => expect(launcher).toHaveBeenCalledTimes(1));
+      expect(launcher.mock.calls[0]![0]).toEqual(
+        expect.arrayContaining(["--skip-input", "image", "reference"]),
+      );
+      expect(
+        (
+          await post(`${server.url}api/generate`, {
+            ...body,
+            inputs: { image: { job_id: job.job_id, output_index: 0 } },
+          })
+        ).status,
+      ).toBe(200);
+      await vi.waitFor(() => expect(launcher).toHaveBeenCalledTimes(2));
+      const args = launcher.mock.calls[1]![0];
+      expect(args).toContain("reference");
+      expect(args).not.toContain("image");
+      expect(args.some((arg) => arg.startsWith("--image="))).toBe(true);
+      // Text-only variants always omit their main input, including with skip: [].
+      expect(
+        (
+          await post(`${server.url}api/generate`, {
+            ...body,
+            capability: "text_to_video",
+            inputs: { image: { job_id: job.job_id, output_index: 0 } },
+          })
+        ).status,
+      ).toBe(400);
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("does not omit an empty required slot when only a different slot is optional", async () => {
+    const requiredInfo = {
+      ...optionalObjectInfo,
+      WanImageToVideo: {
+        input: {
+          required: { length: ["INT"], prompt: ["STRING"], start_image: ["LATENT"] },
+          optional: { reference: ["IMAGE"] },
+        },
+      },
+    };
+    const launcher = vi.fn<RunLauncher>();
+    const { server, tmp } = await setup(launcher, undefined, async () => requiredInfo);
+    await writeOptionalFixture(tmp.workdir);
+    try {
+      const response = await post(`${server.url}api/generate`, {
+        capability: "image_to_video",
+        preset: optionalPreset.name,
+        prompt: "A scene",
+        params: { length: 81 },
+        inputs: {},
+        skip: [],
+      });
+      expect(response.status).toBe(400);
+      expect((await response.json()).error.message).toContain("required: image");
+      expect(launcher).not.toHaveBeenCalled();
+    } finally {
+      await server.close();
+    }
+  });
+
   it("maps catalog prompt and seconds to preset controls and rejects a mismatched capability", async () => {
     const launcher = vi
       .fn<RunLauncher>()

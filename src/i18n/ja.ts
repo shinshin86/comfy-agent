@@ -490,9 +490,9 @@ export const messages = {
   "cli.studio.option.open": "既定のブラウザでスタジオを開く",
   "cli.studio.plan.description": "JSON ファイルからスタジオの制作計画を作成・更新 (- で標準入力)",
   "cli.studio.plan.arg.file": "計画の JSON ファイル。- で標準入力",
-  "cli.studio.inbox.description": "まだ計画で応答していないスタジオからの依頼を表示",
+  "cli.studio.inbox.description": "まだ計画やプロンプト案で回答していない依頼を表示",
   "cli.studio.inbox.option.follow": "起動したまま、新しい依頼を1件ずつ JSON 1行で出力",
-  "cli.studio.inbox.option.all": "計画と紐づいた依頼も含める",
+  "cli.studio.inbox.option.all": "回答済みの依頼も含める",
   "cli.studio.guide.description": "スタジオと連携するエージェント向けの手順書を表示",
   "studio.listening": "comfy-agent studio: {url}",
   "studio.agent_hint":
@@ -503,6 +503,14 @@ export const messages = {
   "studio.port_in_use": "ポート {port} は使用中です。--port <n> を指定してください。",
   "studio.plan_invalid": "計画の JSON が不正です。",
   "studio.plan_saved": "スタジオの計画 {id} を保存しました。",
+  "cli.studio.suggest.description": "JSONの提案でプロンプト整形の依頼に回答",
+  "cli.studio.suggest.arg.file": "提案のJSONファイル。- で標準入力",
+  "cli.studio.prompt_guide.description": "プリセットに適したプロンプト作成ガイドを表示",
+  "studio.suggestion_invalid":
+    "提案が不正です。依頼ID・プリセット・説明の言語・文字数・対応する設定を確認してください。",
+  "studio.suggestion_saved": "依頼 {id} のプロンプト案を保存しました。",
+  "cli.studio.feedback.description": "削除した結果の理由をエージェント向けフィードバックとして表示",
+  "studio.feedback_empty": "削除理由のフィードバックはまだありません。",
   "studio.inbox_empty": "未対応のスタジオ依頼はありません。",
   "cli.studio.profile.description": "制作機能のプロファイルを表示・確認・更新",
   "cli.studio.profile.arg.preset": "対象のプリセット名（省略するとすべて）",
@@ -513,5 +521,5 @@ export const messages = {
   "studio.profile_saved": "{name} のプロファイルを確認済みとして保存しました。",
   "studio.profile_stale": "元のデータが変更されています",
   "studio.profile_guide":
-    "Studio を使い始めるときやワークフローを取り込んだ後は、studio profile --all --json で自動判定を確認してください。表示名・説明・機能・モデル名を確認または修正し、studio profile <name> --set <file.json> で保存してください。",
+    "Studio を使い始めるときやワークフローを取り込んだ後は、studio profile --all --json で自動判定を確認してください。表示名・説明・機能・モデル名を確認または修正し、studio profile <name> --set <file.json> で保存してください。studio inbox --follow の creation は計画、prompt_assist は studio prompt-guide <preset> を読んで studio suggest <file|-> で回答してください。",
 } as const;

@@ -22,7 +22,7 @@ const indent = (value: string, prefix: string) =>
  * has to ask "which image?".
  */
 export const buildAgentPrompt = (
-  request: StudioRequest,
+  request: Omit<StudioRequest, "kind"> & { kind?: StudioRequest["kind"] },
   outputs: RequestContextOutput[],
   lang: Language,
   uploadPaths: Record<string, string> = {},
@@ -36,6 +36,15 @@ export const buildAgentPrompt = (
     `${ja ? "依頼" : "Request"}:`,
     indent(request.text, "  "),
     `request_id: ${JSON.stringify(request.id)}`,
+    `kind: ${request.kind ?? "creation"}`,
+    `UI language: ${request.lang ?? lang}`,
+    ...(request.kind === "prompt_assist"
+      ? [
+          ja
+            ? "プロンプトの書き換えだけを行ってください。生成は実行しないでください。対象の `comfy-agent studio prompt-guide <preset>` を読み、意図を保ち、モデルが要求する構造以外の内容を足さずに整えてください。UI言語で短い意味の説明を添え、このrequest_idとpresetを指定して `comfy-agent studio suggest <file|->` で回答してください。"
+            : "Rewrite the prompt only; do not generate. Read `comfy-agent studio prompt-guide <preset>`, preserve the intent and add only model-required structure. Explain its meaning briefly in the UI language. Reply with this request_id and preset using `comfy-agent studio suggest <file|->`.",
+        ]
+      : []),
   ];
   if (request.character) {
     lines.push(`${ja ? "キャラクター" : "Character"}: ${JSON.stringify(request.character)}`);

@@ -19,9 +19,7 @@
     <main class="feed">
       <div class="feed-toolbar">
         <div id="filters" class="filters" role="group"></div>
-        <label class="rejected-toggle"
-          ><input id="show-rejected" type="checkbox" /><span data-i18n="showRejected"></span></label
-        ><span id="gallery-count" class="muted"></span>
+        <span id="gallery-count" class="muted"></span>
       </div>
       <div id="feed-grid" class="gallery">
         <div id="running-gallery"></div>
@@ -42,11 +40,42 @@
           <div id="mode-context" class="mode-context"></div>
           <div id="modes" class="modes"></div>
           <div id="input-slots" class="input-slots"></div>
+          <button
+            id="start-input"
+            type="button"
+            class="setting-chip start-input"
+            data-start-input
+            hidden
+          ></button>
           <div id="character-chip"></div>
           <label class="prompt-label"
             ><span class="sr-only" data-i18n="prompt"></span
             ><textarea id="prompt" rows="2"></textarea>
           </label>
+          <div class="prompt-tools">
+            <button
+              id="prompt-assist"
+              type="button"
+              class="secondary"
+              data-assist-start
+              aria-describedby="prompt-assist-description"
+              disabled
+            ></button>
+            <button
+              id="prompt-undo"
+              type="button"
+              class="text-link"
+              data-assist-undo
+              hidden
+            ></button>
+          </div>
+          <p id="prompt-assist-description" class="hint prompt-assist-description"></p>
+          <section
+            id="prompt-assist-panel"
+            class="prompt-assist-panel"
+            aria-label="Prompt suggestions"
+            hidden
+          ></section>
           <div class="composer-bottom">
             <div id="setting-chips" class="setting-chips"></div>
             <div class="create-actions">
@@ -68,14 +97,49 @@
     <dialog id="detail-dialog" class="detail-dialog">
       <div class="dialog-heading">
         <h2 data-i18n="detailTitle"></h2>
-        <button
-          class="ghost"
-          type="button"
-          data-close-dialog="detail-dialog"
-          data-i18n="close"
-        ></button>
+        <div class="detail-header-actions">
+          <button
+            id="detail-delete"
+            class="ghost danger-text"
+            type="button"
+            data-i18n="deleteOutput"
+            hidden
+          ></button
+          ><button
+            class="ghost"
+            type="button"
+            data-close-dialog="detail-dialog"
+            data-i18n="close"
+          ></button>
+        </div>
       </div>
       <div id="inspector"></div>
+    </dialog>
+    <dialog id="delete-dialog" aria-labelledby="delete-title" aria-describedby="delete-body">
+      <form id="delete-form">
+        <h2 id="delete-title" data-i18n="deleteTitle"></h2>
+        <p id="delete-body" data-i18n="deleteBody"></p>
+        <label class="field"
+          ><span data-i18n="deleteReason"></span
+          ><textarea id="delete-reason" rows="3" maxlength="4000"></textarea>
+        </label>
+        <div class="actions">
+          <button
+            type="button"
+            class="secondary"
+            data-close-dialog="delete-dialog"
+            data-i18n="deleteCancel"
+            autofocus
+          ></button
+          ><button
+            id="confirm-delete"
+            type="submit"
+            class="danger"
+            data-i18n="deleteConfirm"
+          ></button>
+        </div>
+        <p id="delete-status" class="status" role="status"></p>
+      </form>
     </dialog>
     <dialog id="connection-dialog">
       <div class="dialog-heading">

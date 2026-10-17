@@ -30,17 +30,12 @@ const MESSAGES = {
     filterImage: "画像",
     filterVideo: "動画",
     filterAudio: "音声",
-    filterRejected: "不採用",
     items: "{n} 件",
     noOutputs: "まだ生成結果がありません。",
     addContext: "＋素材",
     removeContext: "素材から外す",
-    useAsContext: "この素材で依頼",
     favorite: "★ お気に入り",
     unfavorite: "★ 解除",
-    reject: "不採用にする",
-    unreject: "不採用を取り消す",
-    rejectReason: "不採用の理由(次の判断に使われます)",
     note: "メモ",
     notePlaceholder: "フィードバックを書く(例: もう少し暗く / この雰囲気を今後も使いたい)",
     save: "保存",
@@ -62,7 +57,6 @@ const MESSAGES = {
     inputs: "入力",
     params: "パラメータ",
     notes: "メモ",
-    rejectedBecause: "不採用の理由",
     intent: "依頼",
     summary: "解釈",
     steps: "工程",
@@ -126,17 +120,12 @@ const MESSAGES = {
     filterImage: "Images",
     filterVideo: "Video",
     filterAudio: "Audio",
-    filterRejected: "Rejected",
     items: "{n} items",
     noOutputs: "No outputs yet.",
     addContext: "+ Use",
     removeContext: "Remove from request",
-    useAsContext: "Use in request",
     favorite: "★ Favorite",
     unfavorite: "★ Unfavorite",
-    reject: "Reject",
-    unreject: "Undo reject",
-    rejectReason: "Why reject? (used for the next decision)",
     note: "Note",
     notePlaceholder: "Write feedback (e.g. a bit darker / keep this mood)",
     save: "Save",
@@ -158,7 +147,6 @@ const MESSAGES = {
     inputs: "Inputs",
     params: "Parameters",
     notes: "Notes",
-    rejectedBecause: "Rejected because",
     intent: "Request",
     summary: "Interpretation",
     steps: "Steps",
@@ -204,7 +192,8 @@ const state = {
   catalog: null,
   lang: "ja",
   filter: "all",
-  showRejected: false,
+  deleteTarget: null,
+  deleting: false,
   focus: null,
   context: [],
   character: null,
@@ -231,6 +220,8 @@ const state = {
   trackedRuns: new Set(),
   runStatusActive: false,
   hintSeen: false,
+  assist: null,
+  assistOriginal: null,
 };
 const $ = (selector) => document.querySelector(selector);
 
@@ -351,20 +342,43 @@ const stepDecision = (step) =>
     ],
   ]);
 
+const closeOutputDestinations = () => {
+  document.querySelectorAll(".output-destinations").forEach((menu) => (menu.hidden = true));
+  document
+    .querySelectorAll("[data-output-destinations]")
+    .forEach((button) => button.setAttribute("aria-expanded", "false"));
+};
+const outputDestinations = (output) =>
+  capabilities().filter((cap) =>
+    cap.engines.some(
+      (engine) => !engine.inputless && engine.inputs.some((slot) => slotAccepts(slot, output.kind)),
+    ),
+  );
+const destinationLabel = (cap, kind) => {
+  if (kind === "image" && cap.capability === "image_to_video") return t("animateThisImage");
+  if (kind === "image" && cap.capability === "image_edit") return t("editThisImage");
+  if (kind === "video" && cap.capability === "video_to_video") return t("editThisVideo");
+  return t("useForMode", {
+    kind: t(["image", "video", "audio"].includes(kind) ? `${kind}Kind` : "resultKind"),
+    mode: text(cap.label),
+  });
+};
 const renderOutputInspector = (job, output) => {
   const linked = stepsForJob(job.job_id);
-  const rejected = job.tags.includes("reject");
   const editor =
-    state.editing === "reject"
-      ? `<form class="inline-form" data-form="reject"><input name="value" required aria-label="${esc(t("rejectReason"))}" placeholder="${esc(
-          t("rejectReason"),
-        )}" autofocus /><button type="submit">${esc(t("save"))}</button>
-        <button type="button" class="ghost" data-cancel-edit>${esc(t("cancel"))}</button></form>`
-      : state.editing === "note"
-        ? `<form class="inline-form" data-form="note"><input name="value" required aria-label="${esc(t("notePlaceholder"))}" placeholder="${esc(
-            t("notePlaceholder"),
-          )}" autofocus /><button type="submit">${esc(t("save"))}</button>
-          <button type="button" class="ghost" data-cancel-edit>${esc(t("cancel"))}</button></form>`
+    state.editing === "note"
+      ? `<form class="inline-form" data-form="note"><input name="value" required aria-label="${esc(t("notePlaceholder"))}" placeholder="${esc(t("notePlaceholder"))}" autofocus /><button type="submit">${esc(t("save"))}</button><button type="button" class="ghost" data-cancel-edit>${esc(t("cancel"))}</button></form>`
+      : "";
+  const destinations = outputDestinations(output);
+  const selection = `${esc(job.job_id)}:${output.index}`;
+  const suffix = ["image", "video", "audio"].includes(output.kind)
+    ? output.kind[0].toUpperCase() + output.kind.slice(1)
+    : "Result";
+  const destinationButton =
+    destinations.length === 1
+      ? `<button type="button" class="secondary" data-destination="${esc(destinations[0].id)}" data-selection="${selection}">${esc(destinationLabel(destinations[0], output.kind))}</button>`
+      : destinations.length > 1
+        ? `<div class="destination-picker"><button type="button" class="secondary" data-output-destinations aria-expanded="false">${esc(t(`createFrom${suffix}`))} ▾</button><div class="output-destinations" hidden>${destinations.map((cap) => `<button type="button" class="ghost" data-destination="${esc(cap.id)}" data-selection="${selection}">${esc(text(cap.label))}</button>`).join("")}</div></div>`
         : "";
 
   const decision = linked.length
@@ -382,21 +396,11 @@ const renderOutputInspector = (job, output) => {
 
   return `
     ${mediaTag(output, "preview", true)}
-    <div class="actions">
-      <button type="button" class="secondary" data-action="favorite" aria-pressed="${job.favorite}">${esc(
-        job.favorite ? t("unfavorite") : t("favorite"),
-      )}</button>
-      <button type="button" class="secondary" data-action="${rejected ? "unreject" : "reject"}">${esc(
-        rejected ? t("unreject") : t("reject"),
-      )}</button>
-      <button type="button" class="secondary" data-action="note">${esc(t("note"))}</button>
-      <button type="button" data-toggle-context="${esc(job.job_id)}:${output.index}">${esc(
-        inContext(job.job_id, output.index) ? t("removeContext") : t("addAgentContext"),
-      )}</button>
+    <div class="result-action-groups">
+      <section class="result-action-group"><h3>${esc(t("nextCreation"))}</h3><div class="actions"><button type="button" data-load-job="${esc(job.job_id)}"${!engineForJob(job) || job.source !== "local" ? ` disabled title="${esc(t("rerunUnavailable"))}"` : ""}>${esc(t("recreate"))}</button>${destinationButton}</div></section>
+      <section class="result-action-group"><h3>${esc(t("organize"))}</h3><div class="actions"><button type="button" class="secondary" data-action="favorite" aria-pressed="${job.favorite}">${esc(job.favorite ? t("unfavorite") : t("favorite"))}</button><button type="button" class="secondary" data-action="note">${esc(t("note"))}</button></div>${editor}</section>
+      <section class="result-action-group"><h3>${esc(t("consultGroup"))}</h3><div class="actions"><button type="button" class="secondary" data-consult-output="${selection}">${esc(t(`consult${suffix}`))}</button></div></section>
     </div>
-    ${editor}
-    <div class="detail-create-actions"><button type="button" data-load-job="${esc(job.job_id)}">${esc(t("rerunTitle"))}</button><button type="button" class="secondary" data-use-output="${esc(job.job_id)}:${output.index}">${esc(t("useMaterial"))}</button></div>
-    ${rejected && job.reject_reason ? `<p><span class="badge reject">${esc(t("rejectedBecause"))}</span> ${esc(job.reject_reason)}</p>` : ""}
     ${linked.length ? `<h3>${esc(t("decision"))}</h3>${decision}` : ""}
     <h3>${esc(t("prompt"))}</h3>
     ${facts([
@@ -453,8 +457,85 @@ const renderPlanInspector = (plan) => {
 };
 
 const LABELS = {
+  deleteOutput: ["削除", "Delete"],
+  deleteTitle: ["この結果を削除しますか？", "Delete this result?"],
+  deleteBody: [
+    "ファイルと記録が消え、元に戻せません。",
+    "The file and its record will be removed. This cannot be undone.",
+  ],
+  deleteReason: [
+    "消す理由（任意）— 書くと、次に作るときエージェントが参考にします",
+    "Reason (optional) — your agent can use it when creating the next result",
+  ],
+  deleteConfirm: ["削除する", "Delete result"],
+  deleteCancel: ["やめる", "Cancel"],
+  deleting: ["削除中…", "Deleting…"],
+  deleted: ["結果を削除しました", "Result deleted"],
+  deleteFailed: ["削除できませんでした: {message}", "Could not delete: {message}"],
+  nextCreation: ["次を作る", "Create next"],
+  organize: ["整理", "Organize"],
+  consultGroup: ["相談", "Consult"],
+  createFromImage: ["この画像から作る", "Create from this image"],
+  createFromVideo: ["この動画から作る", "Create from this video"],
+  createFromAudio: ["この音声から作る", "Create from this audio"],
+  createFromResult: ["この結果から作る", "Create from this result"],
+  animateThisImage: ["この画像を動かす", "Animate this image"],
+  editThisImage: ["この画像を編集する", "Edit this image"],
+  editThisVideo: ["この動画を編集する", "Edit this video"],
+  useForMode: ["この{kind}で「{mode}」", "Use this {kind} for {mode}"],
+  consultImage: ["この画像をエージェントに伝えて相談", "Ask the agent about this image"],
+  consultVideo: ["この動画をエージェントに伝えて相談", "Ask the agent about this video"],
+  consultAudio: ["この音声をエージェントに伝えて相談", "Ask the agent about this audio"],
+  consultResult: ["この結果をエージェントに伝えて相談", "Ask the agent about this result"],
+  consultIntro: ["この{kind}について相談したいです。", "I'd like to discuss this {kind}."],
+  resultKind: ["結果", "result"],
+  assistStart: ["プロンプトを提案してもらう", "Suggest a prompt"],
+  assistTitle: ["プロンプトの提案", "Prompt suggestions"],
+  assistDescription: [
+    "接続中のモデル（{name}）に合う書き方で、エージェントが書き直し、意味を日本語で説明します",
+    "The agent rewrites it for {name} and explains what it means.",
+  ],
+  assistWaiting: [
+    "エージェントに依頼しました。返事を待っています…",
+    "Requested help from your agent. Waiting for a reply…",
+  ],
+  assistCancel: ["キャンセル", "Cancel"],
+  assistHint: [
+    "エージェントが受け取っていないようです。このフォルダで開いている Claude Code / Codex に comfy-agent studio inbox --follow を動かすよう頼むか、依頼文をコピーして貼り付けてください。",
+    "Your agent may not be receiving requests. Ask Claude Code / Codex in this folder to run comfy-agent studio inbox --follow, or copy and paste this request into the session.",
+  ],
+  assistCopy: ["依頼文をコピー", "Copy request"],
+  assistCopyPrompt: ["コピー", "Copy"],
+  assistScrollHint: [
+    "説明・補足はスクロールして読めます",
+    "Scroll to read the explanation and notes",
+  ],
+  assistPromptCopied: ["コピーしました", "Copied"],
+  assistSelectPrompt: [
+    "提案文を選択しました。コピーしてください。",
+    "Suggestion selected. Copy the selected text.",
+  ],
+  assistCopied: [
+    "コピーしました。エージェントのセッションに貼り付けてください。",
+    "Copied. Paste it into your agent session.",
+  ],
+  assistMeaning: ["このプロンプトの意味", "What this prompt means"],
+  assistUse: ["使う", "Use"],
+  assistUndo: ["元に戻す", "Undo"],
+  assistOption: ["案{n}", "Option {n}"],
+  assistPrompt: ["提案されたプロンプト（編集できます）", "Suggested prompt (editable)"],
+  assistApply: ["適用: {name}", "Apply: {name}"],
+  assistApplied: ["設定を適用しました", "Setting applied"],
+  assistMismatch: [
+    "対象のモデル・方式が変わりました。元の設定に戻すか、もう一度依頼してください。",
+    "The model or mode has changed. Restore it or request new suggestions.",
+  ],
+  assistInvalidSetting: [
+    "現在の設定では適用できません。長さやサイズの設定を確認してください。",
+    "This setting cannot be applied to the current controls. Check duration or size.",
+  ],
+  assistUsed: ["プロンプトを置き換えました。元に戻せます。", "Prompt replaced. You can undo it."],
   none: ["なし", "None"],
-  showRejected: ["不採用も表示", "Show rejected"],
   detailTitle: ["結果の詳細", "Result details"],
   close: ["閉じる", "Close"],
   askAgent: ["エージェントに相談", "Ask the agent"],
@@ -590,7 +671,18 @@ const LABELS = {
   dropFile: ["ここにファイルをドロップ", "Drop a file here"],
   dropHere: ["ここにドロップして追加", "Drop here to add"],
   orChoose: ["または", "or"],
-  replaceInput: ["替える", "Replace"],
+  replaceImage: ["別の画像にする", "Use another image"],
+  replaceVideo: ["別の動画にする", "Use another video"],
+  replaceAudio: ["別の音声にする", "Use another audio file"],
+  replaceFile: ["別のファイルにする", "Use another file"],
+  optionalEmpty: ["なしでも生成できます", "You can generate without this input"],
+  startImage: ["＋ 画像から始める", "+ Start from an image"],
+  startVideo: ["＋ 動画から始める", "+ Start from a video"],
+  startAudio: ["＋ 音声から始める", "+ Start from audio"],
+  startFile: ["＋ ファイルから始める", "+ Start from a file"],
+  noImageVideo: ["画像なしで動画を作ります", "Creating a video without an image"],
+  noVideoVideo: ["動画素材なしで動画を作ります", "Creating a video without a source video"],
+  noImageImage: ["画像素材なしで画像を作ります", "Creating an image without a source image"],
   removeInput: ["外す", "Remove"],
   slotIncompatible: [
     "「{name}」には{kind}を追加できません。",
@@ -605,7 +697,7 @@ const LABELS = {
   required: ["必須", "Required"],
   optional: ["なしでも可", "Can be omitted"],
   bakedInput: ["既定の入力あり", "Default input available"],
-  skipInput: ["使わない", "Do not use"],
+  omittedInput: ["入力なし", "No input"],
   inputlessImage: ["画像なしで実行", "Run without images"],
   inputlessVideo: ["動画なしで実行", "Run without video"],
   clearInput: ["取り外す", "Remove"],
@@ -674,8 +766,6 @@ const LABELS = {
   animate: ["動かす", "Animate"],
   editImage: ["編集する", "Edit"],
   recreate: ["作り直す", "Re-create"],
-  useMaterial: ["この素材で作る", "Create with this"],
-  addAgentContext: ["依頼の参考に追加", "Add to agent context"],
   jobDetails: ["生成の識別情報", "Job identifiers"],
   planDetails: ["計画の識別情報", "Plan identifiers"],
   elapsedDuration: ["所要時間", "Elapsed time"],
@@ -722,6 +812,36 @@ const text = (value) => value?.[state.lang] ?? value?.en ?? "";
 const capabilities = () => state.catalog?.capabilities ?? [];
 const currentCapability = () => capabilities().find((c) => c.id === state.capability);
 const currentEngine = () => currentCapability()?.engines.find((e) => e.preset === state.engineName);
+const slotFilled = (slot) =>
+  Boolean(state.inputs[slot.slot] || state.originalInputs.some((i) => i.name === slot.slot));
+const hiddenInputSlots = () =>
+  new Set(currentEngine()?.inputless ? currentEngine().default_skip : []);
+const syncInputSkips = () => {
+  const engine = currentEngine();
+  if (engine)
+    state.skip = new Set([
+      ...hiddenInputSlots(),
+      ...engine.inputs
+        .filter((slot) => slot.optional && !slotFilled(slot))
+        .map((slot) => slot.slot),
+    ]);
+  return state.skip;
+};
+const inputModeFor = (engine, kind = null) =>
+  capabilities().find((cap) =>
+    cap.engines.some(
+      (e) =>
+        e.preset === engine?.preset &&
+        !e.inputless &&
+        (!kind || e.inputs.some((slot) => slotAccepts(slot, kind))),
+    ),
+  );
+const closeSlotMenus = () => {
+  document.querySelectorAll(".slot-replace-menu").forEach((menu) => (menu.hidden = true));
+  document
+    .querySelectorAll("[data-replace-slot]")
+    .forEach((button) => button.setAttribute("aria-expanded", "false"));
+};
 const capabilityForJob = (job) => {
   const candidates = capabilities().filter((c) => c.engines.some((e) => e.preset === job.preset));
   return (
@@ -788,6 +908,8 @@ const chooseEngine = (capabilityId, presetName = null, automatic = true) => {
     capability.engines.find((e) => e.default) ??
     capability.engines[0];
   const old = currentEngine() ?? state.engineCache;
+  const variantSwitch = old?.preset === engine.preset && old.inputless !== engine.inputless;
+  const previous = { params: state.params, seed: state.seed, count: state.count, size: state.size };
   const oldInputs =
     old?.inputs.map((slot) => ({
       slot: slot.slot,
@@ -795,7 +917,6 @@ const chooseEngine = (capabilityId, presetName = null, automatic = true) => {
       kind: slot.kind,
       input: state.inputs[slot.slot],
       original: state.originalInputs.find((input) => input.name === slot.slot),
-      skipped: state.skip.has(slot.slot),
     })) ?? [];
   const sourceJob = state.sourceJob;
   state.capability = capability.id;
@@ -820,7 +941,7 @@ const chooseEngine = (capabilityId, presetName = null, automatic = true) => {
     const sameSlot = oldInputs.findIndex(
       (item, i) => item.slot === slot.slot && compatible(item, i),
     );
-    const occupied = (item) => item?.input || item?.original || item?.skipped;
+    const occupied = (item) => item?.input || item?.original;
     const fallback = oldInputs.findIndex(
       (item, i) =>
         compatible(item, i) &&
@@ -834,7 +955,6 @@ const chooseEngine = (capabilityId, presetName = null, automatic = true) => {
     if (index >= 0) {
       used.add(index);
       const item = oldInputs[index];
-      if (slot.optional && item.skipped) state.skip.add(slot.slot);
       if (item.input) state.inputs[slot.slot] = item.input;
       else if (item.original)
         state.originalInputs.push({
@@ -845,10 +965,15 @@ const chooseEngine = (capabilityId, presetName = null, automatic = true) => {
         });
     }
   }
-  state.sourceJob = null;
-  state.seed = "random";
-  state.count = 1;
-  state.size = null;
+  for (const slot of engine.inputless ? engine.default_skip : []) {
+    delete state.inputs[slot];
+    state.originalInputs = state.originalInputs.filter((input) => input.name !== slot);
+  }
+  state.sourceJob = variantSwitch ? sourceJob : null;
+  state.seed = variantSwitch ? previous.seed : "random";
+  state.count = variantSwitch ? previous.count : 1;
+  state.size = variantSwitch ? previous.size : null;
+  if (variantSwitch) Object.assign(state.params, previous.params);
   state.duration = engine.controls.frames
     ? Number(fieldValue(engine.controls.frames)) / fpsValue()
     : null;
@@ -944,22 +1069,76 @@ const slotPreview = (slot) => {
     );
   return original ? `<span class="slot-original">${esc(t("inputOriginal"))}</span>` : "";
 };
+const fitInputPreviews = () => {
+  const form = $("#create-form"),
+    slots = $("#input-slots");
+  if (!form || !slots || $("#online-composer").hidden) return;
+  const media = [...slots.querySelectorAll(".slot-media")];
+  if (!media.length) return;
+  const max = Math.max(...media.map((el) => el.getBoundingClientRect().height));
+  const budget = parseFloat(getComputedStyle(form).maxHeight);
+  const count = Number(slots.dataset.count) || 1;
+  const limit = form.classList.contains("has-prompt-suggestions")
+    ? 40
+    : innerWidth <= 600 && count > 1
+      ? count >= 3
+        ? 76
+        : 104
+      : count >= 3
+        ? 120
+        : 150;
+  const assistContent = $("#prompt-assist-panel .assist-content");
+  const assistOverflow = assistContent
+    ? Math.max(0, assistContent.scrollHeight - assistContent.clientHeight)
+    : 0;
+  const rows = Math.max(1, Math.ceil(count / 3));
+  const height = Math.max(
+    28,
+    Math.min(
+      limit,
+      Math.floor((budget - form.scrollHeight + max * rows - assistOverflow - 3) / rows),
+    ),
+  );
+  const value = `${height}px`;
+  if (slots.style.getPropertyValue("--slot-preview-height") !== value)
+    slots.style.setProperty("--slot-preview-height", value);
+};
 const renderInputs = () => {
   const engine = currentEngine();
+  syncInputSkips();
+  const hidden = hiddenInputSlots();
+  const visibleCount = (engine?.inputs ?? []).filter((slot) => !hidden.has(slot.slot)).length;
+  $("#input-slots").dataset.count = String(visibleCount);
+  $("#input-slots").style.setProperty(
+    "--slot-columns",
+    String(Math.max(1, Math.min(visibleCount, 3))),
+  );
   unobserveVideos($("#input-slots"));
   $("#input-slots").innerHTML = (engine?.inputs ?? [])
+    .filter((slot) => !hidden.has(slot.slot))
     .map((slot) => {
-      if (state.skip.has(slot.slot))
-        return `<button type="button" class="setting-chip skipped-input" data-toggle-slot="${esc(slot.slot)}" aria-pressed="true">${esc(text(slot.label))}: ${esc(t("skipInput"))} ↺</button>`;
-      const filled = Boolean(
-        state.inputs[slot.slot] || state.originalInputs.some((i) => i.name === slot.slot),
-      );
+      const filled = slotFilled(slot);
       const kind = slot.kind === "mask" ? "image" : slot.kind;
-      const dropLabel = t(`drop${kind[0].toUpperCase()}${kind.slice(1)}`);
-      return `<div class="input-slot ${filled ? "filled" : ""}" data-drop-slot="${esc(slot.slot)}"><div class="slot-heading"><strong>${esc(text(slot.label))}</strong><span>${esc(t(slot.optional ? "optional" : slot.required ? "required" : "bakedInput"))}</span></div><div class="slot-body">${filled ? slotPreview(slot) : `<p class="slot-drop-label">${esc(dropLabel)}</p>`}<div class="slot-actions">${!filled ? `<span>${esc(t("orChoose"))}</span>` : ""}<label class="file-button">${esc(t(filled ? "replaceInput" : "uploadFile"))}<input type="file" data-upload-slot="${esc(slot.slot)}" accept="${slot.kind === "file" ? "image/*,audio/*,video/*" : `${kind}/*`}" aria-label="${esc(t(filled ? "replaceInput" : "uploadFile"))}: ${esc(text(slot.label))}"></label><span aria-hidden="true">/</span><button type="button" class="ghost" data-pick-slot="${esc(slot.slot)}">${esc(t("pickResult"))}</button>${filled ? `<button type="button" class="ghost" data-clear-slot="${esc(slot.slot)}" aria-label="${esc(t("removeInput"))}: ${esc(text(slot.label))}">${esc(t("removeInput"))}</button>` : ""}${slot.optional ? `<button type="button" class="ghost" data-toggle-slot="${esc(slot.slot)}" aria-pressed="false">${esc(t("skipInput"))}</button>` : ""}</div></div></div>`;
+      const suffix = ["image", "video", "audio"].includes(kind)
+        ? kind[0].toUpperCase() + kind.slice(1)
+        : "File";
+      const accept = slot.kind === "file" ? "image/*,audio/*,video/*" : `${kind}/*`;
+      const fileInput = `<input type="file" data-upload-slot="${esc(slot.slot)}" accept="${accept}" aria-label="${esc(t("uploadFile"))}: ${esc(text(slot.label))}">`;
+      const actions = filled
+        ? `<div class="slot-replace"><button type="button" class="secondary slot-action" data-replace-slot="${esc(slot.slot)}" aria-haspopup="true" aria-expanded="false">${esc(t(`replace${suffix}`))}</button><div class="slot-replace-menu" hidden><button type="button" class="ghost" data-slot-file="${esc(slot.slot)}">${esc(t("uploadFile"))}</button><button type="button" class="ghost" data-pick-slot="${esc(slot.slot)}">${esc(t("pickResult"))}</button>${fileInput}</div></div><button type="button" class="secondary slot-action" data-clear-slot="${esc(slot.slot)}" aria-label="${esc(t("removeInput"))}: ${esc(text(slot.label))}">${esc(t("removeInput"))}</button>`
+        : `<label class="file-button slot-action secondary">${esc(t("uploadFile"))}${fileInput}</label><button type="button" class="secondary slot-action" data-pick-slot="${esc(slot.slot)}">${esc(t("pickResult"))}</button>`;
+      return `<div class="input-slot ${filled ? "filled" : ""}" data-drop-slot="${esc(slot.slot)}"><div class="slot-heading"><strong>${esc(text(slot.label))}</strong><span>${esc(t(slot.optional ? "optional" : slot.required ? "required" : "bakedInput"))}</span></div><div class="slot-body">${filled ? slotPreview(slot) : `<p class="slot-drop-label">${esc(t(`drop${suffix}`))}</p>${slot.optional ? `<p class="slot-optional-hint">${esc(t("optionalEmpty"))}</p>` : ""}`}<div class="slot-actions">${actions}</div></div></div>`;
     })
     .join("");
+  const startSlot = engine?.inputs.find((slot) => hidden.has(slot.slot));
+  $("#start-input").hidden = !startSlot;
+  $("#start-input").textContent = startSlot
+    ? t(
+        `start${["image", "mask"].includes(startSlot.kind) ? "Image" : startSlot.kind === "video" || startSlot.role === "video_source" ? "Video" : startSlot.kind === "audio" ? "Audio" : "File"}`,
+      )
+    : "";
   observeVideos($("#input-slots"));
+  requestAnimationFrame(fitInputPreviews);
 };
 const fieldMarkup = (field) => {
   let value = fieldValue(field);
@@ -1113,6 +1292,7 @@ const renderSettings = () => {
 };
 const renderActions = () => {
   const engine = currentEngine();
+  syncInputSkips();
   const missing = engine?.inputs.find(
     (slot) =>
       slot.required &&
@@ -1130,7 +1310,21 @@ const renderActions = () => {
   $("#generate").classList.toggle("secondary", Boolean(state.character));
   $("#ask-agent").classList.toggle("secondary", !state.character);
   $("#ask-agent").textContent = t("askAgent");
-  $("#action-note").textContent = reason;
+  const inputless = capabilities()
+    .flatMap((cap) => cap.engines)
+    .find((e) => e.preset === engine?.preset && e.inputless);
+  const noSource = inputless && inputless.default_skip.every((slot) => state.skip.has(slot));
+  $("#action-note").textContent =
+    reason ||
+    (noSource && !engine.inputless
+      ? t(
+          currentCapability().output === "image"
+            ? "noImageImage"
+            : inputless.inputs.some((slot) => slot.role === "video_source")
+              ? "noVideoVideo"
+              : "noImageVideo",
+        )
+      : "");
   $("#character-chip").innerHTML = state.character
     ? `<span class="character-chip">${esc(t("characterAttached", { name: state.character }))}<button class="ghost" type="button" data-clear-character aria-label="${esc(t("clearInput"))}">×</button></span>`
     : "";
@@ -1189,12 +1383,12 @@ const renderComposer = () => {
   renderInputs();
   renderSettings();
   renderActions();
+  renderAssist();
 };
 const matchesFilter = ({ job, output }) =>
-  (state.showRejected || !job.tags.includes("reject")) &&
-  (state.filter === "all" || state.filter === "favorite"
+  state.filter === "all" || state.filter === "favorite"
     ? state.filter !== "favorite" || job.favorite
-    : output.kind === state.filter);
+    : output.kind === state.filter;
 const renderFilters = () => {
   $("#filters").innerHTML = [
     ["all", "filterAll"],
@@ -1220,7 +1414,7 @@ const renderGallery = () => {
     ? items
         .map(
           ({ job, output }) =>
-            `<article class="card ${inContext(job.job_id, output.index) ? "in-context" : ""} ${job.tags.includes("reject") ? "rejected" : ""}" tabindex="0" role="button" draggable="true" data-job="${esc(job.job_id)}" data-index="${output.index}" aria-label="${esc(output.filename)}">${mediaTag(output)}<button type="button" class="card-favorite" data-favorite-job="${esc(job.job_id)}" aria-pressed="${job.favorite}" aria-label="${esc(t(job.favorite ? "unfavorite" : "favorite"))}">${job.favorite ? "★" : "☆"}</button><div class="card-actions">${output.kind === "image" && animate ? `<button type="button" data-card-mode="image_to_video" data-selection="${esc(job.job_id)}:${output.index}">${esc(t("animate"))}</button>` : ""}${output.kind === "image" && edit ? `<button type="button" data-card-mode="image_edit" data-selection="${esc(job.job_id)}:${output.index}">${esc(t("editImage"))}</button>` : ""}${engineForJob(job) && job.source === "local" ? `<button type="button" data-load-job="${esc(job.job_id)}">${esc(t("recreate"))}</button>` : ""}</div><div class="meta"><span>${esc(jobModelName(job, output.kind))}</span>${output.kind === "video" ? '<span aria-hidden="true">▶</span>' : ""}</div></article>`,
+            `<article class="card ${inContext(job.job_id, output.index) ? "in-context" : ""}" tabindex="0" role="button" draggable="true" data-job="${esc(job.job_id)}" data-index="${output.index}" aria-label="${esc(output.filename)}">${mediaTag(output)}<button type="button" class="card-favorite" data-favorite-job="${esc(job.job_id)}" aria-pressed="${job.favorite}" aria-label="${esc(t(job.favorite ? "unfavorite" : "favorite"))}">${job.favorite ? "★" : "☆"}</button><div class="card-actions">${output.kind === "image" && animate ? `<button type="button" data-card-mode="image_to_video" data-selection="${esc(job.job_id)}:${output.index}">${esc(t("animate"))}</button>` : ""}${output.kind === "image" && edit ? `<button type="button" data-card-mode="image_edit" data-selection="${esc(job.job_id)}:${output.index}">${esc(t("editImage"))}</button>` : ""}${engineForJob(job) && job.source === "local" ? `<button type="button" data-load-job="${esc(job.job_id)}">${esc(t("recreate"))}</button>` : ""}</div><div class="meta"><span>${esc(jobModelName(job, output.kind))}</span>${output.kind === "video" ? '<span aria-hidden="true">▶</span>' : ""}</div></article>`,
         )
         .join("")
     : `<p class="empty gallery-empty">${esc(t("noOutputs"))}</p>`;
@@ -1274,6 +1468,14 @@ const renderInspector = () => {
   } else if (state.focus?.type === "plan") {
     const plan = state.data?.plans.find((p) => p.id === state.focus.id);
     if (plan) html = renderPlanInspector(plan);
+  }
+  const deleteButton = $("#detail-delete");
+  const selectedOutput =
+    state.focus?.type === "output" ? findOutput(state.focus.job_id, state.focus.index) : null;
+  deleteButton.hidden = !selectedOutput || selectedOutput.job.scope !== "local";
+  if (selectedOutput) {
+    deleteButton.dataset.deleteOutput = `${selectedOutput.job.job_id}:${selectedOutput.output.index}`;
+    deleteButton.disabled = ["running", "submitted"].includes(selectedOutput.job.status);
   }
   const root = $("#inspector");
   if (root.dataset.html === html) return;
@@ -1343,8 +1545,9 @@ const renderCharacters = () => {
     .join("");
   $("#request-character").hidden = !state.data?.characters.length;
 };
-const serialInputs = () =>
-  Object.fromEntries([
+const serialInputs = () => {
+  syncInputSkips();
+  return Object.fromEntries([
     ...state.originalInputs
       .filter((input) => input.input_job_id && !state.skip.has(input.name))
       .map((input) => [
@@ -1360,9 +1563,24 @@ const serialInputs = () =>
           : { job_id: input.job_id, output_index: input.output_index },
       ]),
   ]);
+};
+const composerSize = () => {
+  const c = currentEngine()?.controls;
+  const w = Number(fieldValue(c?.width)),
+    h = Number(fieldValue(c?.height));
+  return w > 0 && h > 0 ? [w, h] : undefined;
+};
 const contextData = () => ({
   task: currentCapability()?.capability,
   preset: state.engineName ?? undefined,
+  model_label: currentEngine()?.model_label,
+  duration_s: state.duration || undefined,
+  size: composerSize(),
+  aspect: composerSize()?.join(":"),
+  input_slots: (currentEngine()?.inputs ?? []).flatMap((slot) => {
+    const reference = serialInputs()[slot.slot];
+    return reference ? [{ slot: slot.slot, kind: slot.kind, role: slot.role, reference }] : [];
+  }),
   params: state.params,
   count: state.count,
   seed: state.seed,
@@ -1393,7 +1611,7 @@ const renderContext = () => {
       const input = state.inputs[slot.slot],
         found = input && !input.upload_id ? findOutput(input.job_id, input.output_index) : null;
       const original = state.originalInputs.find((i) => i.name === slot.slot);
-      return `${text(slot.label)}: ${state.skip.has(slot.slot) ? t("skipInput") : input ? (input.filename ?? found?.output.filename ?? t("inputOriginal")) : (original?.server_name ?? t("none"))}`;
+      return `${text(slot.label)}: ${state.skip.has(slot.slot) ? t("omittedInput") : input ? (input.filename ?? found?.output.filename ?? t("inputOriginal")) : (original?.server_name ?? t("none"))}`;
     }),
     state.duration
       ? t("durationDetails", {
@@ -1430,24 +1648,238 @@ const requestBody = (send) => ({
   lang: state.lang,
   send,
 });
+const copyPromptText = async (prompt, fallback, report, copiedKey = "copied") => {
+  try {
+    await navigator.clipboard.writeText(prompt);
+    report(t(copiedKey));
+  } catch {
+    fallback.value = prompt;
+    fallback.hidden = false;
+    fallback.focus();
+    fallback.select();
+    report(t("clipboardFallback"));
+  }
+};
 const copyRequest = async () => {
   if (!$("#request-text").value.trim()) return setRequestStatus(t("needText"));
   try {
     const { prompt } = await api("/api/requests", requestBody(false));
-    try {
-      await navigator.clipboard.writeText(prompt);
-      setRequestStatus(t("copied"));
-    } catch {
-      const fallback = $("#copy-fallback");
-      fallback.value = prompt;
-      fallback.hidden = false;
-      fallback.focus();
-      fallback.select();
-      setRequestStatus(t("clipboardFallback"));
-    }
+    await copyPromptText(prompt, $("#copy-fallback"), setRequestStatus);
   } catch (error) {
     setRequestStatus(error.message);
   }
+};
+
+const updateAssistButtons = () => {
+  $("#prompt-assist").textContent = t("assistStart");
+  $("#prompt-assist-description").textContent = t("assistDescription", {
+    name: modelName(currentEngine()) || t("model"),
+  });
+  $("#prompt-assist").disabled = !state.prompt.trim() || state.assist?.phase === "waiting";
+  $("#prompt-undo").textContent = t("assistUndo");
+  $("#prompt-undo").hidden = state.assistOriginal === null;
+};
+const assistMatches = () =>
+  state.assist?.preset === state.engineName && state.assist?.capability === state.capability;
+const renderAssist = () => {
+  updateAssistButtons();
+  const panel = $("#prompt-assist-panel"),
+    a = state.assist;
+  panel.hidden = !a;
+  $("#create-form").classList.toggle("has-prompt-suggestions", Boolean(a?.answer));
+  panel.setAttribute("aria-label", t("assistTitle"));
+  if (!a) {
+    panel.innerHTML = "";
+    return;
+  }
+  const active = document.activeElement?.id === "assist-prompt";
+  const selection = active
+    ? [$("#assist-prompt").selectionStart, $("#assist-prompt").selectionEnd]
+    : null;
+  const scroll = panel.querySelector(".assist-content")?.scrollTop ?? 0;
+  const item = a.answer?.suggestions[a.index];
+  const mismatch = !assistMatches();
+  const settings = Object.entries(item?.settings ?? {})
+    .map(([key, value]) => {
+      const name =
+        key === "negative_prompt"
+          ? `${t("negative")}: ${value}`
+          : key === "duration_s"
+            ? t("durationChip", { n: value })
+            : Array.isArray(value)
+              ? `${value[0]} × ${value[1]}`
+              : value;
+      return `<button type="button" class="secondary" data-assist-setting="${esc(key)}"${mismatch ? " disabled" : ""}>${esc(t("assistApply", { name }))}</button>`;
+    })
+    .join("");
+  panel.innerHTML = `<div class="assist-content"><h3 class="assist-title">${esc(t("assistTitle"))}</h3>${
+    a.phase === "waiting"
+      ? `<p role="status">${esc(t("assistWaiting"))}</p>${a.hint ? `<p>${esc(t("assistHint"))}</p>` : ""}`
+      : item
+        ? `
+    ${a.answer.suggestions.length > 1 ? `<div class="assist-tabs" aria-label="${esc(t("assistPrompt"))}">${a.answer.suggestions.map((_, i) => `<button type="button" class="secondary" data-assist-option="${i}" aria-pressed="${a.index === i}">${esc(t("assistOption", { n: i + 1 }))}</button>`).join("")}</div>` : ""}
+    <label><span class="sr-only">${esc(t("assistPrompt"))}</span><textarea id="assist-prompt" class="assist-prompt" rows="3" maxlength="32000">${esc(item.prompt)}</textarea></label>
+    ${item.explanation?.[state.lang] ? `<h3>${esc(t("assistMeaning"))}</h3><p class="assist-explanation">${esc(item.explanation[state.lang])}</p>` : ""}
+    ${item.notes?.[state.lang] ? `<p class="hint assist-notes">${esc(item.notes[state.lang])}</p>` : ""}
+    ${mismatch ? `<p>${esc(t("assistMismatch"))}</p>` : ""}
+    <div class="assist-settings">${settings}</div>`
+        : ""
+  }
+    <p id="assist-notice" role="status">${esc(a.message || "")}</p>
+    <textarea id="assist-copy-fallback" class="assist-copy-fallback" rows="3" readonly hidden aria-label="${esc(t("assistCopy"))}"></textarea>
+  </div><div class="assist-actions"><p class="assist-scroll-hint" hidden>${esc(t("assistScrollHint"))}</p>${item ? `<button type="button" data-assist-use${mismatch || !item.prompt.trim() ? " disabled" : ""}>${esc(t("assistUse"))}</button><button type="button" class="secondary" data-assist-copy-prompt${!item.prompt.trim() ? " disabled" : ""}>${esc(t("assistCopyPrompt"))}</button>` : ""}${a.hint && a.promptText ? `<button type="button" class="secondary" data-assist-copy>${esc(t("assistCopy"))}</button>` : ""}<button type="button" class="secondary" data-assist-close>${esc(t(a.phase === "waiting" ? "assistCancel" : "close"))}</button></div>`;
+  if (active && $("#assist-prompt")) {
+    $("#assist-prompt").focus({ preventScroll: true });
+    $("#assist-prompt").setSelectionRange(...selection);
+  }
+  panel.querySelector(".assist-content").scrollTop = scroll;
+  requestAnimationFrame(updateAssistOverflow);
+};
+const updateAssistOverflow = () => {
+  const panel = $("#prompt-assist-panel"),
+    content = panel.querySelector(".assist-content"),
+    hint = panel.querySelector(".assist-scroll-hint");
+  if (!content || !hint) return;
+  const selfHeight = hint.hidden ? 0 : hint.getBoundingClientRect().height;
+  hint.hidden =
+    !state.assist?.answer || content.scrollHeight - content.clientHeight <= selfHeight + 2;
+};
+const copySuggestedPrompt = async (button) => {
+  const a = state.assist,
+    item = a?.answer?.suggestions[a.index];
+  if (!item?.prompt.trim()) return;
+  try {
+    await navigator.clipboard.writeText(item.prompt);
+    button.textContent = t("assistPromptCopied");
+    setTimeout(() => {
+      if (button.isConnected) button.textContent = t("assistCopyPrompt");
+    }, 2000);
+  } catch {
+    const field = $("#assist-prompt");
+    field.focus();
+    field.select();
+    a.message = t("assistSelectPrompt");
+    $("#assist-notice").textContent = a.message;
+  }
+};
+const pollAssist = async (a) => {
+  if (state.assist !== a || a.phase !== "waiting") return;
+  try {
+    const { suggestion } = await api(`/api/requests/${encodeURIComponent(a.id)}/suggestion`);
+    if (state.assist !== a) return;
+    if (suggestion) {
+      a.answer = suggestion;
+      a.phase = "ready";
+      a.index = 0;
+      clearTimeout(a.hintTimer);
+      renderAssist();
+      return;
+    }
+  } catch {
+    // Keep waiting through a temporary local server failure; copying remains available.
+  }
+  if (state.assist === a) a.pollTimer = setTimeout(() => void pollAssist(a), 1500);
+};
+const closeAssist = () => {
+  clearTimeout(state.assist?.pollTimer);
+  clearTimeout(state.assist?.hintTimer);
+  state.assist = null;
+  renderAssist();
+};
+const startAssist = async () => {
+  if (!state.prompt.trim() || !currentEngine() || state.assist?.phase === "waiting") return;
+  closeAssist();
+  const a = { phase: "waiting", preset: state.engineName, capability: state.capability, index: 0 };
+  state.assist = a;
+  renderAssist();
+  try {
+    const result = await api("/api/requests", {
+      kind: "prompt_assist",
+      text: state.prompt.trim(),
+      lang: state.lang,
+      context: contextData(),
+      character: state.character ?? undefined,
+      selected: state.context,
+      send: true,
+    });
+    if (state.assist !== a) return;
+    a.id = result.request.id;
+    a.promptText = result.prompt;
+    a.hintTimer = setTimeout(() => {
+      if (state.assist === a && a.phase === "waiting") {
+        a.hint = true;
+        renderAssist();
+      }
+    }, 20000);
+    void pollAssist(a);
+    void load();
+  } catch (error) {
+    if (state.assist !== a) return;
+    a.phase = "error";
+    a.message = error.message;
+    renderAssist();
+  }
+};
+const replacePrompt = (value) => {
+  state.prompt = value;
+  const c = currentEngine()?.controls.prompt;
+  if (c) state.params[c.param] = value;
+  $("#prompt").value = value;
+  updateAssistButtons();
+};
+const applyAssistSetting = (key) => {
+  if (!assistMatches()) return;
+  const value = state.assist.answer?.suggestions[state.assist.index]?.settings?.[key];
+  const c = currentEngine().controls;
+  const changes = {};
+  const set = (field, v) => {
+    if (
+      !field ||
+      (field.type === "int" && !Number.isInteger(v)) ||
+      (field.min !== undefined && v < field.min) ||
+      (field.max !== undefined && v > field.max) ||
+      (field.choices && !field.choices.includes(v)) ||
+      (field.step &&
+        Math.abs(
+          (v - (field.step_offset ?? 0)) / field.step -
+            Math.round((v - (field.step_offset ?? 0)) / field.step),
+        ) > 1e-8)
+    )
+      throw new Error();
+    changes[field.param] = v;
+  };
+  try {
+    if (key === "negative_prompt") set(c.negative_prompt, value);
+    else if (key === "duration_s") {
+      const bounds = currentEngine().constraints?.duration_s;
+      if (bounds && (value < bounds[0] || value > bounds[1])) throw new Error();
+      set(c.frames, Math.round(value * fpsValue()));
+      state.duration = changes[c.frames.param] / fpsValue();
+    } else {
+      const size =
+        key === "size"
+          ? value
+          : currentEngine().constraints?.sizes?.find(
+              ([w, h]) =>
+                Math.abs(w / h - Number(value.split(":")[0]) / Number(value.split(":")[1])) < 0.025,
+            );
+      if (
+        !size ||
+        (currentEngine().constraints?.sizes &&
+          !currentEngine().constraints.sizes.some(([w, h]) => w === size[0] && h === size[1]))
+      )
+        throw new Error();
+      set(c.width, size[0]);
+      set(c.height, size[1]);
+      state.size = size;
+    }
+    Object.assign(state.params, changes);
+    state.assist.message = t("assistApplied");
+    renderSettings();
+  } catch {
+    state.assist.message = t("assistInvalidSetting");
+  }
+  renderAssist();
 };
 const queueRequest = async () => {
   if (!$("#request-text").value.trim()) return setRequestStatus(t("needText"));
@@ -1457,6 +1889,66 @@ const queueRequest = async () => {
     await load();
   } catch (error) {
     setRequestStatus(error.message);
+  }
+};
+const openDelete = (selection) => {
+  const found = findOutput(selection.job_id, selection.output_index);
+  if (!found) return;
+  state.deleteTarget = { ...selection, saved_to: found.output.delete_key };
+  $("#delete-reason").value = "";
+  $("#delete-status").textContent = "";
+  showDialog("delete-dialog");
+};
+const deleteResult = async (event) => {
+  event.preventDefault();
+  if (!state.deleteTarget || state.deleting) return;
+  const target = state.deleteTarget;
+  state.deleting = true;
+  $("#confirm-delete").disabled = true;
+  $("#delete-status").textContent = t("deleting");
+  try {
+    const result = await api(
+      `/api/jobs/${encodeURIComponent(target.job_id)}/outputs/${target.output_index}/delete`,
+      { saved_to: target.saved_to, reason: $("#delete-reason").value.trim() || undefined },
+    );
+    const removed = new Set(result.removed_indices);
+    const remap = (selection) => {
+      if (selection.job_id !== target.job_id) return selection;
+      if (removed.has(selection.output_index)) return null;
+      return {
+        ...selection,
+        output_index:
+          selection.output_index -
+          result.removed_indices.filter((i) => i < selection.output_index).length,
+      };
+    };
+    state.context = state.context.map(remap).filter(Boolean);
+    for (const [slot, input] of Object.entries(state.inputs)) {
+      if (input.upload_id) continue;
+      const next = remap(input);
+      if (next) state.inputs[slot] = next;
+      else delete state.inputs[slot];
+    }
+    if (result.job_removed) {
+      state.originalInputs = state.originalInputs.filter(
+        (input) => input.input_job_id !== target.job_id,
+      );
+      if (state.sourceJob === target.job_id) state.sourceJob = null;
+    }
+    state.focus = null;
+    state.editing = null;
+    state.deleteTarget = null;
+    $("#delete-dialog").close();
+    $("#detail-dialog").close();
+    await load();
+    renderComposer();
+    renderContext();
+    setStatus(t("deleted"));
+  } catch (error) {
+    $("#delete-status").textContent = t("deleteFailed", { message: error.message });
+  } finally {
+    state.deleting = false;
+    $("#confirm-delete").disabled = false;
   }
 };
 const feedback = async (jobId, body) => {
@@ -1499,12 +1991,19 @@ const resolveInputSlot = (kind, slotName = null, preferred = null, emptyOnly = f
   }
   // A full set of compatible slots must not be overwritten or switch tasks.
   const compatible = engine?.inputs.filter((slot) => slotAccepts(slot, kind)) ?? [];
-  if (!preferred && compatible.length && emptyOnly && !compatible.some(empty)) {
+  if (
+    !preferred &&
+    !engine?.inputless &&
+    compatible.length &&
+    emptyOnly &&
+    !compatible.some(empty)
+  ) {
     setStatus(t("noEmptyInput"));
     return null;
   }
   if (preferred || !compatible.length || engine?.inputless) {
     const target =
+      (engine?.inputless ? inputModeFor(engine, kind) : null) ??
       capabilities().find(
         (c) =>
           c.capability ===
@@ -1521,6 +2020,10 @@ const resolveInputSlot = (kind, slotName = null, preferred = null, emptyOnly = f
       return null;
     }
     const suitable =
+      target.engines.find(
+        (e) =>
+          e.preset === engine?.preset && !e.inputless && e.inputs.some((i) => slotAccepts(i, kind)),
+      ) ??
       target.engines.find((e) => e.default && e.inputs.some((i) => slotAccepts(i, kind))) ??
       target.engines.find((e) => e.inputs.some((i) => slotAccepts(i, kind)));
     chooseEngine(target.id, suitable.preset);
@@ -1697,8 +2200,8 @@ const loadJob = async (jobId) => {
         ? (state.params[engine.controls.prompt.param] ?? job.prompt_final ?? "")
         : (job.prompt_final ?? ""),
     );
-    state.originalInputs = form.inputs ?? [];
     state.skip = new Set(form.skip ?? job.skipped_inputs ?? []);
+    state.originalInputs = (form.inputs ?? []).filter((input) => !state.skip.has(input.name));
     state.seed = engine.controls.seed && typeof job.seed === "number" ? job.seed : "random";
     state.count = 1;
     state.duration = engine.controls.frames
@@ -1792,7 +2295,43 @@ document.addEventListener("click", (event) => {
   const target = event.target.closest("button,[data-job],[data-plan]");
   if (!target) return;
   const d = target.dataset;
-  if (d.closeDialog) $(`#${d.closeDialog}`).close();
+  if (d.closeDialog === "delete-dialog" && state.deleting) return;
+  if ("assistStart" in d) void startAssist();
+  else if ("assistClose" in d) closeAssist();
+  else if ("assistCopyPrompt" in d) void copySuggestedPrompt(target);
+  else if ("assistCopy" in d) {
+    const a = state.assist;
+    if (a?.promptText)
+      void copyPromptText(
+        a.promptText,
+        $("#assist-copy-fallback"),
+        (message) => {
+          if (state.assist === a) {
+            a.message = message;
+            $("#assist-notice").textContent = message;
+          }
+        },
+        "assistCopied",
+      );
+  } else if (d.assistOption !== undefined) {
+    state.assist.index = Number(d.assistOption);
+    state.assist.message = "";
+    renderAssist();
+  } else if ("assistUse" in d && assistMatches()) {
+    const prompt = state.assist.answer.suggestions[state.assist.index].prompt.trim();
+    if (prompt) {
+      state.assistOriginal = state.prompt;
+      replacePrompt(prompt);
+      state.assist.message = t("assistUsed");
+      renderAssist();
+    }
+  } else if ("assistUndo" in d && state.assistOriginal !== null) {
+    replacePrompt(state.assistOriginal);
+    state.assistOriginal = null;
+    if (state.assist) state.assist.message = "";
+    renderAssist();
+  } else if (d.assistSetting) applyAssistSetting(d.assistSetting);
+  else if (d.closeDialog) $(`#${d.closeDialog}`).close();
   else if ("capabilityDetails" in d) {
     showDialog("connection-dialog");
     $("#creation-capabilities").focus({ preventScroll: true });
@@ -1827,20 +2366,23 @@ document.addEventListener("click", (event) => {
     state.count = Number(d.count);
     closePopovers();
     renderSettings();
-  } else if (d.pickSlot) renderPicker(d.pickSlot);
-  else if (d.toggleSlot) {
-    const slot = currentEngine()?.inputs.find((input) => input.slot === d.toggleSlot);
-    if (!slot) return;
-    if (state.skip.has(slot.slot)) {
-      if (currentEngine().inputless) {
-        const target = capabilities().find((cap) =>
-          cap.engines.some((engine) => engine.preset === state.engineName && !engine.inputless),
-        );
-        if (target) chooseEngine(target.id, state.engineName, false);
-      }
-      state.skip.delete(slot.slot);
-    } else if (slot.optional) state.skip.add(slot.slot);
-    renderComposer();
+  } else if ("startInput" in d) {
+    const engine = currentEngine(),
+      target = inputModeFor(engine);
+    if (target) chooseEngine(target.id, engine.preset, false);
+  } else if (d.replaceSlot) {
+    const menu = target.parentElement.querySelector(".slot-replace-menu");
+    const open = menu.hidden;
+    closeSlotMenus();
+    menu.hidden = !open;
+    target.setAttribute("aria-expanded", String(open));
+  } else if (d.slotFile) {
+    const input = target.parentElement.querySelector("input[type=file]");
+    closeSlotMenus();
+    input.click();
+  } else if (d.pickSlot) {
+    closeSlotMenus();
+    renderPicker(d.pickSlot);
   } else if (d.pickOutput) {
     const selection = selectionFrom(d.pickOutput),
       found = findOutput(selection.job_id, selection.output_index);
@@ -1849,25 +2391,50 @@ document.addEventListener("click", (event) => {
   } else if (d.clearSlot) {
     delete state.inputs[d.clearSlot];
     state.originalInputs = state.originalInputs.filter((i) => i.name !== d.clearSlot);
-    renderInputs();
-    renderActions();
+    const engine = currentEngine();
+    const inputless = capabilities().find((cap) =>
+      cap.engines.some(
+        (e) =>
+          e.preset === engine?.preset &&
+          e.inputless &&
+          e.default_skip.includes(d.clearSlot) &&
+          e.default_skip.every((slot) => !slotFilled({ slot })),
+      ),
+    );
+    if (inputless) chooseEngine(inputless.id, engine.preset, false);
+    else {
+      renderInputs();
+      renderActions();
+    }
   } else if (d.cardMode) useSelection(selectionFrom(d.selection), d.cardMode);
   else if (d.favoriteJob) {
     const job = state.data.jobs.find((j) => j.job_id === d.favoriteJob);
     if (job) void feedback(job.job_id, { favorite: !job.favorite });
   } else if (d.loadJob) void loadJob(d.loadJob);
-  else if (d.useOutput) useSelection(selectionFrom(d.useOutput));
-  else if (d.toggleContext) {
-    const selection = selectionFrom(d.toggleContext);
-    if (inContext(selection.job_id, selection.output_index))
-      state.context = state.context.filter(
-        (s) => s.job_id !== selection.job_id || s.output_index !== selection.output_index,
-      );
-    else state.context.push(selection);
-    renderGallery();
-    renderInspector();
-    renderContext();
-  } else if (d.removeContext) {
+  else if ("outputDestinations" in d) {
+    const menu = target.parentElement.querySelector(".output-destinations");
+    menu.hidden = !menu.hidden;
+    target.setAttribute("aria-expanded", String(!menu.hidden));
+  } else if (d.destination) {
+    closeOutputDestinations();
+    useSelection(selectionFrom(d.selection), d.destination);
+  } else if (d.consultOutput) {
+    const selection = selectionFrom(d.consultOutput),
+      found = findOutput(selection.job_id, selection.output_index);
+    if (!found) return;
+    addContext(selection);
+    $("#detail-dialog").close();
+    openRequest();
+    if (!state.prompt)
+      $("#request-text").value = t("consultIntro", {
+        kind: t(
+          ["image", "video", "audio"].includes(found.output.kind)
+            ? `${found.output.kind}Kind`
+            : "resultKind",
+        ),
+      });
+  } else if (d.deleteOutput) openDelete(selectionFrom(d.deleteOutput));
+  else if (d.removeContext) {
     const selection = selectionFrom(d.removeContext);
     state.context = state.context.filter(
       (s) => s.job_id !== selection.job_id || s.output_index !== selection.output_index,
@@ -1912,7 +2479,6 @@ document.addEventListener("click", (event) => {
     const job = state.data.jobs.find((j) => j.job_id === state.focus?.job_id);
     if (!job) return;
     if (d.action === "favorite") void feedback(job.job_id, { favorite: !job.favorite });
-    else if (d.action === "unreject") void feedback(job.job_id, { reject: null });
     else {
       state.editing = d.action;
       renderInspector();
@@ -1929,11 +2495,14 @@ document.addEventListener("click", (event) => {
 });
 document.addEventListener("click", (event) => {
   if (!event.target.closest(".settings-popover,[data-open-popover]")) closePopovers();
+  if (!event.target.closest(".slot-replace")) closeSlotMenus();
+  if (!event.target.closest(".destination-picker")) closeOutputDestinations();
 });
 document.addEventListener("input", (event) => {
   const el = event.target;
   if (el.id === "prompt") {
     state.prompt = el.value;
+    updateAssistButtons();
     const c = currentEngine()?.controls.prompt;
     if (c) state.params[c.param] = el.value;
     if (
@@ -1945,6 +2514,10 @@ document.addEventListener("input", (event) => {
       renderCharacters();
       showDialog("character-dialog");
     }
+  } else if (el.id === "assist-prompt") {
+    state.assist.answer.suggestions[state.assist.index].prompt = el.value;
+    $("[data-assist-use]").disabled = !el.value.trim() || !assistMatches();
+    $("[data-assist-copy-prompt]").disabled = !el.value.trim();
   } else if (el.id === "model-filter") {
     state.modelQuery = el.value;
     renderModelOptions();
@@ -1983,10 +2556,7 @@ document.addEventListener("input", (event) => {
 });
 document.addEventListener("change", (event) => {
   const el = event.target;
-  if (el.id === "show-rejected") {
-    state.showRejected = el.checked;
-    renderGallery();
-  } else if (el.name === "seed-mode") {
+  if (el.name === "seed-mode") {
     state.seed = el.value === "random" ? "random" : Number($("#fixed-seed").value);
     if (state.seed !== "random") state.count = 1;
     $("#fixed-seed-field").hidden = state.seed === "random";
@@ -2012,6 +2582,10 @@ $("#create-form").addEventListener(
   },
   true,
 );
+$("#delete-form").addEventListener("submit", deleteResult);
+$("#delete-dialog").addEventListener("cancel", (event) => {
+  if (state.deleting) event.preventDefault();
+});
 $("#create-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   if ($("#generate").disabled) return;
@@ -2067,11 +2641,7 @@ document.addEventListener("submit", (event) => {
   if (!form.dataset.form) return;
   event.preventDefault();
   const value = new FormData(form).get("value")?.toString().trim();
-  if (value && state.focus?.type === "output")
-    void feedback(
-      state.focus.job_id,
-      form.dataset.form === "reject" ? { reject: value } : { note: value },
-    );
+  if (value && state.focus?.type === "output") void feedback(state.focus.job_id, { note: value });
 });
 document.addEventListener("dragstart", (event) => {
   const card = event.target.closest(".card[data-job]");
@@ -2191,13 +2761,19 @@ document.addEventListener("keydown", (event) => {
     event.preventDefault();
     card.click();
   }
-  if (event.key === "Escape") closePopovers();
+  if (event.key === "Escape") {
+    closePopovers();
+    closeSlotMenus();
+    closeOutputDestinations();
+  }
 });
 new ResizeObserver(() => {
   document.documentElement.style.setProperty(
     "--composer-space",
     `${$(".composer-dock").getBoundingClientRect().height + 32}px`,
   );
+  fitInputPreviews();
+  updateAssistOverflow();
 }).observe($(".composer-dock"));
 setInterval(() => {
   if (state.data) renderRuns();

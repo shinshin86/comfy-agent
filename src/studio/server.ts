@@ -43,7 +43,11 @@ import {
   listRequests,
   StudioSelectionSchema,
   StudioRequestContextSchema,
+  StudioRequestSchema,
 } from "./store.js";
+import { listSuggestions, readSuggestion, SuggestionRequestIdSchema } from "./suggestions.js";
+
+import { deleteStudioOutput } from "./results.js";
 
 export type StudioServerOptions = {
   cwd: string;
@@ -174,6 +178,7 @@ const loadJobs = async (cwd: string, limit: number): Promise<JobRecord[]> => {
 
 const jobView = (record: JobRecord) => ({
   job_id: record.job_id,
+  scope: record.scope,
   preset: record.preset,
   status: record.status,
   submitted_at: record.submitted_at,
@@ -198,6 +203,7 @@ const jobView = (record: JobRecord) => ({
   outputs: record.outputs.map((output, index) => ({
     index,
     filename: output.filename,
+    delete_key: output.saved_to,
     kind: outputKind(output.kind, output.saved_to),
     path: path.join(record.output_dir, output.saved_to),
     url: `/api/media/job/${encodeURIComponent(record.job_id)}/${index}`,
@@ -278,7 +284,7 @@ const buildState = async (options: StudioServerOptions, runs: StudioRuns) => {
       }),
     ),
   );
-  const handled = handledRequestIds(plans);
+  const handled = handledRequestIds(plans, await listSuggestions(cwd), requests);
   // Read config relative to the studio cwd, not the process cwd.
   const connection = decideComfyBaseUrl({}, process.env, (scope) => readConfigSync(cwd, scope));
   return {
@@ -453,6 +459,14 @@ const handleRequest = async (
 ) => {
   const text = typeof body.text === "string" ? body.text.trim() : "";
   if (!text) throw new HttpError(400, "INVALID_PARAM", "Request text is required.");
+  const kind = StudioRequestSchema.shape.kind.safeParse(body.kind);
+  if (!kind.success) throw new HttpError(400, "INVALID_PARAM", "Invalid request kind.");
+  if (kind.data === "prompt_assist" && text.length > 32000)
+    throw new HttpError(
+      400,
+      "INVALID_PARAM",
+      "Prompt assistance accepts at most 32000 characters.",
+    );
   const selected = StudioSelectionSchema.array().safeParse(body.selected ?? []);
   if (!selected.success) throw new HttpError(400, "INVALID_PARAM", "Invalid selection.");
   const character =
@@ -481,11 +495,10 @@ const handleRequest = async (
   for (const [slot, input] of Object.entries(context?.inputs ?? {})) {
     if ("upload_id" in input)
       uploadPaths[slot] = (await resolveUpload(options.cwd, input.upload_id)).path;
-    else if ("input_job_id" in input)
-      uploadPaths[slot] = await (
-        await originalInput(options, input.input_job_id, input.input_slot)
-      ).resolve();
-    else if (
+    else if ("input_job_id" in input) {
+      const original = await originalInput(options, input.input_job_id, input.input_slot);
+      if (kind.data !== "prompt_assist") uploadPaths[slot] = await original.resolve();
+    } else if (
       !selected.data.some(
         (item) => item.job_id === input.job_id && item.output_index === input.output_index,
       )
@@ -503,7 +516,9 @@ const handleRequest = async (
     }
   }
   if (context?.source_job_id) await readJobOrThrow(options.cwd, context.source_job_id);
-  const draft = { text, selected: selected.data, character, context };
+  if (kind.data === "prompt_assist" && !context?.preset)
+    throw new HttpError(400, "INVALID_PARAM", "A preset is required for prompt assistance.");
+  const draft = { text, kind: kind.data, lang, selected: selected.data, character, context };
   // `send: false` only previews the text for the copy button; nothing is stored.
   const request =
     body.send === true
@@ -631,6 +646,7 @@ export const startStudioServer = async (options: StudioServerOptions): Promise<S
       if (url.pathname === "/api/generate" && method === "POST") {
         const body = parseGenerate(await readJsonBody(req));
         let defaultSkip: string[] = [];
+        let emptyOptional: string[] = [];
         let requestedParams = body.params;
         if (body.capability) {
           const current = await catalog.read(await loadJobs(options.cwd, options.jobLimit ?? 200));
@@ -645,6 +661,9 @@ export const startStudioServer = async (options: StudioServerOptions): Promise<S
             );
           requestedParams = mapComposerParams(body, engine);
           defaultSkip = engine.default_skip;
+          emptyOptional = engine.inputs
+            .filter((slot) => slot.optional && !Object.hasOwn(body.inputs, slot.slot))
+            .map((slot) => slot.slot);
         }
         const loaded = (await loadStudioPresets(options.cwd)).find(
           (entry) => entry.name === body.preset,
@@ -655,7 +674,13 @@ export const startStudioServer = async (options: StudioServerOptions): Promise<S
         const source = body.source_job_id
           ? await readJobOrThrow(options.cwd, body.source_job_id)
           : undefined;
-        const skip = [...new Set(body.skip ?? source?.skipped_inputs ?? defaultSkip)];
+        const skip = [
+          ...new Set([
+            ...(body.skip ?? source?.skipped_inputs ?? []),
+            ...defaultSkip,
+            ...emptyOptional,
+          ]),
+        ];
         const pruned = skip.length ? await catalog.validateSkip(preset, loaded.scope, skip) : null;
         const liveNodes = pruned ? new Set(Object.keys(pruned)) : undefined;
         for (const slot of skip)
@@ -952,6 +977,23 @@ export const startStudioServer = async (options: StudioServerOptions): Promise<S
         return;
       }
 
+      const deletion = /^\/api\/jobs\/([^/]+)\/outputs\/(0|[1-9]\d*)\/delete$/.exec(url.pathname);
+      if (deletion && method === "POST") {
+        const body = await readJsonBody(req);
+        const id = decodePathPart(deletion[1]!);
+        const previous = feedbackWrites.get(id) ?? Promise.resolve();
+        const write = previous
+          .catch(() => undefined)
+          .then(() => deleteStudioOutput(options.cwd, id, Number(deletion[2]), body));
+        feedbackWrites.set(id, write);
+        try {
+          sendJson(res, 200, { ok: true, ...(await write) });
+        } finally {
+          if (feedbackWrites.get(id) === write) feedbackWrites.delete(id);
+        }
+        return;
+      }
+
       const feedback = /^\/api\/jobs\/([^/]+)\/feedback$/.exec(url.pathname);
       if (feedback && method === "POST") {
         const body = await readJsonBody(req);
@@ -975,6 +1017,19 @@ export const startStudioServer = async (options: StudioServerOptions): Promise<S
         return;
       }
 
+      const suggestionRoute = url.pathname.match(/^\/api\/requests\/([^/]+)\/suggestion$/);
+      if (suggestionRoute && method === "GET") {
+        const id = SuggestionRequestIdSchema.safeParse(decodePathPart(suggestionRoute[1]!));
+        if (!id.success) throw new HttpError(400, "INVALID_PARAM", "Invalid request ID.");
+        if (
+          !(await listRequests(options.cwd)).some(
+            (r) => r.id === id.data && r.kind === "prompt_assist",
+          )
+        )
+          throw new HttpError(404, "NOT_FOUND", "Prompt assistance request not found.");
+        sendJson(res, 200, { ok: true, suggestion: await readSuggestion(options.cwd, id.data) });
+        return;
+      }
       if (url.pathname === "/api/requests" && method === "POST") {
         const body = await readJsonBody(req);
         const lang: Language =
@@ -999,6 +1054,9 @@ export const startStudioServer = async (options: StudioServerOptions): Promise<S
       if (error instanceof CliError) {
         const statuses: Record<string, number> = {
           JOB_NOT_FOUND: 404,
+          FORBIDDEN_OUTPUT_PATH: 403,
+          OUTPUT_CHANGED: 409,
+          JOB_BUSY: 409,
           JOB_AMBIGUOUS_ID: 409,
           INVALID_JOB_RECORD: 409,
           INVALID_PARAM: 400,
