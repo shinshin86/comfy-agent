@@ -6,6 +6,11 @@ import {
   capabilityInputs,
   inferCapability,
   StudioCapabilities,
+  STUDIO_OBJECT_INFO_TIMEOUT_MS,
+  STUDIO_SYSTEM_STATS_TIMEOUT_MS,
+  formatStudioGpuLabel,
+  isStudioSnapshotStale,
+  STUDIO_SNAPSHOT_STALE_MS,
 } from "../src/studio/capabilities.js";
 import type { Preset } from "../src/preset/schema.js";
 import { createTmpWorkdir } from "./helpers/tmp-workdir.js";
@@ -33,7 +38,11 @@ vi.mock("../src/io/workdir.js", async (importOriginal) => {
   };
 });
 afterAll(() => fs.rm(globalFixture, { recursive: true, force: true }));
-afterEach(() => fs.rm(globalFixture, { recursive: true, force: true }));
+afterEach(async () => {
+  vi.useRealTimers();
+  vi.unstubAllGlobals();
+  await fs.rm(globalFixture, { recursive: true, force: true });
+});
 
 const preset = (name: string, kinds: Array<"image" | "audio" | "mask" | "file"> = []): Preset => ({
   version: 1,
@@ -48,6 +57,27 @@ const preset = (name: string, kinds: Array<"image" | "audio" | "mask" | "file"> 
 });
 const workflow = (class_type: string) => ({ "1": { class_type, inputs: {} } });
 describe("studio capability inference", () => {
+  it.each([
+    ["cuda:0 NVIDIA A100-SXM4-40GB : cudaMallocAsync", "A100-SXM4-40GB"],
+    ["cuda:0 NVIDIA L4 : cudaMallocAsync", "L4"],
+    ["NVIDIA GeForce RTX 4090", "GeForce RTX 4090"],
+    ["cuda:0 Tesla T4 : native", "Tesla T4"],
+    ["mps", "mps"],
+    ["cpu", "cpu"],
+  ])("formats GPU label %s", (raw, label) => {
+    expect(formatStudioGpuLabel(raw)).toBe(label);
+  });
+  it("treats only successful snapshots older than ten minutes as stale", () => {
+    vi.useFakeTimers();
+    const checkedAt = new Date().toISOString();
+    expect(isStudioSnapshotStale(checkedAt)).toBe(false);
+    vi.advanceTimersByTime(STUDIO_SNAPSHOT_STALE_MS);
+    expect(isStudioSnapshotStale(checkedAt)).toBe(false);
+    vi.advanceTimersByTime(1);
+    expect(isStudioSnapshotStale(checkedAt)).toBe(true);
+    expect(isStudioSnapshotStale(undefined)).toBe(false);
+    expect(isStudioSnapshotStale("invalid")).toBe(false);
+  });
   it.each([
     ["flux_t2i", "SaveImage", [], "text_to_image", "image"],
     ["qwen_edit", "SaveImage", ["image"], "image_edit", "image"],
@@ -96,6 +126,133 @@ describe("studio capability inference", () => {
 });
 
 describe("studio capability availability", () => {
+  it("waits for a 22-second object_info response beyond the old five-second limit", async () => {
+    const tmp = await createTmpWorkdir();
+    vi.useFakeTimers();
+    let infoSignal: AbortSignal | undefined;
+    const fetcher = vi.fn((url: string, options?: RequestInit) => {
+      if (url.endsWith("system_stats"))
+        return Promise.resolve(Response.json({ devices: [{ name: "L4" }] }));
+      infoSignal = options?.signal ?? undefined;
+      return new Promise<Response>((resolve, reject) => {
+        setTimeout(() => resolve(Response.json({ SaveImage: {} })), 22_000);
+        infoSignal?.addEventListener("abort", () => reject(infoSignal?.reason), { once: true });
+      });
+    });
+    vi.stubGlobal("fetch", fetcher);
+    const capabilities = new StudioCapabilities(tmp.cwd);
+    let settled = false;
+    const pending = capabilities.read([]).then((result) => {
+      settled = true;
+      return result;
+    });
+    await vi.advanceTimersByTimeAsync(5_001);
+    expect(settled).toBe(false);
+    expect(infoSignal?.aborted).toBe(false);
+    await vi.advanceTimersByTimeAsync(16_999);
+    const result = await pending;
+    expect(result.server).toMatchObject({
+      reachable: true,
+      fingerprint: expect.any(String),
+      cached: false,
+    });
+    expect(result.server.error).toBeUndefined();
+    expect(fetcher).toHaveBeenCalledTimes(2);
+  });
+  it("times out object_info, reports why, and retries the very next read", async () => {
+    const tmp = await createTmpWorkdir();
+    vi.useFakeTimers();
+    let fail = true;
+    let infoSignal: AbortSignal | undefined;
+    const fetcher = vi.fn((url: string, options?: { signal: AbortSignal }) => {
+      if (url.endsWith("system_stats")) return Promise.resolve({});
+      infoSignal = options?.signal;
+      return fail ? new Promise<unknown>(() => {}) : Promise.resolve({ SaveImage: {} });
+    });
+    const capabilities = new StudioCapabilities(tmp.cwd, fetcher);
+    const pending = capabilities.read([]);
+    await vi.advanceTimersByTimeAsync(STUDIO_OBJECT_INFO_TIMEOUT_MS);
+    const failed = await pending;
+    expect(failed.server.error).toEqual({ code: "timeout", status: undefined });
+    expect(failed.server.cached).toBe(false);
+    expect(infoSignal?.aborted).toBe(true);
+    fail = false;
+    const recovered = await capabilities.read([]);
+    expect(recovered.server.fingerprint).toEqual(expect.any(String));
+    expect(recovered.server.error).toBeUndefined();
+    expect(fetcher).toHaveBeenCalledTimes(4);
+  });
+  it("keeps system_stats short without discarding successful object_info", async () => {
+    const tmp = await createTmpWorkdir();
+    vi.useFakeTimers();
+    let statsSignal: AbortSignal | undefined;
+    const capabilities = new StudioCapabilities(tmp.cwd, (url, options) => {
+      if (url.endsWith("object_info")) return Promise.resolve({ SaveImage: {} });
+      statsSignal = options?.signal;
+      return new Promise(() => {});
+    });
+    const pending = capabilities.read([]);
+    await vi.advanceTimersByTimeAsync(STUDIO_SYSTEM_STATS_TIMEOUT_MS);
+    const result = await pending;
+    expect(statsSignal?.aborted).toBe(true);
+    expect(result.server.fingerprint).toEqual(expect.any(String));
+    expect(result.server.error).toBeUndefined();
+  });
+  it("does not cache HTTP failures and distinguishes them from timeouts", async () => {
+    const tmp = await createTmpWorkdir();
+    let fail = true;
+    const fetcher = vi.fn(async (url: string) =>
+      url.endsWith("system_stats")
+        ? Response.json({})
+        : fail
+          ? Response.json({}, { status: 503 })
+          : Response.json({ SaveImage: {} }),
+    );
+    vi.stubGlobal("fetch", fetcher);
+    const capabilities = new StudioCapabilities(tmp.cwd);
+    const failed = await capabilities.read([]);
+    expect(failed.server.error).toEqual({ code: "http", status: 503 });
+    fail = false;
+    const recovered = await capabilities.read([]);
+    expect(recovered.server.fingerprint).toEqual(expect.any(String));
+    expect(fetcher).toHaveBeenCalledTimes(4);
+    expect((await capabilities.read([])).server.cached).toBe(true);
+    expect(fetcher).toHaveBeenCalledTimes(4);
+  });
+  it("shares in-flight probes even for refresh and after sixty seconds", async () => {
+    const tmp = await createTmpWorkdir();
+    vi.useFakeTimers();
+    let resolveInfo!: (info: unknown) => void;
+    const fetcher = vi.fn((url: string) =>
+      url.endsWith("system_stats")
+        ? Promise.resolve({})
+        : new Promise((resolve) => {
+            resolveInfo = resolve;
+          }),
+    );
+    const capabilities = new StudioCapabilities(tmp.cwd, fetcher);
+    const first = capabilities.read([]);
+    await vi.advanceTimersByTimeAsync(60_001);
+    const concurrent = capabilities.read([], true);
+    const snapshot = capabilities.serverSnapshot(true);
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    resolveInfo({ SaveImage: {} });
+    const [a, b, shared] = await Promise.all([first, concurrent, snapshot]);
+    expect(a.server.fingerprint).toBe(b.server.fingerprint);
+    expect(shared.fingerprint).toBe(a.server.fingerprint);
+    expect(b.server.cached).toBe(false);
+    await vi.advanceTimersByTimeAsync(59_999);
+    expect((await capabilities.read([])).server.cached).toBe(true);
+    expect(fetcher).toHaveBeenCalledTimes(2);
+  });
+  it.each([null, [], "invalid"])("does not cache malformed object_info: %j", async (info) => {
+    const tmp = await createTmpWorkdir();
+    const fetcher = vi.fn(async (url: string) => (url.endsWith("object_info") ? info : {}));
+    const capabilities = new StudioCapabilities(tmp.cwd, fetcher);
+    expect((await capabilities.read([])).server.error).toMatchObject({ code: "invalid_response" });
+    await capabilities.read([]);
+    expect(fetcher).toHaveBeenCalledTimes(4);
+  });
   it("checks nodes and models once per TTL, refreshes, and local presets shadow global", async () => {
     const tmp = await createTmpWorkdir();
     const local = preset("shared");

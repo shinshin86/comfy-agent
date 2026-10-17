@@ -106,6 +106,20 @@ const post = (url: string, body: unknown, headers: Record<string, string> = {}) 
   });
 
 describe("studio server", () => {
+  it("serves the favicon at both icon paths", async () => {
+    const { server } = await setup();
+    try {
+      for (const name of ["favicon.svg", "favicon.ico"]) {
+        const response = await fetch(`${server.url}${name}`);
+        expect(response.status).toBe(200);
+        expect(response.headers.get("content-type")).toBe("image/svg+xml");
+        expect(await response.text()).toContain("<svg");
+      }
+      expect(await (await fetch(server.url)).text()).toContain('href="/favicon.svg"');
+    } finally {
+      await server.close();
+    }
+  });
   it("serves state with outputs, plans and the page itself", async () => {
     const { tmp, server } = await setup();
     try {

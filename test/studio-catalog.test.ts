@@ -12,6 +12,7 @@ import {
   hash,
   inferModelLabel,
   humanizePresetName,
+  autoProfileSummary,
   cleanModelFilename,
 } from "../src/studio/profiles.js";
 import { startStudioServer } from "../src/studio/server.js";
@@ -217,6 +218,10 @@ describe("Studio catalog", () => {
     const response = await catalog.read([]);
     expect(response.capabilities.map((cap) => cap.id)).toEqual(["text_to_video", "image_to_video"]);
     const inputless = response.capabilities[0]!.engines[0]!;
+    expect(inputless.summary?.ja.endsWith("で動画を作ります")).toBe(true);
+    expect(response.capabilities[1]!.engines[0]!.summary?.ja.endsWith("で画像を動画にします")).toBe(
+      true,
+    );
     expect(inputless).toMatchObject({
       inputless: true,
       default_skip: ["image", "reference"],
@@ -432,8 +437,25 @@ describe("Studio catalog", () => {
         throw new Error("offline");
       }).read([]);
       expect(result).toMatchObject({ capabilities: [], unverified: true });
-      expect(result.server.state).toBe(stats ? "checking" : "offline");
+      expect(result.server.state).toBe("offline");
+      expect(result.server.error).toEqual({ code: "network" });
     }
+  });
+  it("uses a failed probe once per catalog read and retries on the next request", async () => {
+    const tmp = await fixture();
+    let fail = true;
+    const fetcher = vi.fn(async (url: string) => {
+      if (url.endsWith("system_stats")) return {};
+      if (fail) throw new Error("unreachable");
+      return h3;
+    });
+    const catalog = new StudioCatalog(tmp.cwd, fetcher);
+    const failed = await catalog.read([]);
+    expect(failed.server).toMatchObject({ state: "offline", error: { code: "network" } });
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    fail = false;
+    expect((await catalog.read([])).server.state).toBe("online");
+    expect(fetcher).toHaveBeenCalledTimes(4);
   });
   it("regenerates the catalog after fingerprint changes and honors the probe TTL", async () => {
     const tmp = await fixture();
@@ -445,7 +467,9 @@ describe("Studio catalog", () => {
     info = qwen;
     const cached = await catalog.read([]);
     expect(cached.server.fingerprint).toBe(first.server.fingerprint);
-    expect(cached.unverified).toBe(true);
+    expect(cached.unverified).toBe(false);
+    expect(cached.server.checked_at).toBe(first.server.checked_at);
+    expect(Date.parse(cached.server.checked_at!)).not.toBeNaN();
     expect(fetcher).toHaveBeenCalledTimes(2);
     const second = await catalog.read([], true);
     expect(second.unverified).toBe(false);
@@ -539,6 +563,7 @@ describe("Studio profiles", () => {
     }
   });
   it("cleans fallback model filenames and humanizes titles without bookkeeping tokens", () => {
+    expect(humanizePresetName("k2h3_i2v")).toBe("Krea 2 + H3 Image to Video");
     expect(cleanModelFilename("boogu_image_turbo_fp8_scaled.safetensors")).toBe(
       "Boogu Image Turbo",
     );
@@ -560,6 +585,34 @@ describe("Studio profiles", () => {
         hash("workflow"),
       ).title?.ja,
     ).toBe("鉛筆で描く");
+  });
+  it.each([
+    ["text_to_image", "画像を作ります"],
+    ["image_edit", "画像を編集します"],
+    ["text_to_video", "動画を作ります"],
+    ["image_to_video", "画像を動画にします"],
+    ["first_last_frame", "最初と最後の画像をつないで動画を作ります"],
+    ["reference_to_video", "参照画像や音声を使って動画を作ります"],
+    ["video_to_video", "動画を編集します"],
+    ["music", "音楽を作ります"],
+    ["sound_effect", "効果音を作ります"],
+    ["speech", "読み上げ音声を作ります"],
+    ["upscale", "画像を拡大します"],
+    ["remove_background", "画像の背景を取り除きます"],
+    ["other", "指定した内容で生成します"],
+  ] as const)("writes a Japanese summary for %s", (capability, description) => {
+    expect(autoProfileSummary(capability, "MiniMax H3").ja).toBe(`MiniMax H3で${description}`);
+  });
+  it("uses task summaries in generated profiles and translates generic model labels", () => {
+    const profile = generateAutoProfile(
+      definition("k2h3_i2v", ["image"], true),
+      graph("SaveVideo", "MiniMaxH3ImageToVideo"),
+      hash("workflow"),
+    );
+    expect(profile.summary?.ja).toBe("MiniMax H3で画像を動画にします");
+    expect(autoProfileSummary("text_to_image", "Image model").ja).toBe(
+      "画像モデルで画像を作ります",
+    );
   });
   it.each(["moss_soundeffect_v2_t2a_e2e", "sfx_t2a", "sound_effect_t2a", "foley_t2a"])(
     "classifies %s as sound effects",
@@ -585,14 +638,29 @@ describe("Studio profiles", () => {
     const file = path.join(tmp.workdir, "studio", "profiles", `${preset.name}.json`);
     await fs.writeFile(
       file,
-      JSON.stringify({ ...profile, auto_revision: 1, model_label: "Qwen Image 2.1" }),
+      JSON.stringify({
+        ...profile,
+        auto_revision: 2,
+        model_label: "Qwen Image 2.1",
+        summary: { ja: "Qwen Image 2.1 でOld Title", en: "Old summary" },
+      }),
     );
-    expect((await readWorkflowProfile(tmp.cwd, preset, "local")).model_label).toBe("Anima");
+    const regenerated = await readWorkflowProfile(tmp.cwd, preset, "local");
+    expect(regenerated.model_label).toBe("Anima");
+    expect(regenerated.summary?.ja).toBe("Animaで画像を作ります");
     await fs.writeFile(
       file,
-      JSON.stringify({ ...profile, source: "agent", auto_revision: 1, model_label: "My model" }),
+      JSON.stringify({
+        ...profile,
+        source: "agent",
+        auto_revision: 2,
+        model_label: "My model",
+        summary: { ja: "私の説明", en: "My summary" },
+      }),
     );
-    expect((await readWorkflowProfile(tmp.cwd, preset, "local")).model_label).toBe("My model");
+    const confirmed = await readWorkflowProfile(tmp.cwd, preset, "local");
+    expect(confirmed.model_label).toBe("My model");
+    expect(confirmed.summary?.ja).toBe("私の説明");
   });
   it.each([
     ["minimax_h3_t2v", [], "SaveVideo", "text_to_video"],

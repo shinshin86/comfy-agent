@@ -147,7 +147,7 @@ const profilePath = (cwd: string, preset: string) =>
     `${WorkflowProfileSchema.shape.preset.parse(preset)}.json`,
   );
 const words = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, "_");
-const AUTO_PROFILE_REVISION = 2;
+const AUTO_PROFILE_REVISION = 3;
 const titleCase = (value: string) => value.replace(/\b[a-z]/g, (letter) => letter.toUpperCase());
 export const humanizePresetName = (name: string) => {
   const labels: Record<string, string> = {
@@ -160,6 +160,8 @@ export const humanizePresetName = (name: string) => {
     t2a: "Audio",
     gguf: "GGUF",
     h3: "H3",
+    k2h3: "Krea 2 + H3",
+    krea2: "Krea 2",
     qwen21: "Qwen 2.1",
     ltx25: "LTX 2.5",
     sd35: "SD 3.5",
@@ -291,6 +293,39 @@ export const inputRoleLabel = (
   };
   return labels[role];
 };
+export const autoProfileSummary = (capability: CapabilityId, model: string) => {
+  const descriptions: Record<CapabilityId, { ja: string; en: string }> = {
+    text_to_image: localized("画像を作ります", "Create an image"),
+    image_edit: localized("画像を編集します", "Edit an image"),
+    text_to_video: localized("動画を作ります", "Create a video"),
+    image_to_video: localized("画像を動画にします", "Turn an image into a video"),
+    first_last_frame: localized(
+      "最初と最後の画像をつないで動画を作ります",
+      "Create a video between two images",
+    ),
+    reference_to_video: localized(
+      "参照画像や音声を使って動画を作ります",
+      "Create a video from references",
+    ),
+    video_to_video: localized("動画を編集します", "Edit a video"),
+    music: localized("音楽を作ります", "Create music"),
+    sound_effect: localized("効果音を作ります", "Create sound effects"),
+    speech: localized("読み上げ音声を作ります", "Create speech"),
+    upscale: localized("画像を拡大します", "Upscale an image"),
+    remove_background: localized("画像の背景を取り除きます", "Remove an image’s background"),
+    other: localized("指定した内容で生成します", "Generate from your instructions"),
+  };
+  const generic: Record<string, string> = {
+    "Image model": "画像モデル",
+    "Video model": "動画モデル",
+    "Audio model": "音声モデル",
+  };
+  return localized(
+    `${generic[model] ?? model}で${descriptions[capability].ja}`,
+    `${descriptions[capability].en} with ${model}`,
+  );
+};
+
 export const generateAutoProfile = (
   preset: Preset,
   workflow: Workflow,
@@ -433,7 +468,7 @@ export const generateAutoProfile = (
     capability,
     model_label,
     title,
-    summary: localized(`${model_label} で${title.ja}`, `${title.en} with ${model_label}`),
+    summary: autoProfileSummary(capability, model_label),
     controls,
     constraints,
     speed: /(?:^|_)(?:turbo|fast|lightning)(?:_|$)/.test(name)

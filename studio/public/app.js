@@ -228,6 +228,8 @@ const state = {
   checking: false,
   pickerSlot: null,
   dismissedRuns: new Set(),
+  trackedRuns: new Set(),
+  runStatusActive: false,
   hintSeen: false,
 };
 const $ = (selector) => document.querySelector(selector);
@@ -458,6 +460,10 @@ const LABELS = {
   askAgent: ["エージェントに相談", "Ask the agent"],
   generate: ["生成 ⏎", "Generate ⏎"],
   generating: ["送信中…", "Starting…"],
+  generationProgress: ["生成中です（{n} 件）", "Generating: {n}"],
+  generationDone: ["できあがりました", "Ready"],
+  generationFailed: ["生成に失敗しました: {reason}", "Generation failed: {reason}"],
+  generationFailures: ["{n} 件失敗", "{n} failed"],
   connectionTitle: ["接続先とできること", "Connection & what you can make"],
   modeContext: [
     "接続中の ComfyUI{server}でできること（{n} 種類）",
@@ -485,6 +491,23 @@ const LABELS = {
     "We could not check the information needed to create yet. Please check again.",
   ],
   checking: ["確認中…", "Checking…"],
+  checkingBody: [
+    "ComfyUI の機能を確認しています（Colab 経由では数十秒かかることがあります）。",
+    "Checking ComfyUI’s features (this can take tens of seconds through Colab).",
+  ],
+  probeFailed: ["ComfyUI の機能を確認できません", "Could not check ComfyUI’s features"],
+  probeTimeout: [
+    "ComfyUI の機能の取得に時間がかかりすぎたため、確認を終了しました。再確認してください。",
+    "The ComfyUI feature check timed out. Please check again.",
+  ],
+  probeHttpError: [
+    "ComfyUI が機能の確認にエラーを返しました（HTTP {status}）。サーバーの状態を確認し、再確認してください。",
+    "ComfyUI returned an error during the feature check (HTTP {status}). Check the server and try again.",
+  ],
+  probeInvalidResponse: [
+    "ComfyUI から機能の情報を正しく読み取れませんでした。サーバーの状態を確認し、再確認してください。",
+    "ComfyUI’s feature information could not be read. Check the server and try again.",
+  ],
   connected: ["ComfyUI 接続中", "ComfyUI connected"],
   offlineTitle: ["ComfyUI に接続できません", "Cannot connect to ComfyUI"],
   offlineBody: [
@@ -740,6 +763,7 @@ const showDialog = (id) => {
   if (!d.open) d.showModal();
 };
 const setStatus = (message) => {
+  state.runStatusActive = false;
   $("#composer-status").textContent = message;
 };
 const setRequestStatus = (message) => {
@@ -848,6 +872,18 @@ const modeModelSummary = (capability) => {
   if (names.length > 3) visible.push(t("moreModels", { n: names.length - 3 }));
   return `${t(capability.engines.length === 1 ? "oneModel" : "modelCount", { n: capability.engines.length })}${visible.length ? ` · ${visible.join(state.lang === "ja" ? "、" : ", ")}` : ""}`;
 };
+let renderedStale = false;
+const catalogIsStale = () =>
+  state.catalog?.server.state === "online" &&
+  (state.catalog.unverified ||
+    Date.now() - Date.parse(state.catalog.server.checked_at) > 10 * 60_000);
+const catalogStatusMessage = (server) => {
+  if (state.checking || !server || server.state === "checking") return t("checkingBody");
+  if (server.error?.code === "timeout") return t("probeTimeout");
+  if (server.error?.code === "http") return t("probeHttpError", { status: server.error.status });
+  if (server.error?.code === "invalid_response") return t("probeInvalidResponse");
+  return t(server.state === "online" ? "emptyCatalogBody" : "offlineBody");
+};
 const renderConnection = () => {
   const server = state.catalog?.server;
   const online = server?.state === "online";
@@ -859,12 +895,16 @@ const renderConnection = () => {
     .filter(Boolean);
   $("#connection").className =
     `connection ${online ? "ok" : server?.state === "offline" ? "offline" : ""}`;
-  $("#connection").textContent = online
-    ? `${t("connected")}${server.gpu ? ` · ${server.gpu.replace(/^NVIDIA /, "")}${server.vram_total ? ` ${Math.round(server.vram_total / 1024 ** 3)}GB` : ""}` : ""}${counts.length ? ` · ${counts.join(" / ")}` : ""}`
-    : t(server?.state === "offline" ? "offlineTitle" : "checking");
+  $("#connection").textContent = state.checking
+    ? t("checking")
+    : online
+      ? `${t("connected")}${server.gpu ? ` · ${server.gpu_label ?? server.gpu.replace(/^NVIDIA /, "")}${server.vram_total ? ` · ${Math.round(server.vram_total / 1024 ** 3)}GB` : ""}` : ""}${counts.length ? ` · ${counts.join(" / ")}` : ""}`
+      : t(
+          server?.error ? "probeFailed" : server?.state === "offline" ? "offlineTitle" : "checking",
+        );
   const reasonsOpen = $("#not-runnable")?.open;
   $("#connection-details").innerHTML =
-    `<section id="creation-capabilities" tabindex="-1" aria-labelledby="creation-capabilities-title"><h3 id="creation-capabilities-title">${esc(t("makeAndWhy"))}</h3><p class="hint">${esc(t("makeAndWhyBody"))}</p>${state.catalog?.unverified && online ? `<p class="hint">${esc(t("previousCheck"))} · <button type="button" class="text-link" data-reconnect${state.checking ? " disabled" : ""}>${esc(t("recheck"))}</button></p>` : ""}<ul class="creation-modes">${capabilities()
+    `<section id="creation-capabilities" tabindex="-1" aria-labelledby="creation-capabilities-title"><h3 id="creation-capabilities-title">${esc(t("makeAndWhy"))}</h3><p class="hint">${esc(t("makeAndWhyBody"))}</p>${catalogIsStale() && online ? `<p class="hint">${esc(t("previousCheck"))} · <button type="button" class="text-link" data-reconnect${state.checking ? " disabled" : ""}>${esc(t("recheck"))}</button></p>` : ""}<ul class="creation-modes">${capabilities()
       .map(
         (c) =>
           `<li><strong>${esc(text(c.label))}</strong><span>${esc(modeModelSummary(c))}</span></li>`,
@@ -876,7 +916,7 @@ const renderConnection = () => {
       )
       .join(
         "",
-      )}</ul>${!capabilities().length ? `<p class="hint">${esc(t(server?.state === "offline" ? "offlineBody" : online ? "emptyCatalogBody" : "informationPending"))}</p>` : ""}</section>` +
+      )}</ul>${!capabilities().length ? `<p class="hint">${esc(catalogStatusMessage(server))}</p>` : ""}</section>` +
     facts([
       [t("connectedTo"), esc(server?.base_url ?? state.data?.connection?.base_url)],
       [t("connectionSource"), esc(sourceText(server?.source ?? state.data?.connection?.source))],
@@ -1096,6 +1136,7 @@ const renderActions = () => {
     : "";
 };
 const renderComposer = () => {
+  renderedStale = catalogIsStale();
   const server = state.catalog?.server;
   const online = server?.state === "online" && capabilities().length > 0;
   $("#online-composer").hidden = !online;
@@ -1103,8 +1144,9 @@ const renderComposer = () => {
   $("#first-hint").textContent = online && !state.hintSeen ? t("firstHint") : "";
   if (!online) {
     closePopovers();
+    const pending = state.checking || !server || server.state === "checking";
     $("#offline-panel").innerHTML =
-      `<h2>${esc(t(!server || server.state === "checking" ? "checking" : server.state === "online" ? "emptyCatalog" : "offlineTitle"))}</h2><p>${esc(t(!server ? "checking" : server.state === "online" ? "emptyCatalogBody" : server.state === "offline" ? "offlineBody" : "informationPending"))}</p>${server ? `<div class="offline-url"><code>${esc(server.base_url)}</code><small>${esc(sourceText(server.source))}</small></div><div class="actions">${server.state === "online" ? `<button type="button" class="secondary" data-capability-details>${esc(t("capabilityDetails"))}</button>` : ""}<button type="button" data-reconnect${state.checking ? " disabled" : ""}>${esc(t(state.checking ? "checking" : server.state === "online" ? "recheck" : "reconnect"))}</button><button type="button" class="secondary" data-url-help>${esc(t("changeUrl"))}</button><button type="button" class="secondary" data-ask>${esc(t("askAgent"))}</button></div><p class="hint">${esc(t("offlineNote"))}</p>` : ""}`;
+      `<h2>${esc(t(pending ? "checking" : server.error ? "probeFailed" : server.state === "online" ? "emptyCatalog" : "offlineTitle"))}</h2><p>${esc(catalogStatusMessage(server))}</p>${server ? `<div class="offline-url"><code>${esc(server.base_url)}</code><small>${esc(sourceText(server.source))}</small></div><div class="actions">${server.state === "online" ? `<button type="button" class="secondary" data-capability-details>${esc(t("capabilityDetails"))}</button>` : ""}<button type="button" data-reconnect${state.checking ? " disabled" : ""}>${esc(t(state.checking ? "checking" : server.error || server.state === "online" ? "recheck" : "reconnect"))}</button><button type="button" class="secondary" data-url-help>${esc(t("changeUrl"))}</button><button type="button" class="secondary" data-ask>${esc(t("askAgent"))}</button></div><p class="hint">${esc(t("offlineNote"))}</p>` : ""}`;
     return;
   }
   const cap = currentCapability();
@@ -1118,7 +1160,7 @@ const renderComposer = () => {
   const ending =
     context.match(/（\d+ 種類）$|だけです$|\(\d+\)$|ComfyUI(?: \([^)]*\))?$/)?.[0] ?? "";
   $("#mode-context").innerHTML =
-    `<span>${esc(context.slice(0, context.length - ending.length))}<span class="context-details">${esc(ending)}&nbsp;· <button type="button" class="text-link" data-capability-details aria-haspopup="dialog">${esc(t("capabilityDetails"))}</button></span></span>${state.catalog.unverified ? `<span class="previous-check">${esc(t("previousCheck"))} · <button type="button" class="text-link" data-reconnect${state.checking ? " disabled" : ""}>${esc(t("recheck"))}</button></span>` : ""}`;
+    `<span>${esc(context.slice(0, context.length - ending.length))}<span class="context-details">${esc(ending)}&nbsp;· <button type="button" class="text-link" data-capability-details aria-haspopup="dialog">${esc(t("capabilityDetails"))}</button></span></span>${state.checking ? `<span class="previous-check">${esc(t("checkingBody"))}</span>` : catalogIsStale() ? `<span class="previous-check">${esc(t("previousCheck"))} · <button type="button" class="text-link" data-reconnect>${esc(t("recheck"))}</button></span>` : ""}`;
   $("#drop-overlay").textContent = t("dropHere");
   $("#prompt").required = Boolean(currentEngine()?.controls.prompt?.required);
   $("#modes").hidden = capabilities().length === 1;
@@ -1189,7 +1231,25 @@ const renderGallery = () => {
     observeVideos($("#gallery"));
   }
 };
+const renderRunStatus = () => {
+  if (!state.runStatusActive) return;
+  const runs = (state.data?.runs ?? []).filter((run) => state.trackedRuns.has(run.id));
+  const active = runs.filter((run) => run.status === "running");
+  const failed = runs.filter((run) => run.status === "failed");
+  $("#composer-status").textContent = active.length
+    ? `${t("generationProgress", { n: active.length })}${failed.length ? ` · ${t("generationFailures", { n: failed.length })}` : ""}`
+    : failed.length
+      ? t("generationFailed", {
+          reason: (failed[0].error?.message ?? failed[0].error?.code ?? t("failed"))
+            .split("\n")[0]
+            .slice(0, 160),
+        })
+      : runs.length
+        ? t("generationDone")
+        : "";
+};
 const renderRuns = () => {
+  renderRunStatus();
   const runs = (state.data?.runs ?? []).filter(
     (run) => ["running", "failed"].includes(run.status) && !state.dismissedRuns.has(run.id),
   );
@@ -1674,7 +1734,8 @@ const renderAll = () => {
   if ($("#request-dialog").open) renderContext();
 };
 let loadSequence = 0,
-  catalogSequence = 0;
+  catalogSequence = 0,
+  catalogPollTimer = null;
 const load = async () => {
   const n = ++loadSequence;
   try {
@@ -1688,10 +1749,12 @@ const load = async () => {
   }
 };
 const loadCatalog = async (refresh = false) => {
+  if (state.checking) return;
+  clearTimeout(catalogPollTimer);
   const n = ++catalogSequence;
   state.checking = true;
   renderConnection();
-  if (!state.catalog) renderComposer();
+  renderComposer();
   try {
     const data = await api(`/api/catalog${refresh ? "?refresh=1" : ""}`);
     if (n !== catalogSequence) return;
@@ -1707,12 +1770,21 @@ const loadCatalog = async (refresh = false) => {
     renderComposer();
     renderAll();
   } catch (error) {
+    state.catalog = {
+      server: { ...state.data?.connection, state: "offline", error: { code: "network" } },
+      capabilities: [],
+      not_runnable: [],
+      unavailable: [],
+      unverified: true,
+    };
     setStatus(error.message);
   } finally {
     if (n === catalogSequence) {
       state.checking = false;
       renderConnection();
       renderComposer();
+      if (state.catalog?.server.state === "checking" && !state.catalog.server.error)
+        catalogPollTimer = setTimeout(() => void loadCatalog(), 2000);
     }
   }
 };
@@ -1954,7 +2026,7 @@ $("#create-form").addEventListener("submit", async (event) => {
   }
   renderActions();
   try {
-    await api("/api/generate", {
+    const result = await api("/api/generate", {
       capability: state.capability,
       preset: engine.preset,
       params: state.params,
@@ -1968,7 +2040,19 @@ $("#create-form").addEventListener("submit", async (event) => {
       lang: state.lang,
       source_job_id: state.sourceJob ?? undefined,
     });
-    setStatus(t("rerunStarted"));
+    if (result.run?.id) {
+      if (
+        !(state.data?.runs ?? []).some(
+          (run) => state.trackedRuns.has(run.id) && run.status === "running",
+        )
+      )
+        state.trackedRuns.clear();
+      state.trackedRuns.add(result.run.id);
+      if (state.data && !state.data.runs.some((run) => run.id === result.run.id))
+        state.data.runs.push(result.run);
+      state.runStatusActive = true;
+      renderRunStatus();
+    } else setStatus("");
     await load();
   } catch (error) {
     setStatus(error.code === "RUN_LIMIT_REACHED" ? t("rerunLimit") : error.message);
@@ -2117,6 +2201,10 @@ new ResizeObserver(() => {
 }).observe($(".composer-dock"));
 setInterval(() => {
   if (state.data) renderRuns();
+  if (renderedStale !== catalogIsStale()) {
+    renderConnection();
+    renderComposer();
+  }
 }, 1000);
 const start = async () => {
   await load();

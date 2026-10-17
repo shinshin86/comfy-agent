@@ -169,9 +169,11 @@ export const loadStudioPresets = async (cwd: string) => {
 
 type Snapshot = {
   reachable: boolean;
+  checked_at?: string;
   fingerprint?: string;
   objectInfo?: Record<string, unknown>;
-  system?: { gpu?: string; vram_total?: number; comfyui_version?: string };
+  system?: { gpu?: string; gpu_label?: string; vram_total?: number; comfyui_version?: string };
+  error?: { code: "timeout" | "http" | "network" | "invalid_response"; status?: number };
 };
 export const serverFingerprint = (objectInfo: Record<string, unknown>) => {
   const models = new Set<string>();
@@ -196,26 +198,68 @@ export const serverFingerprint = (objectInfo: Record<string, unknown>) => {
     .digest("hex")
     .slice(0, 16);
 };
-export type CapabilityFetcher = (url: string) => Promise<unknown>;
-const fetchJson: CapabilityFetcher = async (url) => {
-  const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+export const STUDIO_OBJECT_INFO_TIMEOUT_MS = 90_000;
+export const STUDIO_SYSTEM_STATS_TIMEOUT_MS = 5_000;
+export const STUDIO_SNAPSHOT_STALE_MS = 10 * 60_000;
+export const isStudioSnapshotStale = (checkedAt: string | undefined) =>
+  checkedAt !== undefined && Date.now() - Date.parse(checkedAt) > STUDIO_SNAPSHOT_STALE_MS;
+export const formatStudioGpuLabel = (name: string) =>
+  name
+    .replace(/^cuda:\d+\s+/i, "")
+    .replace(/\s+:\s*.*$/, "")
+    .replace(/^NVIDIA\s+/i, "")
+    .trim();
+const SNAPSHOT_CACHE_MS = 60_000;
+class ProbeError extends Error {
+  constructor(
+    readonly code: NonNullable<Snapshot["error"]>["code"],
+    readonly status?: number,
+  ) {
+    super(code);
+  }
+}
+export type CapabilityFetcher = (
+  url: string,
+  options?: { signal: AbortSignal },
+) => Promise<unknown>;
+const fetchJson: CapabilityFetcher = async (url, options) => {
+  const res = await fetch(url, options);
+  if (!res.ok) throw new ProbeError("http", res.status);
   return res.json();
 };
 
 export class StudioCapabilities {
-  private cache: { url: string; until: number; promise: Promise<Snapshot> } | null = null;
+  private cache: { url: string; until: number; snapshot: Snapshot } | null = null;
+  private inFlight: { url: string; promise: Promise<Snapshot> } | null = null;
   constructor(
     private readonly cwd: string,
     private readonly fetcher: CapabilityFetcher = fetchJson,
   ) {}
-  private snapshot(url: string, refresh: boolean) {
+  private async fetchWithTimeout(url: string, timeoutMs: number) {
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout>;
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        const error = new ProbeError("timeout");
+        controller.abort(error);
+        reject(error);
+      }, timeoutMs);
+    });
+    try {
+      return await Promise.race([this.fetcher(url, { signal: controller.signal }), timeout]);
+    } finally {
+      clearTimeout(timer!);
+    }
+  }
+  private snapshot(url: string, refresh: boolean): Promise<Snapshot> {
+    // Refresh bypasses completed results, but shares an already-running probe.
+    if (this.inFlight?.url === url) return this.inFlight.promise;
     if (!refresh && this.cache?.url === url && this.cache.until > Date.now())
-      return this.cache.promise;
+      return Promise.resolve(this.cache.snapshot);
     const promise = (async (): Promise<Snapshot> => {
       const [info, stats] = await Promise.allSettled([
-        this.fetcher(`${url}/object_info`),
-        this.fetcher(`${url}/system_stats`),
+        this.fetchWithTimeout(`${url}/object_info`, STUDIO_OBJECT_INFO_TIMEOUT_MS),
+        this.fetchWithTimeout(`${url}/system_stats`, STUDIO_SYSTEM_STATS_TIMEOUT_MS),
       ]);
       const objectInfo =
         info.status === "fulfilled" &&
@@ -235,18 +279,37 @@ export class StudioCapabilities {
       const system = raw
         ? {
             gpu: device?.name,
+            gpu_label: device?.name ? formatStudioGpuLabel(device.name) : undefined,
             vram_total: device?.vram_total,
             comfyui_version: raw.system?.comfyui_version,
           }
         : undefined;
+      const error = objectInfo
+        ? undefined
+        : info.status === "fulfilled" || info.reason instanceof SyntaxError
+          ? { code: "invalid_response" as const }
+          : info.reason instanceof ProbeError
+            ? { code: info.reason.code, status: info.reason.status }
+            : { code: "network" as const };
       return {
         reachable: objectInfo !== undefined || raw != null,
+        checked_at: objectInfo ? new Date().toISOString() : undefined,
         objectInfo,
         system,
         fingerprint: objectInfo ? serverFingerprint(objectInfo) : undefined,
+        error,
       };
-    })();
-    this.cache = { url, until: Date.now() + 60_000, promise };
+    })().then((snapshot) => {
+      if (this.inFlight?.promise === promise) {
+        this.inFlight = null;
+        // Only a successful object_info probe can be reused for a full TTL.
+        this.cache = snapshot.objectInfo
+          ? { url, until: Date.now() + SNAPSHOT_CACHE_MS, snapshot }
+          : null;
+      }
+      return snapshot;
+    });
+    this.inFlight = { url, promise };
     return promise;
   }
   serverSnapshot(refresh = false) {
@@ -256,11 +319,18 @@ export class StudioCapabilities {
     return this.snapshot(decision.value.replace(/\/$/, ""), refresh);
   }
   async read(jobs: JobRecord[], refresh = false) {
+    return (await this.readWithSnapshot(jobs, refresh)).result;
+  }
+  async readWithSnapshot(jobs: JobRecord[], refresh = false) {
     const decision = decideComfyBaseUrl({}, process.env, (scope) =>
       readConfigSync(this.cwd, scope),
     );
     const url = decision.value.replace(/\/$/, "");
-    const cached = !refresh && this.cache?.url === url && this.cache.until > Date.now();
+    const cached =
+      !refresh &&
+      this.inFlight?.url !== url &&
+      this.cache?.url === url &&
+      this.cache.until > Date.now();
     const [snapshot, loaded] = await Promise.all([
       this.snapshot(url, refresh),
       loadStudioPresets(this.cwd),
@@ -308,7 +378,7 @@ export class StudioCapabilities {
         };
       }),
     );
-    return {
+    const result = {
       ok: true,
       server: {
         base_url: decision.value,
@@ -317,8 +387,11 @@ export class StudioCapabilities {
         system: snapshot.system,
         fingerprint: snapshot.fingerprint,
         cached: Boolean(cached),
+        checked_at: snapshot.checked_at,
+        error: snapshot.error,
       },
       presets,
     };
+    return { result, snapshot };
   }
 }

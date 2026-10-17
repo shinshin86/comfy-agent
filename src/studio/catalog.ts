@@ -12,12 +12,18 @@ import {
   hasBakedInput,
 } from "../workflow/optional-inputs.js";
 import type { Preset, ParameterDef } from "../preset/schema.js";
-import { StudioCapabilities, loadStudioPresets, type CapabilityFetcher } from "./capabilities.js";
+import {
+  StudioCapabilities,
+  loadStudioPresets,
+  isStudioSnapshotStale,
+  type CapabilityFetcher,
+} from "./capabilities.js";
 import {
   CAPABILITY_LABELS,
   CONTROL_LABELS,
   inputRoleLabel,
   localized,
+  autoProfileSummary,
   readWorkflowProfile,
   validateProfileMapping,
   type WorkflowProfile,
@@ -159,19 +165,20 @@ export class StudioCatalog {
     return skipWorkflowUploads(workflow, preset, slots, objectInfo);
   }
   async read(jobs: JobRecord[], refresh = false) {
-    const checked = await this.probe.read(jobs, refresh);
-    const snapshot = await this.probe.serverSnapshot();
+    const { result: checked, snapshot } = await this.probe.readWithSnapshot(jobs, refresh);
     const objectInfo = snapshot.objectInfo as WorkflowObjectInfo | undefined;
     const server = {
       state: checked.server.fingerprint
         ? ("online" as const)
-        : checked.server.reachable
+        : checked.server.reachable && !checked.server.error
           ? ("checking" as const)
           : ("offline" as const),
       base_url: checked.server.base_url,
       source: checked.server.source,
       ...checked.server.system,
       fingerprint: checked.server.fingerprint,
+      checked_at: checked.server.checked_at,
+      error: checked.server.error,
     };
     const loaded = await loadStudioPresets(this.cwd);
     const profiles = await Promise.all(
@@ -319,7 +326,11 @@ export class StudioCatalog {
           grouped.set(key, group);
         }
         if (!group.engines.some((value) => value.preset === engine.preset))
-          group.engines.push(engine);
+          group.engines.push(
+            profile.source === "auto" && key !== profile.capability
+              ? { ...engine, summary: autoProfileSummary(key, engine.model_label) }
+              : engine,
+          );
       };
       add(profile.capability, base);
       const main =
@@ -433,7 +444,7 @@ export class StudioCatalog {
       capabilities,
       unavailable,
       not_runnable,
-      unverified: server.state !== "online" || checked.server.cached,
+      unverified: server.state !== "online" || isStudioSnapshotStale(server.checked_at),
     };
   }
 }
