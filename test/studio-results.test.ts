@@ -124,7 +124,10 @@ describe("Studio result deletion", () => {
           reason: "Too dark",
         }),
       ]);
-      const cli = await runCli(["studio", "feedback", "--json"], f);
+      const cli = await runCli(["studio", "feedback", "--json"], {
+        cwd: f.cwd,
+        env: { HOME: f.home, USERPROFILE: f.home, COMFY_AGENT_TEST_ENTRY: "tsx" },
+      });
       expect(cli.code, cli.stderr).toBe(0);
       expect(JSON.parse(cli.stdout).feedback[0].reason).toBe("Too dark");
     } finally {

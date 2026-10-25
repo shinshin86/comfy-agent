@@ -24,6 +24,13 @@ import { buildAgentPrompt } from "../src/studio/prompt.js";
 import { createTmpWorkdir } from "./helpers/tmp-workdir.js";
 import { runCli } from "./helpers/run-cli.js";
 
+// Run the CLI from source so these tests do not depend on a prior build.
+const tsx = (f: { cwd: string; home: string }) => ({
+  cwd: f.cwd,
+  env: { HOME: f.home, USERPROFILE: f.home, COMFY_AGENT_TEST_ENTRY: "tsx" },
+});
+const sourceCli = [path.resolve("node_modules/tsx/dist/cli.mjs"), path.resolve("src/cli/index.ts")];
+
 const { globalFixture } = await vi.hoisted(async () => {
   const fs = await import("node:fs/promises"),
     os = await import("node:os"),
@@ -222,22 +229,22 @@ describe("Studio prompt assistance", () => {
         body: JSON.stringify({ kind: "unknown", text: "cat", send: true }),
       });
       expect(invalidKind.status).toBe(400);
-      const inbox = await runCli(["studio", "inbox", "--json"], f);
+      const inbox = await runCli(["studio", "inbox", "--json"], tsx(f));
       expect(JSON.parse(inbox.stdout).requests[0].kind).toBe("prompt_assist");
       const json = path.join(f.cwd, "answer.json");
       await fs.writeFile(json, JSON.stringify(f.answer));
-      const result = await runCli(["studio", "suggest", json, "--json"], f);
+      const result = await runCli(["studio", "suggest", json, "--json"], tsx(f));
       expect(result.code, result.stderr).toBe(0);
       expect(JSON.parse(result.stdout).suggestion.request_id).toBe(f.request.id);
       expect((await (await fetch(url)).json()).suggestion.suggestions[0].prompt).toBe(
         f.answer.suggestions[0].prompt,
       );
-      expect(JSON.parse((await runCli(["studio", "inbox", "--json"], f)).stdout).requests).toEqual(
-        [],
-      );
       expect(
-        JSON.parse((await runCli(["studio", "inbox", "--all", "--json"], f)).stdout).requests[0]
-          .kind,
+        JSON.parse((await runCli(["studio", "inbox", "--json"], tsx(f))).stdout).requests,
+      ).toEqual([]);
+      expect(
+        JSON.parse((await runCli(["studio", "inbox", "--all", "--json"], tsx(f))).stdout)
+          .requests[0].kind,
       ).toBe("prompt_assist");
       const state = await (await fetch(`${server.url}api/state`)).json();
       expect(state.requests[0].handled).toBe(true);
@@ -253,7 +260,7 @@ describe("Studio prompt assistance", () => {
       });
       expect(status).toBe(403);
       const invalid = await runCli(["studio", "suggest", json, "--json", "--lang", "ja"], {
-        ...f,
+        ...tsx(f),
         cwd: f.home,
       });
       expect(invalid.code).toBe(2);
@@ -264,9 +271,8 @@ describe("Studio prompt assistance", () => {
   });
   it("includes kind on API requests and follow output, and accepts stdin suggestions", async () => {
     const f = await setup();
-    const cli = path.resolve("dist/cli/index.js");
     await fs.unlink(path.join(f.workdir, "studio", "requests.jsonl"));
-    const follower = spawn(process.execPath, [cli, "studio", "inbox", "--follow"], {
+    const follower = spawn(process.execPath, [...sourceCli, "studio", "inbox", "--follow"], {
       cwd: f.cwd,
       env: { ...process.env, HOME: f.home },
       stdio: ["ignore", "pipe", "pipe"],
@@ -306,11 +312,15 @@ describe("Studio prompt assistance", () => {
       const input = { ...f.answer, request_id: body.request.id };
       const result = await new Promise<{ code: number | null; stdout: string }>(
         (resolve, reject) => {
-          const child = spawn(process.execPath, [cli, "studio", "suggest", "-", "--json"], {
-            cwd: f.cwd,
-            env: { ...process.env, HOME: f.home },
-            stdio: ["pipe", "pipe", "pipe"],
-          });
+          const child = spawn(
+            process.execPath,
+            [...sourceCli, "studio", "suggest", "-", "--json"],
+            {
+              cwd: f.cwd,
+              env: { ...process.env, HOME: f.home },
+              stdio: ["pipe", "pipe", "pipe"],
+            },
+          );
           let stdout = "";
           child.stdout.on("data", (chunk) => {
             stdout += chunk;
@@ -343,7 +353,7 @@ describe("Studio prompt assistance", () => {
     const f = await setup();
     const guide = await readPromptGuide(f.cwd, "example");
     expect(guide.guide).toBe("docs/minimax-h3-prompting.md");
-    const result = await runCli(["studio", "prompt-guide", "example", "--json"], f);
+    const result = await runCli(["studio", "prompt-guide", "example", "--json"], tsx(f));
     expect(result.code, result.stderr).toBe(0);
     expect(JSON.parse(result.stdout).text).toContain("integrated_multimodal_description");
   });

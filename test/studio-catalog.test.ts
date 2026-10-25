@@ -21,6 +21,13 @@ import type { Preset } from "../src/preset/schema.js";
 import type { JobRecord } from "../src/jobs/types.js";
 import { createTmpWorkdir } from "./helpers/tmp-workdir.js";
 import { runCli } from "./helpers/run-cli.js";
+
+// Run the CLI from source so these tests do not depend on a prior build.
+const tsxEnv = (tmp: { home: string }) => ({
+  HOME: tmp.home,
+  USERPROFILE: tmp.home,
+  COMFY_AGENT_TEST_ENTRY: "tsx",
+});
 import {
   optionalObjectInfo,
   optionalPreset,
@@ -751,12 +758,15 @@ describe("Studio profiles", () => {
     await fs.writeFile(source, JSON.stringify(graph("SaveImage", "SaveImage")));
     const imported = await runCli(
       ["import", source, "--name", "cli_image", "--base-url", "http://127.0.0.1:1", "--json"],
-      { cwd: tmp.cwd },
+      { cwd: tmp.cwd, env: tsxEnv(tmp) },
     );
     expect(imported.code).toBe(0);
     const file = path.join(tmp.workdir, "studio", "profiles", "cli_image.json");
     const profile = JSON.parse(await fs.readFile(file, "utf8"));
-    const read = await runCli(["studio", "profile", "cli_image", "--json"], { cwd: tmp.cwd });
+    const read = await runCli(["studio", "profile", "cli_image", "--json"], {
+      cwd: tmp.cwd,
+      env: tsxEnv(tmp),
+    });
     expect(JSON.parse(read.stdout).profile).toMatchObject({ source: "auto", stale: false });
     const confirmed = path.join(tmp.cwd, "confirmed.json");
     await fs.writeFile(
@@ -765,12 +775,19 @@ describe("Studio profiles", () => {
     );
     const saved = await runCli(["studio", "profile", "cli_image", "--set", confirmed, "--json"], {
       cwd: tmp.cwd,
+      env: tsxEnv(tmp),
     });
     expect(saved.code).toBe(0);
     expect(JSON.parse(saved.stdout).profile.source).toBe("agent");
-    const all = await runCli(["studio", "profile", "--all", "--json"], { cwd: tmp.cwd });
+    const all = await runCli(["studio", "profile", "--all", "--json"], {
+      cwd: tmp.cwd,
+      env: tsxEnv(tmp),
+    });
     expect(JSON.parse(all.stdout).profiles).toHaveLength(1);
-    const guide = await runCli(["studio", "guide", "--lang", "ja"], { cwd: tmp.cwd });
+    const guide = await runCli(["studio", "guide", "--lang", "ja"], {
+      cwd: tmp.cwd,
+      env: tsxEnv(tmp),
+    });
     expect(guide.stdout).toContain("表示名・説明・機能・モデル名");
   });
 });
