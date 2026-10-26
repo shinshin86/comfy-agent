@@ -2,8 +2,22 @@
 
 ## Unreleased
 
+## 0.0.6 - 2026-10-26
+
 ### Added
 
+- Added Comfy Agent Studio (`comfy-agent studio`, alias `ui`), a local web
+  page served on 127.0.0.1 that lists only what the connected ComfyUI can
+  run, accepts dropped or pasted inputs, generates directly, re-runs
+  recorded jobs, and shows image and video results. An agent session can
+  follow requests from the page (`studio inbox --follow`), answer with
+  plans (`studio plan`) and prompt suggestions (`studio suggest`, with
+  per-model guides from `studio prompt-guide`), and read the reasons given
+  when outputs are deleted (`studio feedback`). See `docs/studio.md`.
+- Added Colab kits for MiniMax H3 (base, FastH3, 768p Turbo, optional
+  profiles, VDN 8-step, and character swap), 10Eros-Max H3, LynnReal-Omni,
+  Qwen-Image 2.1 (including GGUF base and UC variants),
+  Anima-Light-Lavender, and Ming-Image-0.1-Design.
 - Added a `krea2_h3` Colab combo kit that generates 864x480 Krea 2 Turbo
   keyframes and chains them into MiniMax H3 FL2VA or Ref2VA video with
   native stereo audio, pinned assets, recipe guidance, and import tests.
