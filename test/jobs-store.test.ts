@@ -78,6 +78,28 @@ describe("job store", () => {
     });
   });
 
+  it("can restrict both reads and updates to the requested scope", async () => {
+    const tmp = await createTmpWorkdir();
+    const { readJob, updateJob, writeJob } = await loadStore();
+    const job = makeJob(tmp.cwd, "strict-scope-job", { scope: "global" });
+    await writeJob(job, tmp.cwd, "global");
+
+    await expect(readJob(job.job_id, tmp.cwd, "local")).resolves.toEqual({
+      record: job,
+      scope: "global",
+    });
+    await expect(readJob(job.job_id, tmp.cwd, "local", { fallback: false })).rejects.toMatchObject({
+      code: "JOB_NOT_FOUND",
+    });
+    await expect(
+      updateJob(job.job_id, { favorite: true }, tmp.cwd, "local", { fallback: false }),
+    ).rejects.toMatchObject({ code: "JOB_NOT_FOUND" });
+    await expect(readJob(job.job_id, tmp.cwd, "global", { fallback: false })).resolves.toEqual({
+      record: job,
+      scope: "global",
+    });
+  });
+
   it("updates a resolved record in place", async () => {
     const tmp = await createTmpWorkdir();
     const { updateJob, writeJob } = await loadStore();
