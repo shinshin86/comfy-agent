@@ -1,0 +1,238 @@
+{
+  "4": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "input.png"
+    }
+  },
+  "6": {
+    "class_type": "ManualSigmas",
+    "inputs": {
+      "sigmas": "1.0, 0.984753, 0.967905, 0.951688, 0.925372, 0.881923, 0.810083, 0.528718, 0.0"
+    }
+  },
+  "7": {
+    "class_type": "BasicGuider",
+    "inputs": {
+      "model": [
+        "23",
+        0
+      ],
+      "conditioning": [
+        "26",
+        0
+      ]
+    }
+  },
+  "8": {
+    "class_type": "KSamplerSelect",
+    "inputs": {
+      "sampler_name": "euler"
+    }
+  },
+  "9": {
+    "class_type": "RandomNoise",
+    "inputs": {
+      "noise_seed": 42
+    }
+  },
+  "10": {
+    "class_type": "SamplerCustomAdvanced",
+    "inputs": {
+      "noise": [
+        "9",
+        0
+      ],
+      "guider": [
+        "7",
+        0
+      ],
+      "sampler": [
+        "8",
+        0
+      ],
+      "sigmas": [
+        "6",
+        0
+      ],
+      "latent_image": [
+        "26",
+        1
+      ]
+    }
+  },
+  "11": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "10",
+        0
+      ],
+      "vae": [
+        "25",
+        0
+      ]
+    }
+  },
+  "12": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": [
+        "11",
+        0
+      ],
+      "filename_prefix": "p-h3-image_edit"
+    }
+  },
+  "13": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+      "clip_name": "p-h3-image_prompt_upsampler_bf16.safetensors",
+      "type": "minimax",
+      "device": "default"
+    }
+  },
+  "15": {
+    "class_type": "PreviewAny",
+    "inputs": {
+      "source": [
+        "19",
+        0
+      ]
+    }
+  },
+  "16": {
+    "class_type": "PrimitiveStringMultiline",
+    "inputs": {
+      "value": "Change the sweater in <Picture 1> to a red knit sweater."
+    },
+    "_meta": {
+      "title": "Prompt"
+    }
+  },
+  "17": {
+    "class_type": "StringFormat",
+    "inputs": {
+      "f_string": "<|im_start|>user\n<Picture 1>: <|vision_start|><|image_pad|><|vision_end|>Edit <Picture 1>. {a}<|im_end|>\n<|im_start|>assistant\n<think>\n",
+      "values.a": [
+        "16",
+        0
+      ]
+    }
+  },
+  "18": {
+    "class_type": "TextGenerate",
+    "inputs": {
+      "clip": [
+        "13",
+        0
+      ],
+      "image": [
+        "32",
+        0
+      ],
+      "prompt": [
+        "17",
+        0
+      ],
+      "max_length": 3072,
+      "sampling_mode": "off",
+      "thinking": false,
+      "use_default_template": true,
+      "mtp": "auto"
+    }
+  },
+  "19": {
+    "class_type": "ComfySwitchNode",
+    "inputs": {
+      "switch": true,
+      "on_false": [
+        "16",
+        0
+      ],
+      "on_true": [
+        "18",
+        0
+      ]
+    }
+  },
+  "22": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "p-h3-image_int8_convrot.safetensors",
+      "weight_dtype": "default"
+    }
+  },
+  "23": {
+    "class_type": "MiniMaxH3SigmaShift",
+    "inputs": {
+      "model": [
+        "22",
+        0
+      ],
+      "shift_video": 1.0,
+      "shift_audio": 1.0
+    }
+  },
+  "24": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+      "clip_name": "p-h3-image_text_encoder_int8_convrot.safetensors",
+      "type": "minimax",
+      "device": "default"
+    }
+  },
+  "25": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "p-h3-image_vae_int8_convrot.safetensors"
+    }
+  },
+  "26": {
+    "class_type": "PH3ImageConditioning",
+    "inputs": {
+      "clip": [
+        "24",
+        0
+      ],
+      "vae": [
+        "25",
+        0
+      ],
+      "prompt": [
+        "19",
+        0
+      ],
+      "width": 0,
+      "height": 0,
+      "images.image_1": [
+        "31",
+        0
+      ]
+    }
+  },
+  "31": {
+    "class_type": "ImageScaleToTotalPixels",
+    "inputs": {
+      "image": [
+        "4",
+        0
+      ],
+      "upscale_method": "lanczos",
+      "megapixels": 4.0,
+      "resolution_steps": 32
+    }
+  },
+  "32": {
+    "class_type": "ImageScaleToTotalPixels",
+    "inputs": {
+      "image": [
+        "4",
+        0
+      ],
+      "upscale_method": "lanczos",
+      "megapixels": 1.0,
+      "resolution_steps": 1
+    }
+  }
+}
