@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Added
+
+- Added a Colab kit for P-H3-Image INT8 with text-to-image, single-image edit,
+  and two-image edit workflows, verified end to end on A100.
+
 ## 0.0.6 - 2026-10-26
 
 ### Added
