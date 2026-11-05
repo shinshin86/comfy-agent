@@ -7,6 +7,12 @@
 - Added a Colab kit for P-H3-Image INT8 with text-to-image, single-image edit,
   and two-image edit workflows, verified end to end on A100.
 
+### Fixed
+
+- `comfy-agent run` now accepts an empty value for a string parameter, such as
+  `--2_lyrics ""` for an ACE-Step instrumental. Empty values for numeric inputs
+  and file uploads now fail with a validation error.
+
 ## 0.0.6 - 2026-10-26
 
 ### Added

@@ -76,6 +76,36 @@ describe("extractRunPassthrough", () => {
   });
 });
 
+describe("empty string values", () => {
+  it("passes an empty value to a string parameter", () => {
+    for (const rawArgs of [
+      ["--prompt", "", "--steps", "10"],
+      ["--steps", "10", "--prompt", ""],
+      ["--prompt="],
+    ]) {
+      const { params, explicitParams } = resolveDynamicArgs(rawArgs, presetBase);
+      expect(params.prompt).toBe("");
+      expect(explicitParams.has("prompt")).toBe(true);
+    }
+  });
+
+  it("satisfies a required string parameter", () => {
+    const { params } = resolveDynamicArgs(["--prompt", ""], presetBase);
+    expect(() => assertRequiredInputs(presetBase, params, {})).not.toThrow();
+  });
+
+  it.each([
+    ["int", "--steps"],
+    ["bool", "--use_cache"],
+    ["json", "--config"],
+    ["upload", "--init-image"],
+  ])("rejects an empty value for a %s input", (_kind, flag) => {
+    for (const rawArgs of [[flag, ""], [`${flag}=`]]) {
+      expect(() => resolveDynamicArgs(rawArgs, presetBase)).toThrow(CliError);
+    }
+  });
+});
+
 describe("parseNumeric", () => {
   it("parses valid numbers", () => {
     expect(parseNumeric("10", "n", true)).toBe(10);
@@ -84,6 +114,8 @@ describe("parseNumeric", () => {
 
   it("throws on invalid number/integer", () => {
     expect(() => parseNumeric("abc", "n", true)).toThrow(CliError);
+    expect(() => parseNumeric("", "n", true)).toThrow(CliError);
+    expect(() => parseNumeric("  ", "n", true)).toThrow(CliError);
     expect(() => parseNumeric("10.5", "n", true)).toThrow(CliError);
   });
 });
