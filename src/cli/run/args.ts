@@ -52,7 +52,7 @@ export const extractRunPassthrough = (presetName: string, commandArgs: string[])
 
 export const parseNumeric = (value: string, name: string, integer = false) => {
   const num = Number(value);
-  if (Number.isNaN(num) || !Number.isFinite(num)) {
+  if (value.trim() === "" || Number.isNaN(num) || !Number.isFinite(num)) {
     throw new CliError("INVALID_PARAM", t("run.invalid_number", { name }), 2, {
       value,
     });
@@ -117,7 +117,7 @@ export const parseArgv = (argv: string[]) => {
 
     const name = trimmed;
     const next = argv[i + 1];
-    if (!next || next.startsWith("--")) {
+    if (next === undefined || next.startsWith("--")) {
       map[name] = true;
       continue;
     }
@@ -170,7 +170,7 @@ export const resolveDynamicArgs = (
   for (const [key, value] of Object.entries(parsed)) {
     if (KNOWN_RUN_FLAGS.has(key)) continue;
     if (uploadFlags.has(key)) {
-      if (typeof value !== "string") {
+      if (typeof value !== "string" || value === "") {
         throw new CliError("INVALID_PARAM", t("run.file_path_required", { key }), 2, {
           flag: key,
         });
