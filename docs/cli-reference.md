@@ -173,22 +173,22 @@ comfy-agent run portrait --character miko --form casual --json
 
 Important options:
 
-| Option                       | Meaning                                                                     |
-| ---------------------------- | --------------------------------------------------------------------------- |
-| `--source <local\|remote\|remote-catalog>` | Select the preset/workflow source. |
-| `--n <count>`                | Submit multiple runs.                                                       |
-| `--seed <int\|random>` / `--seed-step <int>` | Set and advance seed targets. |
-| `--out <dir>`                | Override the output directory.                                              |
-| `--poll-interval-ms <ms>`    | Set history polling interval.                                               |
-| `--timeout-seconds <sec>`    | Set completion timeout.                                                     |
-| `--async`                    | Return after submission and persist job records.                            |
-| `--dry-run`                  | Print the patched workflow without contacting ComfyUI.                      |
-| `--no-preflight`             | Skip server node/model validation for debugging.                            |
-| `--character <name>`         | Inject a local-first reusable character.                                    |
-| `--form <id>`                | Select a character form (default: `default`).                               |
-| `--character-ref <index\|file>` | Select a form-compatible character reference. |
-| `--character-prompt <replace\|prefix\|off>` | Choose prompt injection mode (default: `replace`). |
-| `--lora <file>`              | Overwrite the single `role: lora` target; also works without `--character`. |
+| Option                                       | Meaning                                                                     |
+| -------------------------------------------- | --------------------------------------------------------------------------- |
+| `--source <local\|remote\|remote-catalog>`   | Select the preset/workflow source.                                          |
+| `--n <count>`                                | Submit multiple runs.                                                       |
+| `--seed <int\|random>` / `--seed-step <int>` | Set and advance seed targets.                                               |
+| `--out <dir>`                                | Override the output directory.                                              |
+| `--poll-interval-ms <ms>`                    | Set history polling interval.                                               |
+| `--timeout-seconds <sec>`                    | Set completion timeout.                                                     |
+| `--async`                                    | Return after submission and persist job records.                            |
+| `--dry-run`                                  | Print the patched workflow without contacting ComfyUI.                      |
+| `--no-preflight`                             | Skip server node/model validation for debugging.                            |
+| `--character <name>`                         | Inject a local-first reusable character.                                    |
+| `--form <id>`                                | Select a character form (default: `default`).                               |
+| `--character-ref <index\|file>`              | Select a form-compatible character reference.                               |
+| `--character-prompt <replace\|prefix\|off>`  | Choose prompt injection mode (default: `replace`).                          |
+| `--lora <file>`                              | Overwrite the single `role: lora` target; also works without `--character`. |
 
 `--seed` targets the first matching category: parameter name `seed`, alias `seed`,
 then `role: seed`. If that category contains multiple targets, all receive the same
@@ -420,6 +420,45 @@ comfy-agent preset text2img_v1 --source remote --base-url http://127.0.0.1:8188
 
 Auto source resolution uses an existing local preset without querying remote template
 endpoints. Use `--source remote` explicitly to inspect a remote preset with the same name.
+
+### `scene`
+
+Build a multi-shot scene and regenerate only changed stages. See
+[Scenes](scene.md) for the YAML format, presets, placeholders and an example.
+
+```bash
+comfy-agent scene init <name> [--character <name>] [--form <id>] [--shots <n>] [--force]
+comfy-agent scene validate <scene> --json
+comfy-agent scene plan <scene> --json
+comfy-agent scene run <scene> [--shot <id>] [--only keyframe|video|bgm|edit] [--force <stage-id>] [--fail-fast] [--base-url <url>] [--dry-run] --json
+comfy-agent scene pick <scene> <shot> <n> --json
+comfy-agent scene report <scene> [--transcribe-cmd 'tool --file={audio}'] --json
+```
+
+Every subcommand supports `--json`, `--lang en|ja`, and `--global`. The scene
+argument accepts a YAML path, scene directory, or stored name. Generated stages
+require explicit seeds. `--shot` and `--force` are repeatable; selecting shots
+excludes BGM and edit. Picks use 1-based candidate numbers.
+
+Plans return stage `status`, `reasons`, `estimate_ms`, and `next_action`. Runs add
+`action` and a `final` path when the edit is fresh. Dry runs return exact `argv`
+for runnable stages and `argv_template` plus `waiting_for` for blocked stages.
+They do not contact ComfyUI or write state. File-only scenes run locally with
+ffmpeg/ffprobe. Validation errors use `SCENE_INVALID` and `error.details.path`.
+
+`report` writes `out/report/report.json` and static `report.html`, and prints JSON.
+It includes candidate/reference sheets, clip frames, speech-like intervals, cut
+suggestions, optional dialogue comparison, and final timing/audio/frame checks.
+The warning summary links to each affected section; JSON includes `warning_count`
+and a flat `all_warnings` list with `scene`, `final`, or `shot:<id>` scopes.
+Set a shot's `dialogue` to supply expected text for a file-based clip or override
+prompt tags. Changing `dialogue` does not invalidate generation or edit stages.
+`plan` and `run` return the HTML path when a report exists. Refresh reports after
+changing outputs. `--transcribe-cmd` overrides `checks.transcribe_cmd`; commands
+run without a shell, using `{audio}` for a mono 16 kHz cut WAV. Timeout: 300 seconds;
+output limit: 1 MiB. Failures become report warnings. These checks never invalidate
+generation stages. See [scene reports](scene.md#review-a-scene) for warning meanings
+and the limits of energy-based speech detection.
 
 ### `verify`
 

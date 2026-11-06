@@ -4,6 +4,14 @@
 
 ### Added
 
+- Added `scene init`, `validate`, `plan`, `run`, and `pick` for declarative shot
+  lists, incremental regeneration, keyframe candidates, and local video/BGM edits.
+  Plans report changed inputs and next actions; dry runs show generation arguments
+  without contacting ComfyUI.
+- Added `scene report` with local HTML/JSON review artifacts, speech-like intervals,
+  cut suggestions, optional transcription comparison, and final video/audio checks.
+  Reports summarize warnings by scope and accept shot-level `dialogue` for expected
+  speech, including file-based clips, without invalidating generated outputs.
 - Added a Colab kit for P-H3-Image INT8 with text-to-image, single-image edit,
   and two-image edit workflows, verified end to end on A100.
 

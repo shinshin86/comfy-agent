@@ -22,6 +22,7 @@ import {
 } from "./history.js";
 import { runVerify } from "./verify.js";
 import { runBrief } from "./brief.js";
+import { registerSceneCommand } from "./scene.js";
 import {
   runStudioSuggest,
   runStudioPromptGuide,
@@ -988,6 +989,8 @@ try {
 } catch (err) {
   handleError(err, wantsJson(process.argv));
 }
+
+registerSceneCommand(program, handleError);
 
 program.parseAsync(process.argv).catch((err) => {
   if (err instanceof CommanderError) {
