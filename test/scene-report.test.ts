@@ -16,8 +16,7 @@ import { buildPlan } from "../src/scene/plan.js";
 import { runScene } from "../src/scene/run.js";
 import { readState } from "../src/scene/state.js";
 import { createCharacter } from "../src/characters/store.js";
-import { sceneFixture } from "./helpers/scene.js";
-import { runCli } from "./helpers/run-cli.js";
+import { runSourceCli as runCli, sceneFixture } from "./helpers/scene.js";
 
 const tools = await detectTools();
 const quote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`;

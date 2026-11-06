@@ -9,6 +9,11 @@ import { buildPlan } from "../../src/scene/plan.js";
 import { runScene } from "../../src/scene/run.js";
 import { outputRecord, readState, writeState } from "../../src/scene/state.js";
 import type { RunLauncher } from "../../src/studio/rerun.js";
+import { runCli } from "./run-cli.js";
+
+/** Unit tests run before `npm run build` in CI, so spawn the CLI from source. */
+export const runSourceCli = (...[args, options]: Parameters<typeof runCli>) =>
+  runCli(args, { ...options, env: { COMFY_AGENT_TEST_ENTRY: "tsx", ...options.env } });
 
 const roots: string[] = [];
 afterEach(async () => {

@@ -7,8 +7,7 @@ import { detectTools, ffprobeJson, runTool } from "../src/verify/ffmpeg.js";
 import { resolveScene } from "../src/scene/resolve.js";
 import { runScene } from "../src/scene/run.js";
 import { readState } from "../src/scene/state.js";
-import { runCli } from "./helpers/run-cli.js";
-import { sceneFixture, minimalScene } from "./helpers/scene.js";
+import { runSourceCli as runCli, sceneFixture, minimalScene } from "./helpers/scene.js";
 
 const fileScene = async () => {
   const f = await sceneFixture();
