@@ -40,6 +40,14 @@ asynchronous submission, offline artifact verification, bundled kits/playbooks/s
 and concise bilingual documentation. See the [0.0.3 changelog](../CHANGELOG.md#003---2026-08-16)
 for the complete release notes.
 
+## Scenes
+
+[Scenes](scene.md) provide declarative shot lists, keyframe selection, incremental
+video generation, BGM, and local editing. Local HTML/JSON reports show frame sheets,
+speech-like intervals, cut suggestions, optional transcript comparisons, and final
+timing/audio checks. Agents can validate and plan without contacting ComfyUI, then
+regenerate only changed stages.
+
 ## Planned next: recipes, portable archives, and scale
 
 - Recipes distilled from successful runs and replayed as linear pipelines with matrix

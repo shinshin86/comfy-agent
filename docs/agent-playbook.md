@@ -237,6 +237,34 @@ Human: "アニメ調で10秒くらいの動画プロトタイプを作りたい"
    `comfy-agent verify <run-dir> --expect-kind video --min-duration 8` →
    view the frames → deliver with a summary of what was verified.
 
+### Scenes: plan → run → pick → run → report → adjust
+
+Use [scenes](scene.md) for a shot list with per-shot keyframes and video, optional
+BGM, and a final edit. Start with `scene init`, replace its placeholder prompts,
+and set explicit seeds for generated stages. Run `scene validate --json` and
+`scene plan --json` before spending GPU time. The blueprint protocol above still
+applies to choosing models and the environment.
+
+Read `status`, `reasons`, `estimate_ms`, and `next_action`. Inspect `scene run
+--dry-run --json` for exact `argv`; blocked stages have a non-executable
+`argv_template` and `waiting_for`. Then run the scene. If a keyframe stage reports
+`needs_pick`, inspect its `candidates.png`, choose a candidate with `scene pick`,
+and run again. Independent shots can proceed while a pick is pending. Inspect the
+final video's frames and audio before reporting success.
+
+Run `scene report --json` to inspect candidate/reference sheets, clip and cut-boundary
+frames, speech-like intervals, suggested cut starts, and final timing/audio checks.
+Review its static HTML and warnings, adjust `cut` or a prompt, then use `plan → run
+→ report` again. `--transcribe-cmd` optionally compares cut audio with dialogue tags;
+without it, transcription is marked skipped. Energy-based intervals can include
+music or noise; confirm against the media. Reports also identify partial and stale
+outputs, and `checks` never invalidates generation stages.
+
+Changing a prompt reruns the affected generation and its dependents. Changing only
+a cut reruns the edit. A second unchanged run does nothing. Use `--shot` or `--only`
+to limit work; these do not automatically run missing prerequisites. File-only
+scenes require ffmpeg/ffprobe but no ComfyUI server.
+
 ## 8. Creative memory
 
 When a request uses a known character,

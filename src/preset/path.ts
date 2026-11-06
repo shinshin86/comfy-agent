@@ -8,8 +8,9 @@ export const resolvePresetPath = async (
   presetName: string,
   scope: WorkdirScope,
   notFoundMessageKey: "run.preset_not_found" | "preset_show.not_found" = "run.preset_not_found",
+  cwd = process.cwd(),
 ) => {
-  const base = path.join(getSubdirPath("presets", process.cwd(), scope), presetName);
+  const base = path.join(getSubdirPath("presets", cwd, scope), presetName);
   const yamlPath = `${base}.yaml`;
   const ymlPath = `${base}.yml`;
 

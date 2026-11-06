@@ -173,22 +173,22 @@ comfy-agent run portrait --character miko --form casual --json
 
 主な option:
 
-| option                       | 意味                                                                |
-| ---------------------------- | ------------------------------------------------------------------- |
-| `--source <local\|remote\|remote-catalog>` | preset/workflow の取得元を選択。 |
-| `--n <count>`                | 複数回 submit。                                                     |
-| `--seed <int\|random>` / `--seed-step <int>` | seed target の設定と増分。 |
-| `--out <dir>`                | 出力 directory を上書き。                                           |
-| `--poll-interval-ms <ms>`    | history polling 間隔。                                              |
-| `--timeout-seconds <sec>`    | 完了待ち timeout。                                                  |
-| `--async`                    | submit 後すぐ戻り、job record を保存。                              |
-| `--dry-run`                  | ComfyUI に接続せず、patch 後の workflow を表示。                    |
-| `--no-preflight`             | debug 用に server node/model 検査を省略。                           |
-| `--character <name>`         | local 優先で再利用可能な character を注入。                         |
-| `--form <id>`                | character form を選択（既定: `default`）。                          |
-| `--character-ref <index\|file>` | form に合う character 参照画像を選択。 |
-| `--character-prompt <replace\|prefix\|off>` | prompt 注入方式（既定: `replace`）。 |
-| `--lora <file>`              | 単一の `role: lora` target を上書き。`--character` なしでも使用可。 |
+| option                                       | 意味                                                                |
+| -------------------------------------------- | ------------------------------------------------------------------- |
+| `--source <local\|remote\|remote-catalog>`   | preset/workflow の取得元を選択。                                    |
+| `--n <count>`                                | 複数回 submit。                                                     |
+| `--seed <int\|random>` / `--seed-step <int>` | seed target の設定と増分。                                          |
+| `--out <dir>`                                | 出力 directory を上書き。                                           |
+| `--poll-interval-ms <ms>`                    | history polling 間隔。                                              |
+| `--timeout-seconds <sec>`                    | 完了待ち timeout。                                                  |
+| `--async`                                    | submit 後すぐ戻り、job record を保存。                              |
+| `--dry-run`                                  | ComfyUI に接続せず、patch 後の workflow を表示。                    |
+| `--no-preflight`                             | debug 用に server node/model 検査を省略。                           |
+| `--character <name>`                         | local 優先で再利用可能な character を注入。                         |
+| `--form <id>`                                | character form を選択（既定: `default`）。                          |
+| `--character-ref <index\|file>`              | form に合う character 参照画像を選択。                              |
+| `--character-prompt <replace\|prefix\|off>`  | prompt 注入方式（既定: `replace`）。                                |
+| `--lora <file>`                              | 単一の `role: lora` target を上書き。`--character` なしでも使用可。 |
 
 `--seed` は parameter 名 `seed`、alias `seed`、`role: seed` の順で最初に一致した分類を
 対象にします。同じ分類に複数 target がある場合は同じ値を適用し、一緒に増分します。
@@ -410,6 +410,54 @@ comfy-agent preset text2img_v1 --source remote --base-url http://127.0.0.1:8188
 
 auto source解決はlocal presetが存在すればremote template endpointへ接続せずlocalを使います。
 同名のremote presetを確認する場合は、`--source remote` を明示してください。
+
+### `scene`
+
+ショットを組み合わせたシーンを定義し、入力が変わった工程だけを再実行します。
+YAML の形式と使用例は [Scenes](scene.md) を参照してください。
+
+```bash
+comfy-agent scene init <name> [--character <name>] [--form <id>] [--shots <n>] [--force]
+comfy-agent scene validate <scene> --json
+comfy-agent scene plan <scene> --json
+comfy-agent scene run <scene> [--shot <id>] [--only keyframe|video|bgm|edit] [--force <stage-id>] [--fail-fast] [--base-url <url>] [--dry-run] --json
+comfy-agent scene pick <scene> <shot> <n> --json
+comfy-agent scene report <scene> [--transcribe-cmd 'tool --file={audio}'] --json
+```
+
+全サブコマンドで `--json`、`--lang en|ja`、`--global` を使えます。シーンは
+YAML のパス、ディレクトリ、保存済みの名前で指定します。生成する工程には
+`seed` が必須です。`--shot` と `--force` は複数指定できます。ショットを指定した
+場合、BGM と編集は実行しません。候補番号は 1 から始まります。
+
+`plan` は各工程の `status`、変更理由の `reasons`、推定時間の `estimate_ms`、
+次の操作を示す `next_action` を返します。`run` には実行内容を示す `action` が
+加わり、編集結果が最新なら `final` に出力先が入ります。`--dry-run` は実行可能な
+工程の `argv` と、入力待ちの工程の `argv_template`・`waiting_for` を返します。
+ComfyUI への接続や状態ファイルへの書き込みは行いません。
+
+素材をすべて `file` で指定したシーンは、ffmpeg と ffprobe があればローカルで
+編集できます。定義の不備は `SCENE_INVALID` と `error.details.path` で確認できます。
+
+`report` は `out/report/report.json` と静的な `report.html` を保存し、JSON を出力します。
+候補画像と参照画像、クリップのフレーム、音声区間の推定、カット開始候補、任意の
+文字起こし比較、完成動画の尺・音量・フレームの検査結果を確認できます。
+冒頭の警告一覧から、該当する箇所へ移動できます。JSON には合計件数の
+`warning_count` と、全警告を並べた `all_warnings` があり、発生箇所は `scope` の
+`scene`、`final`、`shot:<id>` で区別します。
+ショットの `dialogue` に期待する台詞を指定すると、動画プロンプトから抽出した台詞より
+優先されます。ファイル指定の動画にも使え、空文字列を指定すれば比較を省略します。
+`dialogue` を変更しても、生成・編集工程は再実行されません。
+レポートがある場合、`plan` と `run` は HTML のパスも返します。素材を再生成したら
+`report` も再実行してください。
+
+文字起こしコマンドは `--transcribe-cmd` または `checks.transcribe_cmd` で指定します。
+フラグの指定が優先されます。シェルは使わず、各引数の `{audio}` をカット部分の
+16 kHz・モノラル WAV のパスに置き換えます。実行時間は300秒、出力量は1 MiBが上限で、
+失敗はレポート内の警告になります。パイプやリダイレクトが必要な処理は別のスクリプトに
+書いてください。`checks` の変更で生成工程が再実行されることはありません。
+音声区間は帯域内の音量による推定で、音楽や雑音も検出されることがあります。
+詳細は [シーンレポート](scene.md#review-a-scene) を参照してください。
 
 ### `verify`
 
@@ -735,7 +783,7 @@ CLI が返す終了コードは `0`、`2`、`3` のみです。
 | `UNKNOWN_PARAM`              |    2 | dynamic `run` flag が preset に未定義。                                                                                                               |
 | `SERVER_UNREACHABLE`         |    3 | server に接続不能。`base_url`、server 起動、期限切れ tunnel の再接続を確認。                                                                          |
 | `API_ERROR`                  |    3 | server 到達後に request が失敗。path/status details を確認。                                                                                          |
-| `PROMPT_REJECTED`            |    3 | ComfyUIの`/prompt` validationが拒否。`details.error` と `details.node_errors` を確認し、指摘されたnode inputを修正して再実行。                         |
+| `PROMPT_REJECTED`            |    3 | ComfyUIの`/prompt` validationが拒否。`details.error` と `details.node_errors` を確認し、指摘されたnode inputを修正して再実行。                        |
 | `MISSING_NODE_ON_SERVER`     |    3 | workflow node class が不足。`details.missing_nodes` を確認。                                                                                          |
 | `MISSING_MODEL_ON_SERVER`    |    3 | model file が不足。`details.missing_models[].value` を `colab catalog --json` の asset と照合。                                                       |
 | `EXECUTION_FAILED`           |    3 | ComfyUI の実行失敗・中断。`category`、`kind`、node/exception、partial output、output directory を確認。`oom` は解像度/steps を下げ、中断は1回再試行。 |

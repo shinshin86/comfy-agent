@@ -56,7 +56,7 @@ const appendCommaSeparated = (current: string, additions: Array<string | undefin
     .filter(Boolean)
     .join(", ");
 
-const referenceCandidates = (character: Character, formId: string) => {
+export const referenceCandidates = (character: Character, formId: string) => {
   const form = resolveCharacterForm(character, formId);
   const declared = character.references
     .filter(
