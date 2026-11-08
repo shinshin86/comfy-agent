@@ -77,7 +77,8 @@ tempo, beats = librosa.beat.beat_track(y=y, sr=sr, units="time")
 - Derive: bar duration, first-downbeat offset, and section boundaries
   (intro/verse/chorus — from lyric structure plus an energy/novelty curve,
   or by ear via short sample exports). Write the resulting **cut plan**:
-  every cut time is `offset + k * bar`, scene changes sit on section
+  every cut time is `offset + k * bar` (or the measured downbeat times
+  themselves if the grid is uneven), scene changes sit on section
   boundaries, and the chorus gets shorter cuts (1 bar) than verses (2 bars).
 
 ### 3. Keyframes (Z-Image turbo) — consistency rules
@@ -125,20 +126,42 @@ comfy-agent run mv_clip --image sceneN.png \
 This step follows the **cut plan from step 2**, not fixed clip lengths:
 
 ```bash
-# trim each clip to its planned number of bars, cutting on the grid
-ffmpeg -i clip1.mp4 -t <bars*bar_sec> -c:v libx264 -pix_fmt yuv420p t1.mp4
+# trim each clip to its planned frame count (N = frames_for_clip, below)
+ffmpeg -i clip1.mp4 -vf "select='gte(n,START)',setpts=PTS-STARTPTS" \
+  -frames:v <N> -r 24 -c:v libx264 -pix_fmt yuv420p t1.mp4
 ...
 ffmpeg -f concat -safe 0 -i list.txt -c copy visual.mp4
-ffmpeg -i visual.mp4 -i song.mp3 -map 0:v -map 1:a -c:v copy -c:a aac \
-  -ss <song_in> -shortest -af "afade=t=out:st=<end-2>:d=2" mv_final.mp4
+# -ss before -i song.mp3 seeks only the song; video frame 0 = song_in
+ffmpeg -i visual.mp4 -ss <song_in> -i song.mp3 -map 0:v -map 1:a \
+  -c:v copy -c:a aac -shortest -af "afade=t=out:st=<end-2>:d=2" mv_final.mp4
 ```
 
 - **Trim by frame count, not seconds**: `-t <sec>` rounds up to the next
   frame per segment (~+40 ms each) and the drift accumulates until later
-  cuts fall audibly off the beat. Convert bars to frames once
-  (1 bar @ 117.45 BPM / 24 fps ≈ 49 frames) and cut with
-  `-vf "select='gte(n,START)',setpts=PTS-STARTPTS" -frames:v N`.
-- Every cut lands on `offset + k * bar`. Verify by extracting the frame at
+  cuts fall audibly off the beat. Rounding one bar to a fixed frame count
+  and repeating it drifts too: 1 bar @ 117.45 BPM / 24 fps = 49.04 frames,
+  so 64 repeated 49-frame bars end at frame 3136 instead of 3139 (~110 ms
+  late). Instead, compute each cut's frame boundary from its absolute time
+  and take the difference between neighbours:
+
+```text
+B[k] = floor((cut_time[k] - song_in) * fps + 0.5)
+frames_for_clip[k] = B[k+1] - B[k]
+```
+
+  Clip lengths then mix 49 and 50 frames, and every boundary stays within
+  half a frame (~21 ms at 24 fps) of its beat. `START` is the first source
+  frame to keep (usually 0).
+- Use the actual output frame rate for `fps` (the `-r` of the trimmed
+  clips); for NTSC rates use the exact ratio such as `24000/1001`, not
+  `23.976`.
+- `song_in` is the song time that plays at video frame 0 (usually the first
+  downbeat, `offset`). Seek the song input to the same `song_in` in the
+  final mux so audio and frame boundaries share one zero.
+- If two adjacent cuts round to the same frame (`B[k+1] == B[k]`), the cut
+  is shorter than one frame: merge or drop it instead of emitting a 0-frame
+  clip.
+- Every cut lands on its planned cut time. Verify by extracting the frame at
   each cut time and confirming the scene actually changes there.
 - Scene changes on section boundaries; chorus = 1-bar cuts, verse = 2-bar.
 - Start the video on the song's first downbeat (trim song head or add a
