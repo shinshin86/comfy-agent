@@ -85,6 +85,7 @@ comfy-agent run z_image_turbo --prompt "a cat riding a bicycle"
 | Image | [`anima_light_lavender/`](./scripts/colab/anima_light_lavender/)           | Verified | T4          | Anima-Light-Lavender anime text-to-image              |
 | Image | [`z_anime/`](./scripts/colab/z_anime/)                                     | Partial  | T4          | Z-Anime base / distilled text-to-image                |
 | Image | [`p_h3_image/`](./scripts/colab/p_h3_image/)                               | Verified | A100        | P-H3-Image INT8 8 MP text-to-image + editing          |
+| Image | [`minimax_h3_image/`](./scripts/colab/minimax_h3_image/)                   | Starter  | A100        | MiniMax-H3-Image INT8 text-to-image + multi-ref editing |
 | Image | [`qwen_image/`](./scripts/colab/qwen_image/)                               | Starter  | L4          | Qwen-Image text-to-image                              |
 | Image | [`ming_image/`](./scripts/colab/ming_image/)                               | Partial  | A100 40GB, high RAM | Ming-Image Design INT8, opaque 1024/2048 E2E passed; text/alpha limitations |
 | Image | [`qwen_image_edit/`](./scripts/colab/qwen_image_edit/)                     | Starter  | L4          | Qwen-Image-Edit instruction-based editing             |

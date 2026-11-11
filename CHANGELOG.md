@@ -14,6 +14,8 @@
   speech, including file-based clips, without invalidating generated outputs.
 - Added a Colab kit for P-H3-Image INT8 with text-to-image, single-image edit,
   and two-image edit workflows, verified end to end on A100.
+- Added a Colab kit for MiniMax-H3-Image INT8 with text-to-image and one-, two-,
+  and three-reference edit workflows.
 
 ### Fixed
 

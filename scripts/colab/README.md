@@ -26,6 +26,7 @@ specific verification details where a kit contains multiple variants.
 | [`./animegen_t2v/`](./animegen_t2v/) | Lightning verified E2E; plain starter | A100 | AnimeGen-T2V anime text-to-video, Wan 2.2 T2V A14B fine-tune (Apache-2.0; + optional 8-step Lightning LoRA) |
 | [`./z_anime/`](./z_anime/) | base verified E2E; distill-8step starter | T4+ | Z-Anime, anime-style Z-Image finetune (base + distill-8step, fp8) |
 | [`./p_h3_image/`](./p_h3_image/) | Verified E2E (A100) | A100 | P-H3-Image INT8, 8 MP text-to-image in 8 steps + image editing with a prompt upsampler (48.79 GB; ComfyUI v0.44.0; territory-restricted upstream license—review runtime region before use) |
+| [`./minimax_h3_image/`](./minimax_h3_image/) | Starter | A100 | MiniMax-H3-Image INT8, 6-step text-to-image + editing with up to three references (49.29 GB; ComfyUI v0.45.0; territory-restricted upstream license—review runtime region before use) |
 | [`./qwen_image/`](./qwen_image/) | Starter | L4+ | Qwen-Image 2512, text-to-image |
 | [`./ming_image/`](./ming_image/) | Partial | A100 40GB, high RAM | Ming-Image-0.1-Design INT8, opaque 1024/2048 Colab E2E passed; 2048 cutout passed, 1024 alpha checks failed; Japanese text errors (25.94 GB; ComfyUI v0.38.0 pinned; MIT) |
 | [`./qwen_image_edit/`](./qwen_image_edit/) | Starter | A100 (L4 for fp8) | Qwen-Image-Edit 2511, image editing |

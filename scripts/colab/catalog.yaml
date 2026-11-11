@@ -1093,6 +1093,61 @@ kits:
         size_gb: 3.14699644
     setup_minutes: 8
     composable: false
+  - name: minimax_h3_image
+    path: minimax_h3_image/
+    status: starter
+    tasks: [text_to_image, image_edit]
+    outputs: [image]
+    gpu:
+      minimum: A100
+      recommended: A100
+    summary: MiniMax-H3-Image INT8 6-step text-to-image and multi-reference image editing (native ComfyUI v0.45.0+).
+    setup_file: 01_setup.py
+    aliases: [MiniMax-H3-Image, MiniMax H3 Image, minimax-h3-image, H3 Image, H3-Image]
+    tags: [image, image_edit, reference_image, multi_reference, high_resolution, minimax_h3]
+    workflows:
+      - name: minimax_h3_image_t2i
+        file: minimax_h3_image_t2i.json
+        task: text_to_image
+        speed: medium
+        quality: high
+        notes: >-
+          2048x2048 default; set --width/--height in multiples of 32. Write a long, complete English description in --prompt.
+      - name: minimax_h3_image_edit
+        file: minimax_h3_image_edit.json
+        task: image_edit
+        speed: medium
+        quality: high
+        notes: >-
+          Single-image edit; --image is scaled to 4 MP and sets the output size. Refer to it as <Picture 1> in --prompt.
+      - name: minimax_h3_image_edit_2ref
+        file: minimax_h3_image_edit_2ref.json
+        task: image_edit
+        speed: medium
+        quality: high
+        notes: >-
+          Edit --image using --image-2 as a reference; refer to them as <Picture 1> and <Picture 2>.
+      - name: minimax_h3_image_edit_3ref
+        file: minimax_h3_image_edit_3ref.json
+        task: image_edit
+        speed: medium
+        quality: high
+        notes: >-
+          Edit --image using --image-2 and --image-3 as references; refer to them as <Picture 1> to <Picture 3>.
+    license_notes:
+      - MiniMax-H3-Image Community License excludes the EU, UK, Republic of Korea, and US, forbids using outputs to improve other AI models, and carries commercial and disclosure terms. Review the runtime region and intended use.
+    assets:
+      - file: minimax_h3_image_pruned_int8_convrot.safetensors
+        dir: models/diffusion_models
+        size_gb: 20.979314802
+      - file: qwen3vl_32b_minimax_h3_int8_convrot.safetensors
+        dir: models/text_encoders
+        size_gb: 27.141342152
+      - file: minimax_h3_image_vae_fp16.safetensors
+        dir: models/vae
+        size_gb: 1.168505312
+    setup_minutes: 12
+    composable: false
   - name: qwen_image
     path: qwen_image/
     status: starter

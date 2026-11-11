@@ -485,9 +485,11 @@ export const buildColabSuggestPayload = (
   const primaryOutput = options.output ?? inferPrimaryOutput(hints);
   const limit = Math.max(1, Math.floor(options.limit ?? 5));
 
+  // The H3 video family shares the minimax_h3 prefix; the image-only kit does not
+  // belong to it, so naming it must not route the request to H3 video.
   const anotherKitNamed = sorted.kits.some(
     (kit) =>
-      !kit.name.startsWith("minimax_h3") &&
+      !(kit.name.startsWith("minimax_h3") && kit.outputs.includes("video")) &&
       [kit.name, ...(kit.aliases ?? [])].some((name) => goalContainsName(options.goal, name)),
   );
   const h3Workflow = anotherKitNamed ? undefined : selectH3Workflow(options.goal);
